@@ -1,0 +1,11 @@
+class AppConstants {
+  static const String authApiBaseUrl = 'http://216.108.237.20:8000/api/identity';
+  static const String productApiBaseUrl = 'http://10.0.2.2:3003/api';
+  static const String chatApiBaseUrl = 'http://10.0.2.2:3004/api';
+
+  static const String keyAccessToken = 'ACCESS_TOKEN';
+  static const String keyRefreshToken = 'REFRESH_TOKEN';
+  static const String keyUserId = 'USER_ID';
+
+  static const String appName = 'ChoSV';
+}
