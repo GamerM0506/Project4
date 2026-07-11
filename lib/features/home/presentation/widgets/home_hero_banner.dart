@@ -31,9 +31,12 @@ class HomeHeroBanner extends StatelessWidget {
               child: Opacity(
                 opacity: 0.8,
                 child: Image.network(
-                  'https://lh3.googleusercontent.com/aida/AP1WRLsahntZF3atg6yuEDyAd4OOn0tgcJ9AAO6GnQccI9qRYXyU1enVo_edqXm9QZCl04SU6ol5RKIvV9gPO7wrLs33IyiJF4ZC2Fi2HtR_GmIkyNHIoFzCPU9Yh_t_kdFIuc_H0sIhgL3VFHBdO2Y54iQ0BXf-hpQ8X7L2ffb_ZQv-3YuJZwMO9Ah27WGLA1mxw8DKWAF70tm8-n4BssXSlIApniq-4Oj4m-n6paGKFtNM8skIVuuiZu4Ygj8',
+                  'https://images.unsplash.com/photo-1593113565694-c702f2351abf?auto=format&fit=crop&q=80&w=800',
                   fit: BoxFit.cover,
                   colorBlendMode: BlendMode.multiply,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    color: colorScheme.surfaceContainerHighest,
+                  ),
                 ),
               ),
             ),

@@ -1,12 +1,16 @@
 import '../../../../core/constants/app_constants.dart';
 import '../models/auth_model.dart';
-import '../../../../../core/network/api_client.dart';
+import '../../../../core/network/api_client.dart';
 
 abstract class AuthRemoteDataSource {
   Future<AuthModel> login(String? email, String? phone, String password);
   Future<AuthModel> register(String fullName, String? email, String? phone, String password);
   Future<void> verify(String emailOrPhone, String code);
   Future<void> resendVerification(String emailOrPhone);
+  Future<void> forgotPassword(String email);
+  Future<String> verifyResetCode(String email, String code);
+  Future<void> resetPassword(String email, String code, String resetToken, String newPassword);
+  Future<void> changePassword(String currentPassword, String newPassword);
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -51,7 +55,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     }
 
     await apiClient.dio.post(
-      '${AppConstants.authApiBaseUrl}/auth/verify',
+      '${AppConstants.authApiBaseUrl}/auth/verify-email',
       data: body,
     );
   }
@@ -68,6 +72,47 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     await apiClient.dio.post(
       '${AppConstants.authApiBaseUrl}/auth/resend-verification',
       data: body,
+    );
+  }
+
+  @override
+  Future<void> forgotPassword(String email) async {
+    await apiClient.dio.post(
+      '${AppConstants.authApiBaseUrl}/auth/forgot-password',
+      data: {'email': email},
+    );
+  }
+
+  @override
+  Future<String> verifyResetCode(String email, String code) async {
+    final response = await apiClient.dio.post(
+      '${AppConstants.authApiBaseUrl}/auth/verify-reset-code',
+      data: {'email': email, 'code': code},
+    );
+    return response.data['data']['reset_token'];
+  }
+
+  @override
+  Future<void> resetPassword(String email, String code, String resetToken, String newPassword) async {
+    await apiClient.dio.post(
+      '${AppConstants.authApiBaseUrl}/auth/reset-password',
+      data: {
+        'email': email,
+        'code': code,
+        'reset_token': resetToken,
+        'new_password': newPassword,
+      },
+    );
+  }
+
+  @override
+  Future<void> changePassword(String currentPassword, String newPassword) async {
+    await apiClient.dio.post(
+      '${AppConstants.authApiBaseUrl}/auth/change-password',
+      data: {
+        'old_password': currentPassword,
+        'new_password': newPassword,
+      },
     );
   }
 }

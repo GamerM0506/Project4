@@ -5,6 +5,9 @@ import '../../domain/usecases/login_usecase.dart';
 import '../../domain/usecases/register_usecase.dart';
 import '../../domain/usecases/verify_usecase.dart';
 import '../../domain/usecases/resend_verification_usecase.dart';
+import '../../domain/usecases/forgot_password_usecase.dart';
+import '../../domain/usecases/verify_reset_code_usecase.dart';
+import '../../domain/usecases/reset_password_usecase.dart';
 import 'auth_state.dart';
 
 class AuthCubit extends Cubit<AuthState> {
@@ -12,6 +15,9 @@ class AuthCubit extends Cubit<AuthState> {
   final RegisterUseCase registerUseCase;
   final VerifyUseCase verifyUseCase;
   final ResendVerificationUseCase resendVerificationUseCase;
+  final ForgotPasswordUseCase forgotPasswordUseCase;
+  final VerifyResetCodeUseCase verifyResetCodeUseCase;
+  final ResetPasswordUseCase resetPasswordUseCase;
   final SharedPreferences sharedPreferences;
 
   AuthCubit({
@@ -19,6 +25,9 @@ class AuthCubit extends Cubit<AuthState> {
     required this.registerUseCase,
     required this.verifyUseCase,
     required this.resendVerificationUseCase,
+    required this.forgotPasswordUseCase,
+    required this.verifyResetCodeUseCase,
+    required this.resetPasswordUseCase,
     required this.sharedPreferences,
   }) : super(AuthInitial());
 
@@ -90,6 +99,10 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   Future<void> verify(String emailOrPhone, String code) async {
+    if (emailOrPhone.isEmpty) {
+      emit(VerifyFailure(message: 'Không tìm thấy thông tin email. Vui lòng thử lại từ đầu.'));
+      return;
+    }
     if (code.isEmpty) {
       emit(VerifyFailure(message: 'Vui lòng nhập mã xác thực.'));
       return;
@@ -105,7 +118,56 @@ class AuthCubit extends Cubit<AuthState> {
     );
   }
 
+  Future<void> forgotPassword(String email) async {
+    if (email.isEmpty) {
+      emit(AuthFailure(message: 'Vui lòng nhập email.'));
+      return;
+    }
+
+    emit(ForgotPasswordLoading());
+    final result = await forgotPasswordUseCase(email);
+
+    result.fold(
+      (failureMessage) => emit(AuthFailure(message: failureMessage)),
+      (_) => emit(ForgotPasswordSuccess(email: email)),
+    );
+  }
+
+  Future<void> verifyResetCode(String email, String code) async {
+    if (code.isEmpty || code.length < 6) {
+      emit(AuthFailure(message: 'Vui lòng nhập mã OTP hợp lệ.'));
+      return;
+    }
+
+    emit(VerifyResetCodeLoading());
+    final result = await verifyResetCodeUseCase(email, code);
+
+    result.fold(
+      (failureMessage) => emit(AuthFailure(message: failureMessage)),
+      (resetToken) => emit(VerifyResetCodeSuccess(resetToken: resetToken)),
+    );
+  }
+
+  Future<void> resetPassword(String email, String code, String resetToken, String newPassword) async {
+    if (newPassword.isEmpty || newPassword.length < 8) {
+      emit(AuthFailure(message: 'Mật khẩu phải có ít nhất 8 ký tự.'));
+      return;
+    }
+
+    emit(ResetPasswordLoading());
+    final result = await resetPasswordUseCase(email, code, resetToken, newPassword);
+
+    result.fold(
+      (failureMessage) => emit(AuthFailure(message: failureMessage)),
+      (_) => emit(ResetPasswordSuccess()),
+    );
+  }
+
   Future<void> resendVerification(String emailOrPhone) async {
+    if (emailOrPhone.isEmpty) {
+      emit(VerifyFailure(message: 'Không tìm thấy thông tin email. Vui lòng đăng ký lại.'));
+      return;
+    }
     // Không chuyển qua Loading state để khỏi làm mất UI nhập mã
     final result = await resendVerificationUseCase(emailOrPhone);
 
@@ -116,5 +178,10 @@ class AuthCubit extends Cubit<AuthState> {
         // Hoặc emit VerifySuccess (nhưng UI đang ở Verify rồi)
       },
     );
+  }
+
+  Future<void> logout() async {
+    await sharedPreferences.remove(AppConstants.keyAccessToken);
+    emit(AuthUnauthenticated());
   }
 }

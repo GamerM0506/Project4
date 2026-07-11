@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class HomeRecentItems extends StatelessWidget {
   const HomeRecentItems({super.key});
@@ -112,7 +113,7 @@ class HomeRecentItems extends StatelessWidget {
               ),
             ],
           ),
-        );
+        ).animate(delay: (index * 100).ms).fade(duration: 400.ms).slideX(begin: -0.1, curve: Curves.easeOut);
       },
     );
   }

@@ -7,6 +7,12 @@ class UserModel extends UserEntity {
     super.email,
     super.phone,
     super.avatar,
+    super.dob,
+    super.gender,
+    super.provinceCode,
+    super.districtCode,
+    super.addressDetail,
+    super.bio,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -17,7 +23,26 @@ class UserModel extends UserEntity {
       fullName: data['full_name'] ?? data['name'] ?? 'Người dùng',
       email: data['email'],
       phone: data['phone'],
-      avatar: data['avatar'] ?? data['profile_picture'],
+      avatar: data['avatar_url'] ?? data['avatar'] ?? data['profile_picture'],
+      dob: data['date_of_birth'] ?? data['dob'],
+      gender: data['gender'],
+      provinceCode: data['province_code']?.toString(),
+      districtCode: data['district_code']?.toString(),
+      addressDetail: data['address'] ?? data['address_detail'],
+      bio: data['bio'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (fullName.isNotEmpty) 'full_name': fullName,
+      if (avatar != null) 'avatar_url': avatar,
+      if (dob != null) 'date_of_birth': dob,
+      if (gender != null) 'gender': gender,
+      if (provinceCode != null) 'province_code': provinceCode,
+      if (districtCode != null) 'district_code': districtCode,
+      if (addressDetail != null) 'address': addressDetail,
+      if (bio != null) 'bio': bio,
+    };
   }
 }

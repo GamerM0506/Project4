@@ -156,7 +156,7 @@ class _NavItem extends StatelessWidget {
             AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOutCubic,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), // Giảm padding
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2), // Giảm padding dọc
               decoration: BoxDecoration(
                 color: isSelected ? primaryColor.withValues(alpha: 0.12) : Colors.transparent,
                 borderRadius: BorderRadius.circular(24),
@@ -171,11 +171,11 @@ class _NavItem extends StatelessWidget {
                   isSelected ? activeIcon : icon,
                   key: ValueKey(isSelected),
                   color: isSelected ? primaryColor : unselectedColor,
-                  size: 26,
+                  size: 24, // Giảm kích thước icon từ 26 xuống 24
                 ),
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 2), // Giảm khoảng cách từ 6 xuống 2
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
               style: theme.textTheme.labelSmall!.copyWith(

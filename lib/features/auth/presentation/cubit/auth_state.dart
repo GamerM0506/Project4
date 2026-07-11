@@ -5,6 +5,7 @@ class AuthInitial extends AuthState {}
 class AuthLoading extends AuthState {}
 
 class AuthSuccess extends AuthState {}
+class AuthUnauthenticated extends AuthState {}
 
 class RegisterSuccess extends AuthState {
   final String emailOrPhone;
@@ -25,3 +26,22 @@ class AuthFailure extends AuthState {
 
   AuthFailure({required this.message});
 }
+
+// Forgot Password States
+class ForgotPasswordLoading extends AuthState {}
+
+class ForgotPasswordSuccess extends AuthState {
+  final String email;
+  ForgotPasswordSuccess({required this.email});
+}
+
+class VerifyResetCodeLoading extends AuthState {}
+
+class VerifyResetCodeSuccess extends AuthState {
+  final String resetToken;
+  VerifyResetCodeSuccess({required this.resetToken});
+}
+
+class ResetPasswordLoading extends AuthState {}
+
+class ResetPasswordSuccess extends AuthState {}

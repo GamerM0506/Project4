@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../user/presentation/cubit/user_cubit.dart';
 import '../../../user/presentation/cubit/user_state.dart';
+import '../../../../core/constants/app_constants.dart';
 
 class HomeSliverAppBar extends StatelessWidget {
   const HomeSliverAppBar({super.key});
@@ -27,7 +28,12 @@ class HomeSliverAppBar extends StatelessWidget {
           if (state is UserLoaded) {
             fullName = state.user.fullName;
             if (state.user.avatar != null && state.user.avatar!.isNotEmpty) {
-              avatarUrl = state.user.avatar!;
+              final avatar = state.user.avatar!;
+              if (avatar.startsWith('http')) {
+                avatarUrl = avatar;
+              } else {
+                avatarUrl = '${AppConstants.mediaApiBaseUrl}/$avatar';
+              }
             }
           }
 

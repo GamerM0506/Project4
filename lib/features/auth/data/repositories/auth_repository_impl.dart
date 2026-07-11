@@ -90,4 +90,71 @@ class AuthRepositoryImpl implements AuthRepository {
       return Left('Đã xảy ra lỗi: ${e.toString()}');
     }
   }
+
+  @override
+  Future<Either<String, void>> forgotPassword(String email) async {
+    try {
+      await remoteDataSource.forgotPassword(email);
+      return const Right(null);
+    } on DioException catch (e) {
+      if (e.response != null && e.response?.data != null) {
+        final errorData = e.response?.data;
+        if (errorData is Map<String, dynamic> && errorData['detail'] != null) {
+          final detail = errorData['detail'];
+          if (detail is String) return Left(detail);
+        }
+      }
+      return const Left('Không thể gửi mã khôi phục. Email có thể không tồn tại.');
+    } catch (e) {
+      return Left('Đã xảy ra lỗi: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Either<String, String>> verifyResetCode(String email, String code) async {
+    try {
+      final resetToken = await remoteDataSource.verifyResetCode(email, code);
+      return Right(resetToken);
+    } on DioException catch (e) {
+      if (e.response != null && e.response?.data != null) {
+        final errorData = e.response?.data;
+        if (errorData is Map<String, dynamic> && errorData['detail'] != null) {
+          final detail = errorData['detail'];
+          if (detail is String) return Left(detail);
+        }
+      }
+      return const Left('Mã xác nhận không hợp lệ hoặc đã hết hạn.');
+    } catch (e) {
+      return Left('Đã xảy ra lỗi: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Either<String, void>> resetPassword(String email, String code, String resetToken, String newPassword) async {
+    try {
+      await remoteDataSource.resetPassword(email, code, resetToken, newPassword);
+      return const Right(null);
+    } on DioException catch (e) {
+      if (e.response != null && e.response?.data != null) {
+        final errorData = e.response?.data;
+        if (errorData is Map<String, dynamic> && errorData['detail'] != null) {
+          final detail = errorData['detail'];
+          if (detail is String) return Left(detail);
+        }
+      }
+      return const Left('Không thể đổi mật khẩu. Vui lòng thử lại.');
+    } catch (e) {
+      return Left('Đã xảy ra lỗi: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Either<String, void>> changePassword(String currentPassword, String newPassword) async {
+    try {
+      await remoteDataSource.changePassword(currentPassword, newPassword);
+      return const Right(null);
+    } catch (e) {
+      return Left('Đã xảy ra lỗi: ${e.toString()}');
+    }
+  }
 }

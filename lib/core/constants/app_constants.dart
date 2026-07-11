@@ -1,5 +1,6 @@
 class AppConstants {
   static const String authApiBaseUrl = 'http://216.108.237.20:8000/api/identity';
+  static const String mediaApiBaseUrl = 'http://216.108.237.20:8000/api/media';
   static const String productApiBaseUrl = 'http://10.0.2.2:3003/api';
   static const String chatApiBaseUrl = 'http://10.0.2.2:3004/api';
 

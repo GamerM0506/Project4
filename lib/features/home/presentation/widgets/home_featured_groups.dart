@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class HomeFeaturedGroups extends StatelessWidget {
   const HomeFeaturedGroups({super.key});
@@ -102,7 +103,7 @@ class HomeFeaturedGroups extends StatelessWidget {
                 ),
               ],
             ),
-          );
+          ).animate(delay: (index * 100).ms).fade(duration: 400.ms).slideY(begin: 0.2, curve: Curves.easeOut);
         },
       ),
     );
