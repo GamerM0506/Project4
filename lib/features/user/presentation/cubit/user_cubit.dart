@@ -14,24 +14,34 @@ class UserCubit extends Cubit<UserState> {
   }) : super(UserInitial());
 
   Future<void> fetchProfile() async {
-    emit(UserLoading());
+    final previous = state.userOrNull;
+    emit(UserLoading(previousUser: previous));
+
     final result = await getProfileUseCase();
     result.fold(
-      (error) => emit(UserError(message: error)),
+      (error) => emit(UserError(message: error, previousUser: previous)),
       (user) => emit(UserLoaded(user: user)),
     );
   }
 
   Future<void> updateProfile(UserEntity updatedUser) async {
-    emit(UserUpdating());
+    final previous = state.userOrNull ?? updatedUser;
+    emit(UserUpdating(currentUser: previous));
+
     final result = await updateProfileUseCase(updatedUser);
     result.fold(
-      (error) => emit(UserUpdateError(message: error)),
+      (error) {
+        emit(UserUpdateError(message: error, previousUser: previous));
+        emit(UserLoaded(user: previous));
+      },
       (user) {
         emit(UserUpdateSuccess(user: user));
-        // After success, emit UserLoaded again to keep state
         emit(UserLoaded(user: user));
       },
     );
+  }
+
+  void clear() {
+    emit(UserInitial());
   }
 }

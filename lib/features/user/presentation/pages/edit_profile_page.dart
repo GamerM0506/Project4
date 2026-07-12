@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/network/location_service.dart';
 import '../../../../core/network/media_service.dart';
+import '../../../../injection_container.dart';
 import '../../domain/entities/user_entity.dart';
 import '../cubit/user_cubit.dart';
 import '../cubit/user_state.dart';
@@ -29,7 +29,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   String? _selectedDistrictId;
   
   final _nameController = TextEditingController();
-  final _phoneController = TextEditingController(text: '+84 555 123 4567');
   final _addressDetailController = TextEditingController();
   final _bioController = TextEditingController();
   
@@ -37,50 +36,80 @@ class _EditProfilePageState extends State<EditProfilePage> {
   String? _selectedMonth;
   String? _selectedYear;
   
-  String _gender = 'female';
+  String _gender = 'other';
   bool _isLoadingLocation = true;
 
   String? _userId;
   String? _avatarUrl;
+  int _reputationScore = 0;
+  int _donationCount = 0;
+  int _receivedCount = 0;
 
   bool _isUploadingAvatar = false;
-  final MediaService _mediaService = MediaService();
+  bool _avatarOnlyUpdate = false;
+  late final MediaService _mediaService;
   final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
+    _mediaService = sl<MediaService>();
+    _hydrateFromCubit();
     _loadProvinces();
-    
-    // Default name from cubit if available
-    final state = context.read<UserCubit>().state;
-    if (state is UserLoaded) {
-      _userId = state.user.id;
-      _avatarUrl = state.user.avatar;
-      _nameController.text = state.user.fullName;
-      if (state.user.phone != null) _phoneController.text = state.user.phone!;
-      if (state.user.bio != null) _bioController.text = state.user.bio!;
-      if (state.user.addressDetail != null) _addressDetailController.text = state.user.addressDetail!;
-      if (state.user.gender != null) _gender = state.user.gender!;
-      if (state.user.provinceCode != null) _selectedProvinceId = state.user.provinceCode;
-      if (state.user.districtCode != null) _selectedDistrictId = state.user.districtCode;
-      if (state.user.dob != null) {
-        final parts = state.user.dob!.split('-');
-        if (parts.length == 3) {
-          _selectedYear = parts[0];
-          _selectedMonth = parts[1];
-          _selectedDay = parts[2];
-        }
+  }
+
+  void _hydrateFromCubit() {
+    final user = context.read<UserCubit>().state.userOrNull;
+    if (user == null) return;
+
+    _userId = user.id;
+    _avatarUrl = user.avatar;
+    _nameController.text = user.fullName;
+    if (user.bio != null) _bioController.text = user.bio!;
+    if (user.addressDetail != null) {
+      _addressDetailController.text = user.addressDetail!;
+    }
+    if (user.gender != null && user.gender!.isNotEmpty) {
+      _gender = user.gender!;
+    }
+    if (user.provinceCode != null) _selectedProvinceId = user.provinceCode;
+    if (user.districtCode != null) _selectedDistrictId = user.districtCode;
+    _reputationScore = user.reputationScore;
+    _donationCount = user.donationCount;
+    _receivedCount = user.receivedCount;
+
+    if (user.dob != null && user.dob!.isNotEmpty) {
+      final parts = user.dob!.split('-');
+      if (parts.length >= 3) {
+        _selectedYear = parts[0];
+        _selectedMonth = parts[1].padLeft(2, '0');
+        _selectedDay = parts[2].padLeft(2, '0');
       }
     }
   }
 
   Future<void> _loadProvinces() async {
     final data = await _locationService.getProvinces();
+    if (!mounted) return;
     setState(() {
       _provinces = data;
       _isLoadingLocation = false;
     });
+
+    if (_selectedProvinceId != null) {
+      Map<String, dynamic>? province;
+      for (final p in _provinces) {
+        if (p is Map && p['code']?.toString() == _selectedProvinceId) {
+          province = Map<String, dynamic>.from(p);
+          break;
+        }
+      }
+      if (province != null && province['districts'] != null) {
+        setState(() {
+          _districts = province!['districts'] as List<dynamic>;
+        });
+      }
+    }
   }
 
   void _onProvinceChanged(String? provinceCode) {
@@ -105,23 +134,48 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   void _saveProfile() {
-    if (_userId == null) return;
-    
+    if (_userId == null) {
+      context.read<UserCubit>().fetchProfile();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Đang tải hồ sơ, vui lòng thử lưu lại.'),
+          backgroundColor: Theme.of(context).colorScheme.secondary,
+        ),
+      );
+      return;
+    }
+
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Vui lòng nhập họ và tên.'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      return;
+    }
+
     String? dob;
-    if (_selectedDay != null && _selectedMonth != null && _selectedYear != null) {
+    if (_selectedDay != null &&
+        _selectedMonth != null &&
+        _selectedYear != null) {
       dob = '$_selectedYear-$_selectedMonth-$_selectedDay';
     }
 
     final updatedUser = UserEntity(
       id: _userId!,
-      fullName: _nameController.text.trim(),
-      phone: _phoneController.text.trim(),
+      fullName: name,
+      avatar: _avatarUrl,
       bio: _bioController.text.trim(),
       gender: _gender,
       provinceCode: _selectedProvinceId,
       districtCode: _selectedDistrictId,
       addressDetail: _addressDetailController.text.trim(),
       dob: dob,
+      reputationScore: _reputationScore,
+      donationCount: _donationCount,
+      receivedCount: _receivedCount,
     );
 
     context.read<UserCubit>().updateProfile(updatedUser);
@@ -129,45 +183,63 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   Future<void> _pickAndUploadAvatar() async {
     try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1280,
+        maxHeight: 1280,
+        imageQuality: 85,
+      );
       if (image == null) return;
-      
-      setState(() {
-        _isUploadingAvatar = true;
-      });
+
+      setState(() => _isUploadingAvatar = true);
 
       final bytes = await image.readAsBytes();
-      String mimeType = 'image/jpeg';
-      if (image.name.toLowerCase().endsWith('.png')) mimeType = 'image/png';
-      else if (image.name.toLowerCase().endsWith('.webp')) mimeType = 'image/webp';
+      final mimeType = MediaService.mimeFromFileName(image.name);
 
       final publicUrl = await _mediaService.uploadImage(bytes, mimeType);
-      
-      if (publicUrl != null && mounted) {
-        setState(() {
-          _avatarUrl = publicUrl;
-          _isUploadingAvatar = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Text('Tải ảnh thành công!'), backgroundColor: Theme.of(context).colorScheme.primary),
-        );
+
+      if (!mounted) return;
+      setState(() {
+        _avatarUrl = publicUrl;
+        _isUploadingAvatar = false;
+      });
+
+      if (_userId != null) {
+        final current = context.read<UserCubit>().state.userOrNull;
+        _avatarOnlyUpdate = true;
+        await context.read<UserCubit>().updateProfile(
+              UserEntity(
+                id: _userId!,
+                fullName: current?.fullName ?? _nameController.text.trim(),
+                avatar: publicUrl,
+                bio: current?.bio ?? _bioController.text.trim(),
+                gender: current?.gender ?? _gender,
+                provinceCode: current?.provinceCode ?? _selectedProvinceId,
+                districtCode: current?.districtCode ?? _selectedDistrictId,
+                addressDetail:
+                    current?.addressDetail ?? _addressDetailController.text.trim(),
+                dob: current?.dob,
+                reputationScore: current?.reputationScore ?? _reputationScore,
+                donationCount: current?.donationCount ?? _donationCount,
+                receivedCount: current?.receivedCount ?? _receivedCount,
+              ),
+            );
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isUploadingAvatar = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Theme.of(context).colorScheme.error),
-        );
-      }
+      if (!mounted) return;
+      setState(() => _isUploadingAvatar = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
     }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _phoneController.dispose();
     _addressDetailController.dispose();
     _bioController.dispose();
     super.dispose();
@@ -177,20 +249,28 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    // For background FDFDFF approx
     final bgColor = const Color(0xFFFDFDFF); 
 
     return BlocConsumer<UserCubit, UserState>(
       listener: (context, state) {
         if (state is UserUpdateSuccess) {
+          final avatarOnly = _avatarOnlyUpdate;
+          _avatarOnlyUpdate = false;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Cập nhật thông tin thành công!'),
+              content: Text(
+                avatarOnly
+                    ? 'Cập nhật ảnh đại diện thành công!'
+                    : 'Cập nhật thông tin thành công!',
+              ),
               backgroundColor: colorScheme.primary,
             ),
           );
-          context.pop();
+          if (!avatarOnly) {
+            context.pop();
+          }
         } else if (state is UserUpdateError) {
+          _avatarOnlyUpdate = false;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.message),
@@ -249,7 +329,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
             child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Avatar Section
             Center(
               child: Column(
                 children: [
@@ -330,7 +409,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
             
             const SizedBox(height: 40),
             
-            // Personal Info Block
             Text(
               'Thông tin cá nhân',
               style: textTheme.titleMedium?.copyWith(
@@ -345,15 +423,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               label: 'Họ và tên',
             ),
             const SizedBox(height: 16),
-            
-            SoftInputField(
-              controller: _phoneController,
-              label: 'Số điện thoại',
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: 16),
-            
-            // Ngày sinh (3 Dropdowns)
+
             Text(
               'Ngày sinh',
               style: textTheme.labelSmall?.copyWith(
@@ -408,7 +478,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
             ),
             const SizedBox(height: 16),
             
-            // Gender Radio
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -452,7 +521,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
             
             const SizedBox(height: 32),
             
-            // Address Details Block
             Text(
               'Địa chỉ liên hệ',
               style: textTheme.titleMedium?.copyWith(
@@ -509,7 +577,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
             
             const SizedBox(height: 32),
             
-            // Bio Block
             Text(
               'Giới thiệu bản thân',
               style: textTheme.titleMedium?.copyWith(

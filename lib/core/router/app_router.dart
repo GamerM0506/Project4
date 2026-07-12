@@ -10,6 +10,7 @@ import '../../features/auth/presentation/pages/forgot_password_page.dart';
 import '../../features/auth/presentation/pages/forgot_password_verification_page.dart';
 import '../../features/auth/presentation/pages/reset_password_page.dart';
 import '../../features/auth/presentation/pages/change_password_page.dart';
+import '../../features/auth/presentation/pages/two_factor_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 // import '../../features/search/presentation/pages/search_page.dart';
@@ -163,6 +164,12 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.changePassword,
       parentNavigatorKey: _rootNavigatorKey,
       pageBuilder: (context, state) => _buildPageWithAnimation(const ChangePasswordPage()),
+    ),
+    GoRoute(
+      path: AppRoutes.twoFactor,
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) =>
+          _buildPageWithAnimation(const TwoFactorPage()),
     ),
     GoRoute(
       path: AppRoutes.productDetail,

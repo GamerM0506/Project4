@@ -1,5 +1,6 @@
 import '../../../../core/constants/app_constants.dart';
 import '../models/auth_model.dart';
+import '../models/two_factor_setup_model.dart';
 import '../../../../core/network/api_client.dart';
 
 abstract class AuthRemoteDataSource {
@@ -11,6 +12,9 @@ abstract class AuthRemoteDataSource {
   Future<String> verifyResetCode(String email, String code);
   Future<void> resetPassword(String email, String code, String resetToken, String newPassword);
   Future<void> changePassword(String currentPassword, String newPassword);
+  Future<TwoFactorSetupModel> setupTwoFactor();
+  Future<void> enableTwoFactor(String code);
+  Future<void> disableTwoFactor(String code);
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -113,6 +117,34 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         'old_password': currentPassword,
         'new_password': newPassword,
       },
+    );
+  }
+
+  @override
+  Future<TwoFactorSetupModel> setupTwoFactor() async {
+    final response = await apiClient.dio.post(
+      '${AppConstants.authApiBaseUrl}/auth/2fa/setup',
+    );
+    return TwoFactorSetupModel.fromJson(
+      response.data is Map<String, dynamic>
+          ? response.data as Map<String, dynamic>
+          : <String, dynamic>{},
+    );
+  }
+
+  @override
+  Future<void> enableTwoFactor(String code) async {
+    await apiClient.dio.post(
+      '${AppConstants.authApiBaseUrl}/auth/2fa/enable',
+      data: {'code': code},
+    );
+  }
+
+  @override
+  Future<void> disableTwoFactor(String code) async {
+    await apiClient.dio.post(
+      '${AppConstants.authApiBaseUrl}/auth/2fa/disable',
+      data: {'code': code},
     );
   }
 }

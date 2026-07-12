@@ -16,7 +16,7 @@ class UserRepositoryImpl implements UserRepository {
       final userModel = await remoteDataSource.getProfile();
       return Right(userModel);
     } on DioException catch (e) {
-      return Left(e.response?.data?['detail']?.toString() ?? 'Lỗi khi lấy thông tin người dùng');
+      return Left(_mapDioError(e, 'Lỗi khi lấy thông tin người dùng'));
     } catch (e) {
       return Left('Đã xảy ra lỗi: $e');
     }
@@ -37,13 +37,37 @@ class UserRepositoryImpl implements UserRepository {
         districtCode: user.districtCode,
         addressDetail: user.addressDetail,
         bio: user.bio,
+        reputationScore: user.reputationScore,
+        donationCount: user.donationCount,
+        receivedCount: user.receivedCount,
       );
       final updatedModel = await remoteDataSource.updateProfile(userModel);
       return Right(updatedModel);
     } on DioException catch (e) {
-      return Left(e.response?.data?['detail']?.toString() ?? 'Lỗi khi cập nhật thông tin');
+      return Left(_mapDioError(e, 'Lỗi khi cập nhật thông tin'));
     } catch (e) {
       return Left('Đã xảy ra lỗi: $e');
     }
+  }
+
+  String _mapDioError(DioException e, String fallback) {
+    final data = e.response?.data;
+    if (data is Map) {
+      final error = data['error'] ?? data['detail'] ?? data['message'];
+      if (error is String && error.isNotEmpty) return error;
+      if (error is Map && error['message'] != null) {
+        return error['message'].toString();
+      }
+    }
+
+    if (e.response?.statusCode == 401) {
+      return 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.';
+    }
+    if (e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.connectionError) {
+      return 'Không kết nối được máy chủ. Kiểm tra mạng và thử lại.';
+    }
+    return fallback;
   }
 }

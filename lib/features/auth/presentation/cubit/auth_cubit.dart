@@ -53,17 +53,32 @@ class AuthCubit extends Cubit<AuthState> {
     result.fold(
       (failureMessage) => emit(AuthFailure(message: failureMessage)),
       (authEntity) async {
-        final token = authEntity.accessToken;
-
-        if (token != null) {
-          await sharedPreferences.setString(AppConstants.keyAccessToken, token);
+        await _persistTokens(authEntity.accessToken, authEntity.refreshToken);
+        if (authEntity.accessToken != null &&
+            authEntity.accessToken!.isNotEmpty) {
           emit(AuthSuccess());
         } else {
-          // Trường hợp trả về 200 OK nhưng body rỗng hoặc yêu cầu 2FA
-          emit(AuthSuccess()); // Tạm thời coi như thành công nếu không lấy được token rõ ràng
+          emit(AuthFailure(
+            message: 'Đăng nhập chưa nhận được token. Kiểm tra 2FA hoặc thử lại.',
+          ));
         }
       },
     );
+  }
+
+  Future<void> _persistTokens(String? access, String? refresh) async {
+    if (access != null && access.isNotEmpty) {
+      await sharedPreferences.setString(AppConstants.keyAccessToken, access);
+    }
+    if (refresh != null && refresh.isNotEmpty) {
+      await sharedPreferences.setString(AppConstants.keyRefreshToken, refresh);
+    }
+  }
+
+  Future<void> handleSessionExpired() async {
+    await sharedPreferences.remove(AppConstants.keyAccessToken);
+    await sharedPreferences.remove(AppConstants.keyRefreshToken);
+    emit(AuthUnauthenticated());
   }
 
   Future<void> registerUser(String fullName, String emailOrPhone, String password) async {
@@ -168,20 +183,15 @@ class AuthCubit extends Cubit<AuthState> {
       emit(VerifyFailure(message: 'Không tìm thấy thông tin email. Vui lòng đăng ký lại.'));
       return;
     }
-    // Không chuyển qua Loading state để khỏi làm mất UI nhập mã
     final result = await resendVerificationUseCase(emailOrPhone);
 
     result.fold(
       (failureMessage) => emit(VerifyFailure(message: failureMessage)),
-      (_) {
-        // Gửi thành công, có thể không cần emit state mới nếu chỉ thông báo qua listener ở UI
-        // Hoặc emit VerifySuccess (nhưng UI đang ở Verify rồi)
-      },
+      (_) {},
     );
   }
 
   Future<void> logout() async {
-    await sharedPreferences.remove(AppConstants.keyAccessToken);
-    emit(AuthUnauthenticated());
+    await handleSessionExpired();
   }
 }

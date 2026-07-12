@@ -3,6 +3,7 @@ import 'package:dartz/dartz.dart';
 import '../datasources/auth_remote_data_source.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/entities/auth_entity.dart';
+import '../../domain/entities/two_factor_setup_entity.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
@@ -156,5 +157,75 @@ class AuthRepositoryImpl implements AuthRepository {
     } catch (e) {
       return Left('Đã xảy ra lỗi: ${e.toString()}');
     }
+  }
+
+  @override
+  Future<Either<String, TwoFactorSetupEntity>> setupTwoFactor() async {
+    try {
+      final result = await remoteDataSource.setupTwoFactor();
+      if (result.secret.isEmpty) {
+        return const Left('Không nhận được secret 2FA từ máy chủ.');
+      }
+      return Right(result);
+    } on DioException catch (e) {
+      return Left(_mapDioError(e, 'Không thể thiết lập 2FA. Vui lòng thử lại.'));
+    } catch (e) {
+      return Left('Đã xảy ra lỗi: $e');
+    }
+  }
+
+  @override
+  Future<Either<String, void>> enableTwoFactor(String code) async {
+    try {
+      await remoteDataSource.enableTwoFactor(code);
+      return const Right(null);
+    } on DioException catch (e) {
+      return Left(_mapDioError(e, 'Mã 2FA không hợp lệ. Vui lòng thử lại.'));
+    } catch (e) {
+      return Left('Đã xảy ra lỗi: $e');
+    }
+  }
+
+  @override
+  Future<Either<String, void>> disableTwoFactor(String code) async {
+    try {
+      await remoteDataSource.disableTwoFactor(code);
+      return const Right(null);
+    } on DioException catch (e) {
+      return Left(_mapDioError(e, 'Không thể tắt 2FA. Kiểm tra mã và thử lại.'));
+    } catch (e) {
+      return Left('Đã xảy ra lỗi: $e');
+    }
+  }
+
+  String _mapDioError(DioException e, String fallback) {
+    final data = e.response?.data;
+    if (data is Map) {
+      final error = data['error'] ?? data['detail'] ?? data['message'];
+      if (error is String && error.isNotEmpty) {
+        return _localizeTwoFactorError(error);
+      }
+      if (error is Map && error['message'] != null) {
+        return error['message'].toString();
+      }
+    }
+    if (e.response?.statusCode == 401) {
+      return 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.';
+    }
+    return fallback;
+  }
+
+  String _localizeTwoFactorError(String error) {
+    final lower = error.toLowerCase();
+    if (lower.contains('invalid 2fa')) {
+      return 'Mã xác thực không đúng. Hãy kiểm tra app Authenticator.';
+    }
+    if (lower.contains('run 2fa setup')) {
+      return 'Cần thiết lập 2FA trước khi bật.';
+    }
+    if (lower.contains('not enabled')) {
+      return '2FA chưa được bật trên tài khoản này.';
+    }
+    return error;
   }
 }

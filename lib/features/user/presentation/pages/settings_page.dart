@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/router/app_routes.dart';
+import '../../../../injection_container.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -14,6 +17,26 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   bool _pushNotifications = true;
   bool _emailNotifications = false;
+  bool _twoFactorEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTwoFactorStatus();
+  }
+
+  void _loadTwoFactorStatus() {
+    final prefs = sl<SharedPreferences>();
+    setState(() {
+      _twoFactorEnabled =
+          prefs.getBool(AppConstants.keyTwoFactorEnabled) ?? false;
+    });
+  }
+
+  Future<void> _openTwoFactor() async {
+    await context.push(AppRoutes.twoFactor);
+    if (mounted) _loadTwoFactorStatus();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +63,6 @@ class _SettingsPageState extends State<SettingsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Security
             _buildSectionHeader('Bảo mật', textTheme, colorScheme),
             _buildListTile(
               context,
@@ -54,17 +76,12 @@ class _SettingsPageState extends State<SettingsPage> {
               context,
               icon: Icons.security_outlined,
               title: 'Xác thực 2 bước',
-              subtitle: 'Đang tắt',
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: const Text('Tính năng đang phát triển'), backgroundColor: colorScheme.secondary),
-                );
-              },
+              subtitle: _twoFactorEnabled ? 'Đang bật' : 'Đang tắt',
+              onTap: _openTwoFactor,
             ),
 
             const SizedBox(height: 24),
 
-            // Appearance
             _buildSectionHeader('Giao diện', textTheme, colorScheme),
             BlocBuilder<ThemeCubit, ThemeMode>(
               builder: (context, themeMode) {
@@ -82,7 +99,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
             const SizedBox(height: 24),
 
-            // Notifications
             _buildSectionHeader('Thông báo', textTheme, colorScheme),
             _buildSwitchTile(
               context,
@@ -105,7 +121,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
             const SizedBox(height: 24),
 
-            // Linked Accounts
             _buildSectionHeader('Liên kết tài khoản', textTheme, colorScheme),
             _buildListTile(
               context,
@@ -124,7 +139,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
             const SizedBox(height: 40),
 
-            // Danger Zone
             Center(
               child: TextButton.icon(
                 onPressed: () {

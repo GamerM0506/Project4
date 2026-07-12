@@ -8,13 +8,17 @@ class AuthModel extends AuthEntity {
   });
 
   factory AuthModel.fromJson(Map<String, dynamic> json) {
-    // API có thể trả về trực tiếp trong json, hoặc bọc trong "data"
-    final data = json['data'] as Map<String, dynamic>?;
-    
+    final data = json['data'] is Map<String, dynamic>
+        ? json['data'] as Map<String, dynamic>
+        : null;
+
     return AuthModel(
-      accessToken: json['access_token'] ?? data?['access_token'],
-      refreshToken: json['refresh_token'] ?? data?['refresh_token'],
-      userId: json['user_id']?.toString() ?? data?['user_id']?.toString(),
+      accessToken:
+          (data?['access_token'] ?? json['access_token'])?.toString(),
+      refreshToken:
+          (data?['refresh_token'] ?? json['refresh_token'])?.toString(),
+      userId: (data?['user_id'] ?? json['user_id'] ?? data?['sub'])
+          ?.toString(),
     );
   }
 

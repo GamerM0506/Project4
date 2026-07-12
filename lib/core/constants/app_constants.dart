@@ -7,6 +7,7 @@ class AppConstants {
   static const String keyAccessToken = 'ACCESS_TOKEN';
   static const String keyRefreshToken = 'REFRESH_TOKEN';
   static const String keyUserId = 'USER_ID';
+  static const String keyTwoFactorEnabled = 'TWO_FACTOR_ENABLED';
 
   static const String appName = 'ChoSV';
 }
