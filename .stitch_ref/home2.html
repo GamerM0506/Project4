@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>KindHeart Clean - Home</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#64d8d2",
+                        "background": "#fcf8fb",
+                        "inverse-on-surface": "#f3f0f2",
+                        "inverse-primary": "#ffb4a9",
+                        "secondary-container": "#8cf5e4",
+                        "outline": "#8c716c",
+                        "secondary-fixed": "#8cf5e4",
+                        "surface": "#fcf8fb",
+                        "on-tertiary-container": "#f3fffd",
+                        "on-secondary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#6fd8c8",
+                        "on-secondary-fixed-variant": "#005048",
+                        "on-tertiary-fixed-variant": "#00504c",
+                        "surface-container": "#f0edef",
+                        "surface-variant": "#e4e2e4",
+                        "on-secondary-fixed": "#00201c",
+                        "surface-dim": "#dcd9dc",
+                        "on-background": "#1b1b1d",
+                        "primary-container": "#cb4839",
+                        "on-tertiary": "#ffffff",
+                        "inverse-surface": "#303032",
+                        "error": "#ba1a1a",
+                        "primary-fixed": "#ffdad5",
+                        "on-primary-fixed-variant": "#8b1911",
+                        "on-tertiary-fixed": "#00201e",
+                        "on-surface-variant": "#59413e",
+                        "tertiary": "#006763",
+                        "on-secondary-container": "#007166",
+                        "primary": "#a93024",
+                        "on-error": "#ffffff",
+                        "surface-container-high": "#eae7ea",
+                        "tertiary-fixed": "#82f5ee",
+                        "outline-variant": "#e0bfba",
+                        "surface-container-highest": "#e4e2e4",
+                        "on-primary-fixed": "#410000",
+                        "on-primary-container": "#fffbff",
+                        "secondary": "#006a60",
+                        "surface-tint": "#ac3226",
+                        "on-surface": "#1b1b1d",
+                        "tertiary-container": "#00837d",
+                        "on-primary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#fcf8fb",
+                        "surface-container-low": "#f6f3f5",
+                        "primary-fixed-dim": "#ffb4a9",
+                        "on-error-container": "#93000a",
+                        "brand-coral": "#E85D4C",
+                        "hairline": "#E5E2DE",
+                        "nav-grey": "#8C8C8C"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "14px",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-sm": "8px",
+                        "stack-md": "16px",
+                        "stack-lg": "24px",
+                        "gutter": "12px",
+                        "margin-side": "16px",
+                        "button-height": "50px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Manrope", "sans-serif"],
+                        "body-lg": ["Inter", "sans-serif"],
+                        "headline-lg": ["Manrope", "sans-serif"],
+                        "body-md": ["Inter", "sans-serif"],
+                        "label-md": ["Inter", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", {"lineHeight": "26px", "fontWeight": "600"}],
+                        "headline-md-mobile": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg": ["28px", {"lineHeight": "34px", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "30px", "fontWeight": "700"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #FCF8FB;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Material Symbols Outlined */
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-background font-body-md antialiased md:bg-surface-container-high md:flex md:justify-center">
+<!-- Mobile Container (Max 390px as requested) -->
+<main class="w-full max-w-[390px] mx-auto bg-background min-h-screen relative pb-[80px] shadow-sm md:shadow-xl md:my-8 overflow-hidden flex flex-col">
+<!-- Top Header -->
+<header class="px-margin-side pt-12 pb-4 flex items-center justify-between sticky top-0 bg-background/95 backdrop-blur-sm z-40 border-b border-hairline/50">
+<div>
+<h1 class="font-headline-md-mobile text-headline-md-mobile text-on-background">Good Morning, Sarah!</h1>
+</div>
+<div class="flex items-center gap-4">
+<button aria-label="Search" class="p-2 -mr-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">search</span>
+</button>
+<div class="w-10 h-10 rounded-full bg-surface-container overflow-hidden border border-hairline">
+<img alt="Sarah's Avatar" class="w-full h-full object-cover" data-alt="A close-up portrait of a friendly young woman with warm lighting, soft background focus, natural expression. The lighting is soft and natural, emphasizing a welcoming, community-focused aesthetic typical of a modern social app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBl8mD2T1bvvhQHED-HHNU7kU8KfOxUA0m6176c-6bK3BCj9MzSVBTCKx7Y2qDCjdFFetv5va6_TJcoWV6YekJfutBB82LAGvhcgbbw-ADH3Xle1FdF4BlokrlSf_tptk48qUGx13h0anRT6oV2YCxMrbLoh0vzOo1kE8MF4CAVnSHg0zIcmK2EuHdfVnd4yY4_Art015__iUpC2PD9oiLhY90orm3hRSMeTSskc3M3QR9er-YA1VDIxNgMkEfyHafYjpCwZtLElSw"/>
+</div>
+</div>
+</header>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar pb-stack-lg">
+<!-- Hero Section -->
+<section class="px-margin-side mt-stack-md">
+<div class="bg-brand-coral rounded-2xl p-6 text-white relative overflow-hidden shadow-[0_4px_12px_rgba(232,93,76,0.2)]">
+<!-- Decorative subtle circle -->
+<div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+<div class="relative z-10">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile mb-2">Help a Neighbor Today</h2>
+<p class="font-body-md text-white/90 mb-6 max-w-[240px]">Your small donation makes a big difference in the community.</p>
+<button class="h-button-height px-6 rounded-2xl border-2 border-white text-white font-label-md text-label-md hover:bg-white hover:text-brand-coral transition-colors flex items-center justify-center gap-2">
+<span>Donate Now</span>
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Quick Actions (2x2 Grid) -->
+<section class="px-margin-side mt-stack-lg">
+<div class="grid grid-cols-2 gap-gutter">
+<!-- Marketplace -->
+<button class="bg-white border border-hairline rounded-xl p-4 flex flex-col items-center justify-center gap-3 hover:bg-surface-container-low transition-colors active:scale-95">
+<div class="w-12 h-12 rounded-full bg-tertiary-container/10 text-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined fill">storefront</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface">Marketplace</span>
+</button>
+<!-- Find Groups -->
+<button class="bg-white border border-hairline rounded-xl p-4 flex flex-col items-center justify-center gap-3 hover:bg-surface-container-low transition-colors active:scale-95">
+<div class="w-12 h-12 rounded-full bg-secondary-container/20 text-secondary flex items-center justify-center">
+<span class="material-symbols-outlined fill">group</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface">Find Groups</span>
+</button>
+<!-- My Tracking -->
+<button class="bg-white border border-hairline rounded-xl p-4 flex flex-col items-center justify-center gap-3 hover:bg-surface-container-low transition-colors active:scale-95">
+<div class="w-12 h-12 rounded-full bg-primary-container/10 text-primary flex items-center justify-center">
+<span class="material-symbols-outlined fill">inventory_2</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface">My Tracking</span>
+</button>
+<!-- Leaderboard -->
+<button class="bg-white border border-hairline rounded-xl p-4 flex flex-col items-center justify-center gap-3 hover:bg-surface-container-low transition-colors active:scale-95">
+<div class="w-12 h-12 rounded-full bg-[#fcf5e3] text-[#d49b1a] flex items-center justify-center">
+<span class="material-symbols-outlined fill">emoji_events</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface">Leaderboard</span>
+</button>
+</div>
+</section>
+<!-- Featured Groups -->
+<section class="mt-stack-lg">
+<div class="px-margin-side flex items-center justify-between mb-4">
+<h3 class="font-headline-md-mobile text-headline-md-mobile text-on-background">Featured Groups</h3>
+<button class="font-label-md text-label-md text-tertiary hover:underline">See all</button>
+</div>
+<!-- Horizontal Scroll -->
+<div class="flex gap-4 px-margin-side overflow-x-auto no-scrollbar pb-2 snap-x">
+<!-- Group Card 1 -->
+<div class="min-w-[240px] bg-white border border-hairline rounded-xl overflow-hidden snap-start flex-shrink-0">
+<div class="h-24 bg-surface-container relative">
+<img alt="Garden Group" class="w-full h-full object-cover" data-alt="A vibrant community garden scene on a sunny day. Raised wooden beds filled with lush green plants, tomatoes, and herbs. Soft, inviting, natural sunlight. A modern, clean, community-focused aesthetic suitable for a local sharing app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2pCMpFh4JeaySMpEKuhGn3LyBt9TxYGWDsKbvlbYjHEDJ8UOkMRshCugoYeq6BJYeZW1oBn2qK3w_Q291jmbbXf5QYww2MiqmsCip8I0aqBrrMicswVaNebSEUYBv7dUJqsE1Tq3gjvkWiY4tgtcg_23GaEe28h5QL_hv8spU8vbim3H5P4aP8EXKg2j-O2sTyhca5FC1D6RYhN7KmMX46iMzFPUemdLw1-Tt7n7yURogjynxjBxpr5NtQlpA7nmkaHYVfy8PFzQ"/>
+</div>
+<div class="p-4">
+<h4 class="font-label-md text-label-md text-on-surface mb-1">Downtown Gardeners</h4>
+<p class="font-body-md text-xs text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">group</span>
+                                234 Members
+                            </p>
+</div>
+</div>
+<!-- Group Card 2 -->
+<div class="min-w-[240px] bg-white border border-hairline rounded-xl overflow-hidden snap-start flex-shrink-0">
+<div class="h-24 bg-surface-container relative">
+<img alt="Food Bank" class="w-full h-full object-cover" data-alt="A clean, well-organized local food bank interior. Shelves stacked neatly with canned goods and fresh produce boxes. Bright, welcoming indoor lighting. The style is modern, warm, and community-oriented, fitting a clean mobile UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4NkkYGDamhtPpu_hChxxWoI_pHUjQJsQ8FkhUIZl6iWp7t3x4FNaZyQlF50efqZruOQ1793I3X7_krWv3VvGQH4ZuIbqfjb4ytWMf_7Xj2U1qxQOdch5Z89IBuSNNENbWm0eyg_A2nWM0avqeOymTZWycmgXKWjBvL4WGAyNyWFM4kp4s1lm6TJNPUlCWbr9vVe7c2g0AXBEauPHvgrfWlZbhzVQQ8M4yQcajZuyyji_3qiFrNw5TYRRuDJERUiQCRNP6s4kbD-A"/>
+</div>
+<div class="p-4">
+<h4 class="font-label-md text-label-md text-on-surface mb-1">Local Food Bank</h4>
+<p class="font-body-md text-xs text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">group</span>
+                                892 Members
+                            </p>
+</div>
+</div>
+<!-- Group Card 3 (padding buffer) -->
+<div class="min-w-[16px] snap-start flex-shrink-0"></div>
+</div>
+</section>
+<!-- Recent Free Items -->
+<section class="px-margin-side mt-stack-lg">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-headline-md-mobile text-headline-md-mobile text-on-background">Recent Free Items</h3>
+</div>
+<div class="flex flex-col gap-3">
+<!-- Item 1 -->
+<div class="bg-white border border-hairline rounded-xl p-3 flex gap-4 items-center">
+<div class="w-20 h-20 rounded-lg bg-surface-container overflow-hidden flex-shrink-0">
+<img alt="Navy Blue Stroller" class="w-full h-full object-cover" data-alt="A clean, well-maintained navy blue baby stroller parked on a light wooden floor against a plain white wall. Soft, diffuse indoor lighting. The aesthetic is modern, minimalist, and realistic for a community marketplace." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXm8VKSba6BfAtmA-xIgYOMMYM3ogRQcVY5bOWaN7NAJGTrCrZOoMiCIEk427Vfg3a7ol5GVy-O5kmi-S66RmR3BLDd0lepQliMM2vZw-wfEzATAGz9IQNhP8AYUxR6JghGa2qtKYggIgB2HsZrpy-A0IjKMG4K1EsDUGg977pUc-pLOZDDpZ5LS3XipPg0j6WAP4MkLyK1FY27R2Vs-7Lg-SjvuTMAg8o2x6YPPXAkK9uPos7IA6qN-lvG383i9cjQcU3Kwu6uLo"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-label-md text-label-md text-on-surface truncate">Navy Blue Stroller</h4>
+<span class="px-2 py-0.5 rounded-full bg-secondary-container/30 text-tertiary font-label-md text-[10px]">Free</span>
+</div>
+<p class="font-body-md text-xs text-on-surface-variant mb-2">Good condition, gently used.</p>
+<p class="font-body-md text-xs text-nav-grey flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">location_on</span>
+                                0.8 miles away
+                            </p>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="bg-white border border-hairline rounded-xl p-3 flex gap-4 items-center">
+<div class="w-20 h-20 rounded-lg bg-surface-container overflow-hidden flex-shrink-0">
+<img alt="Stack of Novels" class="w-full h-full object-cover" data-alt="A neat stack of three hardcover novels on a light oak table. The covers are slightly worn but clean. Soft, warm natural light coming from a nearby window. The image has a calm, cozy, and minimalist aesthetic suitable for a modern app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDA1ycNymi0AjrHqWn3ZsRKh7S0Rjsu6ZGwRnnW96pBshCkW697JbTPHUrob_hcBRdLfQi4P2c0WkTUyw8q6PY2-c92qg7zbVrQSksioHliLf-H8HlCY1hhkudAvLL6k8EiETKzez-h33oEHJjIbUbPj0LmBVwpdN-8uvsQ9Fh3bCHXiraBKsGVi-guauy4NrkrYR1vgvlrHiVnuEiO5UUrxs9DEVJMZSdfw9_PRBQeTaJj4QoVIRB0o10tqGbEtMsd7l3Gh8qixug"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-label-md text-label-md text-on-surface truncate">Stack of Novels</h4>
+<span class="px-2 py-0.5 rounded-full bg-secondary-container/30 text-tertiary font-label-md text-[10px]">Free</span>
+</div>
+<p class="font-body-md text-xs text-on-surface-variant mb-2">Mix of fiction and sci-fi.</p>
+<p class="font-body-md text-xs text-nav-grey flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">location_on</span>
+                                1.2 miles away
+                            </p>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="bg-white border border-hairline rounded-xl p-3 flex gap-4 items-center">
+<div class="w-20 h-20 rounded-lg bg-surface-container overflow-hidden flex-shrink-0">
+<img alt="White Ceramic Plant Pot" class="w-full h-full object-cover" data-alt="A simple, elegant white ceramic plant pot sitting empty on a clean surface. The pot has a smooth matte finish. Lit evenly with soft studio-style lighting, creating a bright, minimalist, high-quality look for a marketplace listing." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8PIafQF1mTIzvu3GiD5TuHrxvGoGqr8v0aNMY7jxkU1XBa-35oSqRU1PX1drxjSPO4zC92AwwCy5GEVg4ULXe3p9U8cil4FIBnnUJGdKfStyJ-OAOJq9tHsr2Xd52EDG_RtpLV8AWIWWRImfZ4-gCW8xaI3ON6VVC8BZJRbxedlImsZWFvmpj1dL_LLR7HWdBxwbXo_XUEBuTla2_9zdCWNmqAafupfQ7LSXQ9Ek4-r1DNSfBABDuCKbojhEMftpC_sj3MSgOolQ"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-label-md text-label-md text-on-surface truncate">White Ceramic Plant Pot</h4>
+<span class="px-2 py-0.5 rounded-full bg-secondary-container/30 text-tertiary font-label-md text-[10px]">Free</span>
+</div>
+<p class="font-body-md text-xs text-on-surface-variant mb-2">Medium size, no drainage hole.</p>
+<p class="font-body-md text-xs text-nav-grey flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">location_on</span>
+                                2.5 miles away
+                            </p>
+</div>
+</div>
+<!-- Item 4 (extra for scrolling) -->
+<div class="bg-white border border-hairline rounded-xl p-3 flex gap-4 items-center">
+<div class="w-20 h-20 rounded-lg bg-surface-container overflow-hidden flex-shrink-0">
+<img alt="Wooden Hangers" class="w-full h-full object-cover" data-alt="A set of clean, matching wooden clothes hangers stacked neatly together. Warm, soft lighting highlighting the wood grain against a stark white, clean background. Minimalist and practical aesthetic for a local community sharing application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAln3QC3TzGWKZTXieo9LR0cSTvII-p9gFurRMZ6LolmMjzrn3xFBgBaKULdWqJs6GeZPh981ZZZWqRGddb-aNztFEiNvlWqhTJV5nxLlVMDDly8camG3ZijCMdfotg1miqCnmxQ7Aqa2jw8mQGrxq0KKzBPxQ9sMv1Dke8IyY6pCMOAOE5yzhw6cmeFh_T0oECQ2Z4EpRg-_BXFIG6pv_xHuDQ0XbxCEnBj5FKPmmVoXeDoWr7zDeG6cwwAgfZH0cj8-iT53j-e7Y"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-label-md text-label-md text-on-surface truncate">10x Wooden Hangers</h4>
+<span class="px-2 py-0.5 rounded-full bg-secondary-container/30 text-tertiary font-label-md text-[10px]">Free</span>
+</div>
+<p class="font-body-md text-xs text-on-surface-variant mb-2">Upgrading closet, don't need.</p>
+<p class="font-body-md text-xs text-nav-grey flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">location_on</span>
+                                3.0 miles away
+                            </p>
+</div>
+</div>
+</div>
+</section>
+</div> <!-- End Scrollable Content -->
+<!-- Bottom Navigation (STRICT SPEC) -->
+<nav aria-label="Bottom Navigation" class="fixed md:absolute bottom-0 left-0 w-full bg-white h-[64px] border-t border-hairline z-50 flex">
+<!-- Home (Active) -->
+<button aria-current="page" aria-label="Home" class="flex-1 h-full flex flex-col items-center justify-center gap-[2px] text-brand-coral">
+<span class="material-symbols-outlined fill text-[24px]">home</span>
+<span class="font-[Inter] text-[11px] font-medium leading-none">Home</span>
+</button>
+<!-- Market (Inactive) -->
+<button aria-label="Market" class="flex-1 h-full flex flex-col items-center justify-center gap-[2px] text-nav-grey hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[24px]">storefront</span>
+<span class="font-[Inter] text-[11px] font-medium leading-none">Market</span>
+</button>
+<!-- Groups (Inactive) -->
+<button aria-label="Groups" class="flex-1 h-full flex flex-col items-center justify-center gap-[2px] text-nav-grey hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[24px]">group</span>
+<span class="font-[Inter] text-[11px] font-medium leading-none">Groups</span>
+</button>
+<!-- Profile (Inactive) -->
+<button aria-label="Profile" class="flex-1 h-full flex flex-col items-center justify-center gap-[2px] text-nav-grey hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[24px]">person</span>
+<span class="font-[Inter] text-[11px] font-medium leading-none">Profile</span>
+</button>
+</nav>
+</main>
+</body></html>

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class AuthTextField extends StatefulWidget {
   final TextEditingController controller;
@@ -6,6 +7,9 @@ class AuthTextField extends StatefulWidget {
   final bool isPassword;
   final TextInputType keyboardType;
   final bool enabled;
+  final int? maxLength;
+  final TextAlign textAlign;
+  final List<TextInputFormatter>? inputFormatters;
 
   const AuthTextField({
     super.key,
@@ -14,6 +18,9 @@ class AuthTextField extends StatefulWidget {
     this.isPassword = false,
     this.keyboardType = TextInputType.text,
     this.enabled = true,
+    this.maxLength,
+    this.textAlign = TextAlign.start,
+    this.inputFormatters,
   });
 
   @override
@@ -33,11 +40,15 @@ class _AuthTextFieldState extends State<AuthTextField> {
       obscureText: widget.isPassword ? _obscureText : false,
       keyboardType: widget.keyboardType,
       enabled: widget.enabled,
+      maxLength: widget.maxLength,
+      textAlign: widget.textAlign,
+      inputFormatters: widget.inputFormatters,
       style: textTheme.bodyLarge?.copyWith(
         color: colorScheme.onSurface,
       ),
       decoration: InputDecoration(
         hintText: widget.hintText,
+        counterText: widget.maxLength != null ? '' : null,
         hintStyle: textTheme.bodyLarge?.copyWith(
           color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
         ),

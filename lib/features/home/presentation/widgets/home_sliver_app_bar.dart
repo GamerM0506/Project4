@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../user/presentation/cubit/user_cubit.dart';
 import '../../../user/presentation/cubit/user_state.dart';
-import '../../../../core/constants/app_constants.dart';
 
 class HomeSliverAppBar extends StatelessWidget {
   const HomeSliverAppBar({super.key});
@@ -22,55 +21,50 @@ class HomeSliverAppBar extends StatelessWidget {
       toolbarHeight: 70,
       title: BlocBuilder<UserCubit, UserState>(
         builder: (context, state) {
-          String fullName = 'Sarah'; // Default
-          String avatarUrl = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCDYVRLICKcmv_sXnU8dADoNXW3vxsG7233lr5AlNzAsPcUmD3I8SBurgJgBhXVgFeW-O4awNziFATbGbmrXk1LnkF5lpRnbK1IhRxMLB0NAvaHdpHqj529o1V_7DsRtg4jOMMCu18m6Ki_qynGay6ke6WpAqWA4Yg9Yvb3i-tRgAT4iZF8PvXJuBOl-Ma-T_XYb2LLY-mBmQ3xltiWNeWZ7JIKqJc7nM3UjPIDIHOHvUwIGlQSyeUyWQ';
-
-          if (state is UserLoaded) {
-            fullName = state.user.fullName;
-            if (state.user.avatar != null && state.user.avatar!.isNotEmpty) {
-              final avatar = state.user.avatar!;
-              if (avatar.startsWith('http')) {
-                avatarUrl = avatar;
-              } else {
-                avatarUrl = '${AppConstants.mediaApiBaseUrl}/$avatar';
-              }
-            }
-          }
-
-          // Format name (e.g. only show first name)
-          final firstName = fullName.split(' ').first;
+          final user = state.userOrNull;
+          final fullName =
+              (user?.fullName.isNotEmpty == true) ? user!.fullName : 'bạn';
+          final avatarUrl = user?.resolvedAvatarUrl;
+          final firstName = fullName.trim().split(RegExp(r'\s+')).last;
 
           return Row(
             children: [
-              // Avatar
               Container(
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
+                  color: colorScheme.primaryContainer,
                   border: Border.all(
                     color: colorScheme.surfaceContainerHighest,
                     width: 2,
                   ),
                 ),
                 child: ClipOval(
-                  child: Image.network(
-                    avatarUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Icon(Icons.person, color: colorScheme.onSurfaceVariant);
-                    },
-                  ),
+                  child: avatarUrl != null
+                      ? Image.network(
+                          avatarUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              Icons.person,
+                              color: colorScheme.onPrimaryContainer,
+                            );
+                          },
+                        )
+                      : Icon(
+                          Icons.person,
+                          color: colorScheme.onPrimaryContainer,
+                        ),
                 ),
               ),
               const SizedBox(width: 12),
-              // Greeting
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Good Morning,',
+                    'Xin chào,',
                     style: textTheme.labelMedium?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),

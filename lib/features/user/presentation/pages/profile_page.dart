@@ -4,13 +4,32 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
+import '../cubit/user_cubit.dart';
+import '../cubit/user_state.dart';
 import '../widgets/profile_header.dart';
 import '../widgets/profile_stats.dart';
 import '../widgets/profile_menu.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final state = context.read<UserCubit>().state;
+      if (state is! UserLoaded) {
+        context.read<UserCubit>().fetchProfile();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,6 +38,7 @@ class ProfilePage extends StatelessWidget {
     return BlocListener<AuthCubit, AuthState>(
       listener: (context, state) {
         if (state is AuthUnauthenticated) {
+          context.read<UserCubit>().clear();
           context.go(AppRoutes.login);
         }
       },
@@ -27,10 +47,9 @@ class ProfilePage extends StatelessWidget {
         body: SafeArea(
           child: Column(
             children: [
-              // 1. TopAppBar
               Container(
                 height: 64,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -41,16 +60,16 @@ class ProfilePage extends StatelessWidget {
                       splashRadius: 20,
                     ),
                     Text(
-                      'Chợ Quyên Góp',
+                      'Cá nhân',
                       style: TextStyle(
                         fontFamily: 'Montserrat',
-                        fontSize: 24,
+                        fontSize: 22,
                         fontWeight: FontWeight.bold,
                         color: colorScheme.primary,
                       ),
                     ),
                     IconButton(
-                      onPressed: () {},
+                      onPressed: () => context.push(AppRoutes.settings),
                       icon: const Icon(Icons.settings_outlined),
                       color: colorScheme.primary,
                       splashRadius: 20,
@@ -58,54 +77,71 @@ class ProfilePage extends StatelessWidget {
                   ],
                 ),
               ),
-
-              // 2. Main Content Canvas
               Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
-                  child: Column(
-                    children: [
-                      // Profile Header Area (Avatar & Name)
-                      const ProfileHeader(),
-
-                      const SizedBox(height: 40),
-
-                      // Stats Row
-                      const ProfileStats(),
-
-                      const SizedBox(height: 40),
-
-                      // Menu List
-                      const ProfileMenu(),
-
-                      const SizedBox(height: 24),
-
-                      // Log Out Action
-                      TextButton.icon(
-                        onPressed: () {
-                          _showLogoutDialog(context);
-                        },
-                        icon: Icon(Icons.logout, color: colorScheme.error, size: 20),
-                        label: Text(
-                          'Đăng xuất',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.error,
-                          ),
+                child: BlocBuilder<UserCubit, UserState>(
+                  builder: (context, state) {
+                    return RefreshIndicator(
+                      color: colorScheme.primary,
+                      onRefresh: () => context.read<UserCubit>().fetchProfile(),
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
                         ),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(9999),
-                          ),
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
+                        child: Column(
+                          children: [
+                            if (state is UserError &&
+                                state.userOrNull == null) ...[
+                              _ErrorBanner(
+                                message: state.message,
+                                onRetry: () =>
+                                    context.read<UserCubit>().fetchProfile(),
+                              ),
+                              const SizedBox(height: 24),
+                            ],
+                            const ProfileHeader(),
+                            const SizedBox(height: 40),
+                            const ProfileStats(),
+                            const SizedBox(height: 40),
+                            const ProfileMenu(),
+                            const SizedBox(height: 24),
+                            TextButton.icon(
+                              onPressed: () => _showLogoutDialog(context),
+                              icon: Icon(
+                                Icons.logout,
+                                color: colorScheme.error,
+                                size: 20,
+                              ),
+                              label: Text(
+                                'Đăng xuất',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: colorScheme.error,
+                                ),
+                              ),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(9999),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                          ]
+                              .animate(interval: 50.ms)
+                              .fade(duration: 400.ms)
+                              .slideY(
+                                begin: 0.1,
+                                curve: Curves.easeOutCubic,
+                              ),
                         ),
                       ),
-                      
-                      const SizedBox(height: 20), // Extra padding at bottom for scroll safety
-                    ].animate(interval: 50.ms).fade(duration: 400.ms).slideY(begin: 0.1, curve: Curves.easeOutCubic),
-                  ),
+                    );
+                  },
                 ),
               ),
             ],
@@ -129,12 +165,59 @@ class ProfilePage extends StatelessWidget {
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
+              context.read<UserCubit>().clear();
               context.read<AuthCubit>().logout();
             },
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
             child: const Text('Đăng xuất'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorBanner extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorBanner({
+    required this.message,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.error_outline, color: colorScheme.onErrorContainer),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: colorScheme.onErrorContainer),
+          ),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: onRetry,
+            child: Text(
+              'Thử lại',
+              style: TextStyle(
+                color: colorScheme.onErrorContainer,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),

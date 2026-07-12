@@ -5,6 +5,7 @@ class AppRoutes {
   static const String verify = '/verify';
   static const String settings = '/settings';
   static const String changePassword = '/change-password';
+  static const String twoFactor = '/two-factor';
   static const String forgotPassword = '/forgot-password';
   static const String forgotPasswordVerification = '/forgot-password-verification';
   static const String resetPassword = '/reset-password';

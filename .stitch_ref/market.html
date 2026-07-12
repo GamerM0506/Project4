@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>KindHeart Clean - Marketplace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700&amp;family=Inter:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#fcf8fb",
+                        "on-tertiary-fixed": "#00201e",
+                        "secondary-container": "#8cf5e4",
+                        "secondary": "#006a60",
+                        "error": "#ba1a1a",
+                        "tertiary-container": "#00837d",
+                        "on-secondary-fixed": "#00201c",
+                        "background": "#fcf8fb",
+                        "primary-fixed": "#ffdad5",
+                        "surface": "#fcf8fb",
+                        "on-error": "#ffffff",
+                        "surface-dim": "#dcd9dc",
+                        "surface-container-low": "#f6f3f5",
+                        "outline": "#8c716c",
+                        "on-secondary-container": "#007166",
+                        "on-background": "#1b1b1d",
+                        "on-surface-variant": "#59413e",
+                        "primary": "#a93024",
+                        "on-secondary-fixed-variant": "#005048",
+                        "on-tertiary-container": "#f3fffd",
+                        "inverse-surface": "#303032",
+                        "on-primary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed-dim": "#ffb4a9",
+                        "tertiary": "#006763",
+                        "tertiary-fixed-dim": "#64d8d2",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed-variant": "#00504c",
+                        "on-primary-fixed-variant": "#8b1911",
+                        "surface-tint": "#ac3226",
+                        "tertiary-fixed": "#82f5ee",
+                        "surface-container-highest": "#e4e2e4",
+                        "on-surface": "#1b1b1d",
+                        "secondary-fixed": "#8cf5e4",
+                        "on-tertiary": "#ffffff",
+                        "inverse-primary": "#ffb4a9",
+                        "primary-container": "#cb4839",
+                        "outline-variant": "#e0bfba",
+                        "surface-container": "#f0edef",
+                        "secondary-fixed-dim": "#6fd8c8",
+                        "inverse-on-surface": "#f3f0f2",
+                        "surface-container-high": "#eae7ea",
+                        "surface-variant": "#e4e2e4",
+                        "on-primary-container": "#fffbff",
+                        "on-primary-fixed": "#410000",
+                        "on-error-container": "#93000a",
+                        "error-container": "#ffdad6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-sm": "8px",
+                        "stack-lg": "24px",
+                        "margin-side": "16px",
+                        "gutter": "12px",
+                        "button-height": "50px",
+                        "stack-md": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Manrope"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Manrope"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["28px", { "lineHeight": "34px", "fontWeight": "700" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "26px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            max-width: 390px;
+            margin: 0 auto;
+            background-color: #fcf8fb; /* Matching background */
+            min-height: 100vh;
+            position: relative;
+            padding-bottom: 72px; /* Space for BottomNavBar */
+        }
+        /* Custom scrollbar for categories to keep it clean */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md antialiased">
+<!-- TopAppBar -->
+<header class="w-full top-0 bg-surface dark:bg-surface flex items-center px-margin-side h-button-height sticky z-10 transition-opacity duration-200 justify-between">
+<h1 class="font-headline-lg text-headline-lg text-primary dark:text-primary-fixed-dim">Marketplace</h1>
+<button class="text-on-surface-variant hover:opacity-80 transition-opacity duration-200">
+<span class="material-symbols-outlined" data-icon="tune" style="font-variation-settings: 'FILL' 0;">tune</span>
+</button>
+</header>
+<!-- Main Content -->
+<main class="px-margin-side pt-stack-sm pb-stack-lg flex flex-col gap-stack-md">
+<!-- Search -->
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" style="font-variation-settings: 'FILL' 0;">search</span>
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl font-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors" placeholder="Search free items..." type="text"/>
+</div>
+<!-- Categories -->
+<div class="flex overflow-x-auto hide-scrollbar gap-2 py-1">
+<button class="px-4 py-2 rounded-full bg-[#E85D4C] text-white font-label-md whitespace-nowrap transition-transform active:scale-95">All</button>
+<button class="px-4 py-2 rounded-full bg-surface-container-low text-on-surface-variant border border-outline-variant font-label-md whitespace-nowrap hover:bg-surface-variant transition-colors">Clothing</button>
+<button class="px-4 py-2 rounded-full bg-surface-container-low text-on-surface-variant border border-outline-variant font-label-md whitespace-nowrap hover:bg-surface-variant transition-colors">Furniture</button>
+<button class="px-4 py-2 rounded-full bg-surface-container-low text-on-surface-variant border border-outline-variant font-label-md whitespace-nowrap hover:bg-surface-variant transition-colors">Food</button>
+<button class="px-4 py-2 rounded-full bg-surface-container-low text-on-surface-variant border border-outline-variant font-label-md whitespace-nowrap hover:bg-surface-variant transition-colors">Books</button>
+</div>
+<!-- Status -->
+<p class="font-label-md text-on-surface-variant">Near you · 24 items</p>
+<!-- Grid -->
+<div class="grid grid-cols-2 gap-gutter">
+<!-- Item 1 -->
+<article class="bg-surface-container-lowest border border-outline-variant rounded-[16px] overflow-hidden flex flex-col">
+<div class="relative w-full aspect-square bg-surface-variant">
+<img class="w-full h-full object-cover" data-alt="A warm, naturally lit photograph of a gently worn but clean winter jacket hung on a wooden hanger against a plain white wall. The jacket is a muted navy blue. Soft daylight highlights the fabric texture. The image evokes a sense of community sharing and reliable warmth." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVR3xqhSWEm1rtEy24aqZyz6REbvuYdWerO6JhcnRG7XqcSpveZx0ZdNLnHZlQbznWK7lH9euZ3F6KWL9km6u-6vrc3oKl5-jTyQCw5W06Gjge7GfxM40mgKMyPy804mLBCRwNE3_V9FpAxw3-7BuDIj8c_InYc7dwrGYV1WnUTfr_w0frWzUm0FKpSa7IkWY64kGvtUlVPYOepme_YtDn9-8p5bKVsweEcd5JR5cZ8vR4Jm0SER2FctENdmqHrBfzqZWCaDTgv38"/>
+<div class="absolute top-2 right-2 bg-[#00837d] text-white px-2 py-0.5 rounded-full font-label-md text-[10px]">Free</div>
+</div>
+<div class="p-3 flex flex-col gap-1">
+<h2 class="font-headline-md text-[14px] leading-tight text-on-surface line-clamp-1">Winter Jacket (M)</h2>
+<p class="font-label-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 0;">location_on</span>
+                        0.5 mi
+                    </p>
+</div>
+</article>
+<!-- Item 2 -->
+<article class="bg-surface-container-lowest border border-outline-variant rounded-[16px] overflow-hidden flex flex-col">
+<div class="relative w-full aspect-square bg-surface-variant">
+<img class="w-full h-full object-cover" data-alt="A bright, clear photograph of a sturdy wooden baby crib in a sunlit corner of a room. The crib is painted white and appears well-maintained. The background is simple and uncluttered, emphasizing the object's readiness for a new home. The aesthetic is clean, honest, and domestic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAU9yhQy5Doqt3pORzqTGYvwxqS4ZBCtd9IvjaqVWtDCajuPwx2zvs0o78jJXy69mPLihpTxzY2Zp5V83QExbfi9sXL2OQPG030E2UEELWSWqDPRgPBI-MIrVmxDd_4da0idYQEFPW4rCQjTttkQG2499mVKgnz_a71BR2yit4uG7qS2y6Ze8aKvFSIdWCm3xaR2Vys70TstzzMS525rJb_c1AyNhp7r3rT9dtnaEMWHC65EO4mSMdSI8K8ziAdbBNTh8kY6PwafHM"/>
+<div class="absolute top-2 right-2 bg-[#00837d] text-white px-2 py-0.5 rounded-full font-label-md text-[10px]">Free</div>
+</div>
+<div class="p-3 flex flex-col gap-1">
+<h2 class="font-headline-md text-[14px] leading-tight text-on-surface line-clamp-1">Wooden Baby Crib</h2>
+<p class="font-label-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 0;">location_on</span>
+                        1.2 mi
+                    </p>
+</div>
+</article>
+<!-- Item 3 -->
+<article class="bg-surface-container-lowest border border-outline-variant rounded-[16px] overflow-hidden flex flex-col">
+<div class="relative w-full aspect-square bg-surface-variant">
+<img class="w-full h-full object-cover" data-alt="A straightforward photograph of a small stack of children's books sitting on a wooden table. The covers are colorful but slightly faded, indicating loving use. The lighting is soft and inviting, emphasizing a culture of sharing knowledge and community resources in a calm setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBy_E5WrZot0M2hCF_m5sJwVE1S2v-R53PqluFiVQpIMh-j4ntLUzKGOdejzeu8m1o1XuVh43G0m0t25nB50sQkrMjNc3CyxKPpg0tZbYtyD4Q4DjRkntsOfDcPOG5he9qhnEWEKDLRsUYbw2EsTCc0XctRvH3Fz4TmyigTaLl0twPIJeemOwiLsfJGTNYjMZ6XejH3gBTV903bp7cVMa6z8NwcZfWVRN81ldjsJIeKZisRSqbqmL5WNjWaQBvlJzRifGzkr7S8NDA"/>
+<div class="absolute top-2 right-2 bg-[#00837d] text-white px-2 py-0.5 rounded-full font-label-md text-[10px]">Free</div>
+</div>
+<div class="p-3 flex flex-col gap-1">
+<h2 class="font-headline-md text-[14px] leading-tight text-on-surface line-clamp-1">Children's Books Bundle</h2>
+<p class="font-label-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 0;">location_on</span>
+                        0.8 mi
+                    </p>
+</div>
+</article>
+<!-- Item 4 -->
+<article class="bg-surface-container-lowest border border-outline-variant rounded-[16px] overflow-hidden flex flex-col">
+<div class="relative w-full aspect-square bg-surface-variant">
+<img class="w-full h-full object-cover" data-alt="A photograph of a modern, simple desk lamp with a matte black finish, positioned on a clean white surface. The lamp is turned on, casting a warm glow. The image is taken from a slightly elevated angle, presenting the object clearly for a marketplace listing. The overall feel is practical and neat." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCCs1Gv1zv6ZfztFNawaE2hDCSEjsbAFYmS-m5FgFX8PAwv3WD8eSXdLvVBlfQUKtOXnpNTPuGU9Pu9sWB3FDZQwZN7TN6HHtHnscBIjETdUYsBM0oR3zwFLeO2nuBfIDRyovMx8wJUkwToQrFKTR-tygRZHH44iY0zGABcbPYZqwx0Mj8V9cmmjKkk7CNfHVpVHMiP_5cmX7oK2TX6FOeelxOKenc5gKJZGr-uQ01SzqVgaRh66wYf_cp9wvxnjVqRrNbmQ2wwSPk"/>
+<div class="absolute top-2 right-2 bg-[#00837d] text-white px-2 py-0.5 rounded-full font-label-md text-[10px]">Free</div>
+</div>
+<div class="p-3 flex flex-col gap-1">
+<h2 class="font-headline-md text-[14px] leading-tight text-on-surface line-clamp-1">Modern Desk Lamp</h2>
+<p class="font-label-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 0;">location_on</span>
+                        2.5 mi
+                    </p>
+</div>
+</article>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-[390px] max-w-full z-50 flex justify-around items-center h-[72px] px-margin-side bg-surface dark:bg-surface border-t border-outline-variant">
+<!-- Home (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-transform duration-150 active:scale-95 px-2 py-1 rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="home" style="font-variation-settings: 'FILL' 0;">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<!-- Market (Active - mapped to Marketplace per prompt intent) -->
+<a class="flex flex-col items-center justify-center text-primary font-bold hover:bg-surface-container-low transition-transform duration-150 active:scale-95 px-2 py-1 rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1 text-[#E85D4C]" data-icon="storefront" style="font-variation-settings: 'FILL' 1;">storefront</span>
+<span class="font-label-md text-label-md text-[#E85D4C]">Market</span>
+</a>
+<!-- Donate (Inactive - Prominent FAB style usually, but kept flat per guidelines) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-transform duration-150 active:scale-95 px-2 py-1 rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="add_circle" style="font-variation-settings: 'FILL' 0;">add_circle</span>
+<span class="font-label-md text-label-md">Donate</span>
+</a>
+<!-- Groups (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-transform duration-150 active:scale-95 px-2 py-1 rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="group" style="font-variation-settings: 'FILL' 0;">group</span>
+<span class="font-label-md text-label-md">Groups</span>
+</a>
+<!-- Profile (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-transform duration-150 active:scale-95 px-2 py-1 rounded-lg" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="person" style="font-variation-settings: 'FILL' 0;">person</span>
+<span class="font-label-md text-label-md">Profile</span>
+</a>
+</nav>
+</body></html>

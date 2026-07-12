@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>KindHeart Clean - Home</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-on-surface": "#f3f0f2",
+                        "surface-tint": "#ac3226",
+                        "inverse-primary": "#ffb4a9",
+                        "tertiary-fixed": "#82f5ee",
+                        "tertiary-container": "#00837d",
+                        "on-error-container": "#93000a",
+                        "error": "#ba1a1a",
+                        "secondary-container": "#8cf5e4",
+                        "inverse-surface": "#303032",
+                        "surface-container-high": "#eae7ea",
+                        "secondary": "#006a60",
+                        "on-tertiary-container": "#f3fffd",
+                        "on-primary-fixed-variant": "#8b1911",
+                        "background": "#fcf8fb",
+                        "surface-variant": "#e4e2e4",
+                        "primary-container": "#cb4839",
+                        "on-surface": "#1b1b1d",
+                        "on-background": "#1b1b1d",
+                        "surface-container-low": "#f6f3f5",
+                        "primary-fixed-dim": "#ffb4a9",
+                        "on-surface-variant": "#59413e",
+                        "on-primary-container": "#fffbff",
+                        "primary-fixed": "#ffdad5",
+                        "on-secondary-fixed-variant": "#005048",
+                        "on-secondary-container": "#007166",
+                        "surface-bright": "#fcf8fb",
+                        "on-primary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#006763",
+                        "surface": "#fcf8fb",
+                        "secondary-fixed-dim": "#6fd8c8",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed-dim": "#64d8d2",
+                        "secondary-fixed": "#8cf5e4",
+                        "primary": "#a93024",
+                        "surface-container": "#f0edef",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed": "#410000",
+                        "surface-container-highest": "#e4e2e4",
+                        "on-tertiary-fixed-variant": "#00504c",
+                        "on-error": "#ffffff",
+                        "surface-dim": "#dcd9dc",
+                        "outline-variant": "#e0bfba",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed": "#00201e",
+                        "on-secondary-fixed": "#00201c",
+                        "outline": "#8c716c"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-lg": "24px",
+                        "margin-side": "16px",
+                        "stack-md": "16px",
+                        "gutter": "12px",
+                        "button-height": "50px",
+                        "stack-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Manrope"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["28px", { "lineHeight": "34px", "fontWeight": "700" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "26px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #fcf8fb; font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Manrope', sans-serif; }
+        .hairline-border { border: 1px solid #E5E2DE; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .coral-gradient { background: linear-gradient(135deg, #e85d4c 0%, #ff8b7d 100%); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-surface antialiased bg-background">
+<!-- Mobile Container (Max width 390px, centered for desktop view) -->
+<div class="max-w-[390px] mx-auto min-h-screen bg-surface relative shadow-sm border-x border-outline-variant overflow-x-hidden pb-[72px]">
+<!-- TopAppBar (from JSON but adapted for user prompt) -->
+<header class="bg-surface dark:bg-surface w-full top-0 sticky z-40 px-margin-side h-button-height flex items-center justify-between">
+<div>
+<p class="font-body-md text-body-md text-on-surface-variant">Good Morning,</p>
+<h1 class="font-headline-md text-headline-md text-on-surface">Sarah!</h1>
+</div>
+<div class="flex items-center gap-4">
+<button aria-label="Search" class="text-on-surface hover:opacity-80 transition-opacity duration-200 flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">search</span>
+</button>
+<img alt="User Avatar" class="w-10 h-10 rounded-full object-cover hairline-border" data-alt="A professional headshot of a smiling young woman in a brightly lit park, soft focus background, wearing a casual light sweater. The image is bright, inviting, and uses a warm natural color palette typical of a modern lifestyle brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBYH1KhUxPKn3bxe49tVmyaPnGACiYWFXvPIgjg3pRce2rFvMDSDOz2c6P972bQJRVYMs3nPhfAkeaY3zxwL_e5MQwHQaoqXIoRXvaVWXsiTJrHbcCS1tzkwRGuWc-GmFuaJHx8dTnCp2ZNZGuw5NK-NGuNqceHmHYKyYuAH7o9y0cSGz-ZipnyXkF78-Um7yhItQY2C2VE0VIjzN1-waifVqKYBfngVxE6plkQGBJJAoU1GA_tuITz5DMMRFHG6PquBkth8N9U4ZY"/>
+</div>
+</header>
+<!-- Main Content -->
+<main class="px-margin-side pt-stack-sm pb-stack-lg space-y-stack-lg">
+<!-- Hero Card -->
+<section class="coral-gradient rounded-xl p-6 text-white relative overflow-hidden shadow-sm">
+<!-- Decorative subtle element -->
+<div class="absolute -top-10 -right-10 w-32 h-32 bg-white opacity-10 rounded-full"></div>
+<h2 class="font-headline-lg text-headline-lg mb-2 relative z-10">Help a Neighbor Today</h2>
+<p class="font-body-md text-body-md opacity-90 mb-6 relative z-10 max-w-[80%]">Your small donation makes a big difference.</p>
+<button class="px-6 py-2 border border-white rounded-full font-label-md text-label-md hover:bg-white hover:text-primary transition-colors duration-200 relative z-10">
+                    Donate Now
+                </button>
+</section>
+<!-- Quick Actions Grid -->
+<section class="grid grid-cols-2 gap-gutter">
+<a class="bg-surface-container-lowest p-4 rounded-xl hairline-border flex flex-col items-center justify-center text-center gap-2 hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-primary text-[28px]" style="font-variation-settings: 'FILL' 0;">storefront</span>
+<span class="font-label-md text-label-md text-on-surface">Marketplace</span>
+</a>
+<a class="bg-surface-container-lowest p-4 rounded-xl hairline-border flex flex-col items-center justify-center text-center gap-2 hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-secondary text-[28px]" style="font-variation-settings: 'FILL' 0;">group</span>
+<span class="font-label-md text-label-md text-on-surface">Find Groups</span>
+</a>
+<a class="bg-surface-container-lowest p-4 rounded-xl hairline-border flex flex-col items-center justify-center text-center gap-2 hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-tertiary text-[28px]" style="font-variation-settings: 'FILL' 0;">track_changes</span>
+<span class="font-label-md text-label-md text-on-surface">My Tracking</span>
+</a>
+<a class="bg-surface-container-lowest p-4 rounded-xl hairline-border flex flex-col items-center justify-center text-center gap-2 hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-primary-container text-[28px]" style="font-variation-settings: 'FILL' 0;">leaderboard</span>
+<span class="font-label-md text-label-md text-on-surface">Leaderboard</span>
+</a>
+</section>
+<!-- Featured Groups -->
+<section>
+<div class="flex justify-between items-end mb-stack-md">
+<h3 class="font-headline-md text-headline-md text-on-surface">Featured Groups</h3>
+<a class="font-label-md text-label-md text-primary hover:underline" href="#">See all</a>
+</div>
+<div class="flex gap-gutter overflow-x-auto hide-scrollbar pb-2">
+<!-- Group Card 1 -->
+<div class="min-w-[240px] bg-surface-container-lowest p-4 rounded-xl hairline-border flex-shrink-0">
+<div class="flex items-center gap-3 mb-3">
+<img class="w-12 h-12 rounded-full object-cover bg-surface-container-low" data-alt="A clean, minimalist logo graphic for a community gardening club featuring a stylized green leaf on a white background, evoking a calm, eco-friendly community initiative." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDrie8y5euIqhuVZKWdR-HsNX020vXJyphk43hzh25FptNcEDuEGmirFi7qt1zbNkWHJ4_T55ZOcmuMokJOKCJYa5sq0kP9S1THz3AhDGvokQ6eXvUy4fwSudmx6xklGm3bdOP12xJTF-6KCaXiX95wcyCNjvjSD3nFt0znQdgZzMzk2GikNh5S1LiRJgDo0ypiRgXNrgTh7NN7XFhWJ9LfU11_5hEvDuihXDH4MOzV9JiGzDtETubDtmMsf8WVjo7gmBAAP75H0sU"/>
+<div>
+<h4 class="font-label-md text-label-md font-bold text-on-surface">Downtown Gardeners</h4>
+<p class="font-label-md text-label-md text-on-surface-variant font-normal">342 members</p>
+</div>
+</div>
+<div class="inline-block px-3 py-1 bg-surface-container-low rounded-full font-label-md text-[10px] text-on-surface-variant">
+                            Save Free
+                        </div>
+</div>
+<!-- Group Card 2 -->
+<div class="min-w-[240px] bg-surface-container-lowest p-4 rounded-xl hairline-border flex-shrink-0">
+<div class="flex items-center gap-3 mb-3">
+<img class="w-12 h-12 rounded-full object-cover bg-surface-container-low" data-alt="A minimal, modern graphic showing an open book with abstract geometric shapes emerging from the pages, representing a local book exchange group, set against a soft beige background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCDqwZbmHYiap55wPHTyV1Z_QyA92ewHEizQFKnC2BaB50t5oef0WVjTlFMg8guk4rHQYW-5oYQxvPYAJGFHxYyxc12dRRamDE5EfIiQ4LkhwgLrlYASOvN3J629QdwqBUiHhfm54Z1V9_8Ujx-5jh78n1OzitDtJTiQ-4I0Hg7DZ6r-g9HdXehpCZlRca8x2HQlr7YZozOMDhm3L4x1RnxBdPg7ONb2plFoPs1yuqQHcEe2MrIenzcU9Pp8pObfvKIg6FAnb5ztnE"/>
+<div>
+<h4 class="font-label-md text-label-md font-bold text-on-surface">Local Book Exchange</h4>
+<p class="font-label-md text-label-md text-on-surface-variant font-normal">89 members</p>
+</div>
+</div>
+<div class="inline-block px-3 py-1 bg-surface-container-low rounded-full font-label-md text-[10px] text-on-surface-variant">
+                            Save Free
+                        </div>
+</div>
+</div>
+</section>
+<!-- Recent Free Items -->
+<section>
+<div class="flex justify-between items-end mb-stack-md">
+<h3 class="font-headline-md text-headline-md text-on-surface">Recent Free Items</h3>
+<a class="font-label-md text-label-md text-secondary hover:underline" href="#">View map</a>
+</div>
+<div class="space-y-stack-sm">
+<!-- Item Row 1 -->
+<div class="flex items-center gap-4 bg-surface-container-lowest p-3 rounded-xl hairline-border">
+<img class="w-16 h-16 rounded-lg object-cover bg-surface-container-low" data-alt="Professional studio shot of a slightly used but clean navy blue baby stroller against a plain white background, soft diffused lighting, highlighting its sturdy build and good condition." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8vYgwV5euekonhwXBFWZgaOKCIEkdx_chtIQ4bUq7cOU315Kx2zD2VbUMWOmH4ZrGcHskChZoHbgw86DYAix3lDTI9Smiho6diCv0U7btcDWkkaATxrD-JeFYRdDPw23l5KexosNVX3WhH8RdXOxQpiyDMAmSQHz-FOsTI8AortzagxDjLFX83q7yERzMMI50DOpbLuK1kjJ57VpWQkQTdb0KphgPXt3W0rm3DkZaHpzxOTy0nG2XZGl1sSnZhGaYQiORqhhNULI"/>
+<div class="flex-1">
+<h4 class="font-body-md text-body-md font-semibold text-on-surface mb-1">Navy Blue Stroller</h4>
+<p class="font-label-md text-label-md text-on-surface-variant font-normal">Baby Gear · 1.2 miles away</p>
+</div>
+<div class="px-3 py-1 bg-tertiary-container text-on-tertiary-container rounded-full font-label-md text-[10px] font-bold">
+                            Free
+                        </div>
+</div>
+<!-- Item Row 2 -->
+<div class="flex items-center gap-4 bg-surface-container-lowest p-3 rounded-xl hairline-border">
+<img class="w-16 h-16 rounded-lg object-cover bg-surface-container-low" data-alt="A neat stack of three hardcover fiction books, professionally photographed on a clean white surface with soft natural light, highlighting the colorful spines and good condition." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCt-5de4fmAAMzkX6UjAbXFdVq-YywoyP-vzBIMldHUjEYlKNLIWSd39-Wh2jYVGNHUWIFaOKZiukYqKJMoB2GU5YSfYxwak8uup4JvOYDl4oUunDad1BoTrN2AguN0VjiDaaxUbAZmAvtNks6EIJlLb74P-K15jOK79HwHTXDNuxJjHD1l253RCGV2QvoiOi711X0zzWvdzrFH8_kU270auAQbWsHHFAgJW8yi8qvHbMwhvVYodp6FGj3AOLalLFX-Y17B568RmMY"/>
+<div class="flex-1">
+<h4 class="font-body-md text-body-md font-semibold text-on-surface mb-1">Stack of Novels</h4>
+<p class="font-label-md text-label-md text-on-surface-variant font-normal">Books · 0.5 miles away</p>
+</div>
+<div class="px-3 py-1 bg-tertiary-container text-on-tertiary-container rounded-full font-label-md text-[10px] font-bold">
+                            Free
+                        </div>
+</div>
+<!-- Item Row 3 -->
+<div class="flex items-center gap-4 bg-surface-container-lowest p-3 rounded-xl hairline-border">
+<img class="w-16 h-16 rounded-lg object-cover bg-surface-container-low" data-alt="A clean, simple white ceramic indoor plant pot sitting on a minimalist wooden table top against a bright white background, studio lighting emphasizing its smooth texture." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCicB308Oj1GP1aiCAWTzLT47b3-cEdFeILZ6yrPOg2yAJGodNz63CyljF8EV1s-fyoIAgzfa1g0eAc_O8DavKE1VPqnlZvZKwQSmgPpkVBC7j6o43yJdKtvrY1GOTRTQ95IYK9bc0K5Hv-LJII9uo_E9sg4CX546RoyFIqJn5vPyFo6A5CKE-wFAyE9g78YM0SCmOUkVJt72vgKxjKeVZKsa8buW5IgPm0uPXELnNVdIptskjgHYer-myEAkR1BPXPYQJQXBy8Qb0"/>
+<div class="flex-1">
+<h4 class="font-body-md text-body-md font-semibold text-on-surface mb-1">White Ceramic Plant Pot</h4>
+<p class="font-label-md text-label-md text-on-surface-variant font-normal">Home · 2.1 miles away</p>
+</div>
+<div class="px-3 py-1 bg-tertiary-container text-on-tertiary-container rounded-full font-label-md text-[10px] font-bold">
+                            Free
+                        </div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (from JSON - Semantic Home Active) -->
+<nav class="fixed bottom-0 w-full max-w-[390px] z-50 border-t border-outline-variant dark:border-outline bg-surface dark:bg-surface h-[72px] px-margin-side flex justify-around items-center">
+<!-- Active: Home -->
+<button class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim font-bold w-16 hover:bg-surface-container-low dark:hover:bg-surface-container-highest scale-95 transition-transform duration-150 rounded-lg py-1">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-md text-label-md mt-1">Home</span>
+</button>
+<!-- Inactive: Market -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant w-16 hover:bg-surface-container-low dark:hover:bg-surface-container-highest scale-95 transition-transform duration-150 rounded-lg py-1">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">storefront</span>
+<span class="font-label-md text-label-md mt-1">Market</span>
+</button>
+<!-- Inactive: Groups -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant w-16 hover:bg-surface-container-low dark:hover:bg-surface-container-highest scale-95 transition-transform duration-150 rounded-lg py-1">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">group</span>
+<span class="font-label-md text-label-md mt-1">Groups</span>
+</button>
+<!-- Inactive: Profile -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant w-16 hover:bg-surface-container-low dark:hover:bg-surface-container-highest scale-95 transition-transform duration-150 rounded-lg py-1">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">person</span>
+<span class="font-label-md text-label-md mt-1">Profile</span>
+</button>
+</nav>
+</div>
+</body></html>
