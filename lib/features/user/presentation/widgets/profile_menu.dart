@@ -33,7 +33,9 @@ class ProfileMenu extends StatelessWidget {
             context.push(AppRoutes.settings);
           }),
           Divider(height: 1, thickness: 1, color: colorScheme.surfaceContainerHighest),
-          _buildMenuItem(context, Icons.support_agent_outlined, 'Trợ giúp & Hỗ trợ'),
+          _buildMenuItem(context, Icons.support_agent_outlined, 'Trợ giúp & Hỗ trợ', onTap: () {
+            context.push(AppRoutes.support);
+          }),
         ],
       ),
     );

@@ -12,12 +12,20 @@ import '../../features/auth/presentation/pages/reset_password_page.dart';
 import '../../features/auth/presentation/pages/change_password_page.dart';
 import '../../features/auth/presentation/pages/two_factor_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
+import '../../features/marketplace/presentation/pages/marketplace_page.dart';
+import '../../features/marketplace/presentation/pages/create_listing_page.dart';
+import '../../features/marketplace/presentation/pages/listing_detail_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
+import '../../features/group/presentation/pages/groups_page.dart';
+import '../../features/group/presentation/pages/group_detail_page.dart';
+import '../../features/group/presentation/pages/create_group_page.dart';
+import '../../features/group/presentation/pages/group_dashboard_page.dart';
 // import '../../features/search/presentation/pages/search_page.dart';
 // import '../../features/chat/presentation/pages/chat_page.dart';
 import '../../features/user/presentation/pages/profile_page.dart';
 import '../../features/user/presentation/pages/edit_profile_page.dart';
 import '../../features/user/presentation/pages/settings_page.dart';
+import '../../features/user/presentation/pages/support_page.dart';
 // import '../../features/notifications/presentation/pages/notification_page.dart';
 
 // Import the flutter global navigator key
@@ -78,16 +86,49 @@ final GoRouter appRouter = GoRouter(
           routes: [
             GoRoute(
               path: AppRoutes.marketplace,
-              builder: (context, state) => const Scaffold(body: Center(child: Text('Marketplace Page'))),
+              builder: (context, state) => const MarketplacePage(),
+              routes: [
+                GoRoute(
+                  path: 'detail/:id',
+                  builder: (context, state) {
+                    final id = state.pathParameters['id']!;
+                    return ListingDetailPage(listingId: id);
+                  },
+                ),
+                GoRoute(
+                  path: 'create',
+                  builder: (context, state) => const CreateListingPage(),
+                ),
+              ],
             ),
           ],
         ),
-        // Branch 2: Messages
+        // Branch 2: Groups (Thay cho Messages lúc đầu)
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: AppRoutes.messages,
-              builder: (context, state) => const Scaffold(body: Center(child: Text('Chat Page'))),
+              path: AppRoutes.groups,
+              builder: (context, state) => const GroupsPage(),
+              routes: [
+                GoRoute(
+                  path: 'detail/:id',
+                  builder: (context, state) {
+                    final id = state.pathParameters['id']!;
+                    return GroupDetailPage(groupId: id);
+                  },
+                ),
+                GoRoute(
+                  path: 'create',
+                  builder: (context, state) => const CreateGroupPage(),
+                ),
+                GoRoute(
+                  path: 'dashboard/:id',
+                  builder: (context, state) {
+                    final id = state.pathParameters['id']!;
+                    return GroupDashboardPage(groupId: id);
+                  },
+                ),
+              ],
             ),
           ],
         ),
@@ -105,6 +146,10 @@ final GoRouter appRouter = GoRouter(
             GoRoute(
               path: AppRoutes.settings,
               pageBuilder: (context, state) => _buildPageWithAnimation(const SettingsPage(), slideUp: true),
+            ),
+            GoRoute(
+              path: AppRoutes.support,
+              pageBuilder: (context, state) => _buildPageWithAnimation(const SupportPage(), slideUp: true),
             ),
           ],
         ),
