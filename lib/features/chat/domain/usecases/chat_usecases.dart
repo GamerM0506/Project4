@@ -8,8 +8,8 @@ class GetConversationsUseCase {
 
   GetConversationsUseCase(this.repository);
 
-  Future<Either<String, List<ConversationEntity>>> call() {
-    return repository.getConversations();
+  Future<Either<String, List<ConversationEntity>>> call({String? groupId}) {
+    return repository.getConversations(groupId: groupId);
   }
 }
 
@@ -28,8 +28,18 @@ class SendMessageUseCase {
 
   SendMessageUseCase(this.repository);
 
-  Future<Either<String, ChatMessage>> call(String conversationId, String content, {String type = 'text', Map<String, dynamic>? metadata}) {
-    return repository.sendMessage(conversationId, content, type: type, metadata: metadata);
+  Future<Either<String, ChatMessage>> call(
+    String conversationId,
+    String content, {
+    String type = 'text',
+    Map<String, dynamic>? metadata,
+  }) {
+    return repository.sendMessage(
+      conversationId,
+      content,
+      type: type,
+      metadata: metadata,
+    );
   }
 }
 

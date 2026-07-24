@@ -13,6 +13,11 @@ class UpdateGroupUseCase {
     String? description,
     String? avatarUrl,
     String? coverUrl,
+    String? address,
+    String? provinceCode,
+    String? districtCode,
+    bool? allowMemberPost,
+    bool? requirePostReview,
   }) {
     return repository.updateGroup(
       groupId,
@@ -20,6 +25,11 @@ class UpdateGroupUseCase {
       description: description,
       avatarUrl: avatarUrl,
       coverUrl: coverUrl,
+      address: address,
+      provinceCode: provinceCode,
+      districtCode: districtCode,
+      allowMemberPost: allowMemberPost,
+      requirePostReview: requirePostReview,
     );
   }
 }

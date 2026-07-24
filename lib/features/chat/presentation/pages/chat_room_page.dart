@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/network/api_client.dart';
-import '../../data/datasources/chat_remote_data_source.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/network/media_service.dart';
+import '../../domain/usecases/chat_usecases.dart';
 import '../widgets/donation_bottom_sheet.dart';
 import '../widgets/listing_message_bubble.dart';
 import '../cubit/chat_cubit.dart';
@@ -10,12 +13,14 @@ import '../cubit/chat_state.dart';
 import '../../../../injection_container.dart';
 
 class ChatRoomPage extends StatefulWidget {
-  final String conversationId;
+  final String? conversationId;
+  final String? groupId;
   final String name;
 
   const ChatRoomPage({
     super.key,
-    required this.conversationId,
+    this.conversationId,
+    this.groupId,
     required this.name,
   });
 
@@ -27,16 +32,49 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   late ChatCubit _chatCubit;
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ImagePicker _imagePicker = ImagePicker();
+  bool _isUploadingImage = false;
 
   @override
   void initState() {
     super.initState();
-    ChatRemoteDataSourceImpl.saveLocalConversation(
-      id: widget.conversationId,
-      title: widget.name,
-      client: sl<ApiClient>(),
-    );
-    _chatCubit = sl<ChatCubit>()..connect(widget.conversationId);
+    _chatCubit = sl<ChatCubit>();
+    _openConversation();
+  }
+
+  Future<void> _openConversation() async {
+    final conversationId = widget.conversationId;
+    if (conversationId != null && conversationId.isNotEmpty) {
+      await _chatCubit.connect(conversationId);
+      return;
+    }
+
+    final groupId = widget.groupId;
+    if (groupId == null || groupId.isEmpty) {
+      _chatCubit.setError('Thiếu thông tin cuộc trò chuyện.');
+      return;
+    }
+
+    final result = await sl<GetConversationsUseCase>()(groupId: groupId);
+    result.fold(_chatCubit.setError, (conversations) {
+      final matches = conversations
+          .where((item) => item.groupId == groupId)
+          .toList();
+      if (matches.isEmpty) {
+        _chatCubit.setError(
+          'Nhóm chưa có cuộc trò chuyện. Hãy tạo yêu cầu quyên góp trước.',
+        );
+        return;
+      }
+      final currentUserId = sl<SharedPreferences>().getString(
+        AppConstants.keyUserId,
+      );
+      final ownMatches = matches
+          .where((item) => item.userId == currentUserId)
+          .toList();
+      final selected = ownMatches.isNotEmpty ? ownMatches.first : matches.first;
+      _chatCubit.connect(selected.id);
+    });
   }
 
   @override
@@ -66,11 +104,49 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     }
   }
 
+  Future<void> _pickAndSendImage() async {
+    if (_chatCubit.state.activeConversationId == null || _isUploadingImage) {
+      return;
+    }
+
+    try {
+      final image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 1920,
+      );
+      if (image == null || !mounted) return;
+
+      setState(() => _isUploadingImage = true);
+      final bytes = await image.readAsBytes();
+      final mimeType =
+          image.mimeType ?? MediaService.mimeFromFileName(image.name);
+      final publicUrl = await sl<MediaService>().uploadImage(
+        bytes,
+        mimeType,
+        refType: 'chat',
+      );
+      await _chatCubit.sendMessage(publicUrl, type: 'image');
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(_imageErrorMessage(error))));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingImage = false);
+      }
+    }
+  }
+
+  String _imageErrorMessage(Object error) {
+    final message = error.toString().replaceFirst('Exception: ', '').trim();
+    return message.isEmpty ? 'Không thể gửi hình ảnh.' : message;
+  }
+
   void _openDonateFormWithAI() {
-    context.push(
-      '/marketplace/create',
-      extra: {'groupId': widget.conversationId},
-    );
+    context.push('/marketplace/create', extra: {'groupId': widget.groupId});
   }
 
   @override
@@ -288,12 +364,12 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                                 if (!isMine) ...[
                                   CircleAvatar(
                                     radius: 16,
-                                    backgroundImage: msg.senderAvatar != null
+                                    backgroundImage: msg.senderAvatar != null && msg.senderAvatar!.isNotEmpty
                                         ? NetworkImage(msg.senderAvatar!)
                                         : null,
                                     backgroundColor:
                                         colorScheme.secondaryContainer,
-                                    child: msg.senderAvatar == null
+                                    child: msg.senderAvatar == null || msg.senderAvatar!.isEmpty
                                         ? Text(
                                             msg.senderName != null &&
                                                     msg.senderName!.isNotEmpty
@@ -312,8 +388,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                                 ],
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 12,
+                                    horizontal: 8,
+                                    vertical: 8,
                                   ),
                                   constraints: BoxConstraints(
                                     maxWidth:
@@ -342,15 +418,70 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                                       ),
                                     ],
                                   ),
-                                  child: Text(
-                                    msg.content,
-                                    style: TextStyle(
-                                      color: isMine
-                                          ? colorScheme.onPrimary
-                                          : colorScheme.onSurface,
-                                      fontSize: 16,
-                                    ),
-                                  ),
+                                  child: msg.type == 'image'
+                                      ? ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          child: Image.network(
+                                            msg.content,
+                                            width: 220,
+                                            height: 220,
+                                            fit: BoxFit.cover,
+                                            loadingBuilder:
+                                                (context, child, progress) {
+                                                  if (progress == null) {
+                                                    return child;
+                                                  }
+                                                  return const SizedBox(
+                                                    width: 220,
+                                                    height: 220,
+                                                    child: Center(
+                                                      child:
+                                                          CircularProgressIndicator(),
+                                                    ),
+                                                  );
+                                                },
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                                  return const SizedBox(
+                                                    width: 220,
+                                                    height: 120,
+                                                    child: Center(
+                                                      child: Column(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          Icon(
+                                                            Icons
+                                                                .broken_image_outlined,
+                                                          ),
+                                                          SizedBox(height: 8),
+                                                          Text(
+                                                            'Không tải được ảnh',
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                          ),
+                                        )
+                                      : Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          child: Text(
+                                            msg.content,
+                                            style: TextStyle(
+                                              color: isMine
+                                                  ? colorScheme.onPrimary
+                                                  : colorScheme.onSurface,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ),
                                 ),
                               ],
                             ),
@@ -390,14 +521,19 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 },
               ),
             ),
-            _buildChatInput(colorScheme),
+            BlocBuilder<ChatCubit, ChatState>(
+              builder: (context, state) => _buildChatInput(
+                colorScheme,
+                enabled: state.activeConversationId != null,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildChatInput(ColorScheme colorScheme) {
+  Widget _buildChatInput(ColorScheme colorScheme, {required bool enabled}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -423,16 +559,27 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           child: Row(
             children: [
               IconButton(
-                icon: Icon(Icons.add_circle, color: colorScheme.primary),
-                onPressed: () => _showAttachmentOptions(context),
+                icon: _isUploadingImage
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(Icons.add_circle, color: colorScheme.primary),
+                onPressed: enabled && !_isUploadingImage
+                    ? () => _showAttachmentOptions(context)
+                    : null,
               ),
               Expanded(
                 child: TextField(
+                  enabled: enabled,
                   controller: _textController,
                   textInputAction: TextInputAction.send,
                   onSubmitted: (_) => _sendMessage(),
                   decoration: InputDecoration(
-                    hintText: 'Nhập tin nhắn với nhóm...',
+                    hintText: enabled
+                        ? 'Nhập tin nhắn với nhóm...'
+                        : 'Chưa có cuộc trò chuyện',
                     border: InputBorder.none,
                     hintStyle: TextStyle(
                       color: colorScheme.onSurfaceVariant,
@@ -460,7 +607,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                     color: colorScheme.onPrimary,
                     size: 20,
                   ),
-                  onPressed: _sendMessage,
+                  onPressed: enabled ? _sendMessage : null,
                 ),
               ),
             ],
@@ -533,6 +680,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   title: const Text('Gửi hình ảnh'),
                   onTap: () {
                     context.pop();
+                    _pickAndSendImage();
                   },
                 ),
               ],
@@ -554,7 +702,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         return DonationBottomSheet(
           onSubmit: (title, description, quantity) {
             _chatCubit.submitDonationProposal(
-              groupId: widget.conversationId,
+              groupId: widget.groupId ?? '',
               title: title,
               description: description,
               quantity: quantity,

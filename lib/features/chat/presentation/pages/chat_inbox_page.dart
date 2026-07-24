@@ -27,7 +27,10 @@ class _ChatInboxView extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tin nhắn', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Tin nhắn',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
       ),
       body: Column(
@@ -58,12 +61,18 @@ class _ChatInboxView extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.error_outline, size: 48, color: colorScheme.error),
+                        Icon(
+                          Icons.error_outline,
+                          size: 48,
+                          color: colorScheme.error,
+                        ),
                         const SizedBox(height: 16),
                         Text(state.message),
                         const SizedBox(height: 16),
                         FilledButton(
-                          onPressed: () => context.read<ChatInboxCubit>().fetchConversations(),
+                          onPressed: () => context
+                              .read<ChatInboxCubit>()
+                              .fetchConversations(),
                           child: const Text('Thử lại'),
                         ),
                       ],
@@ -82,7 +91,9 @@ class _ChatInboxView extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.all(24),
                               decoration: BoxDecoration(
-                                color: colorScheme.primaryContainer.withOpacity(0.4),
+                                color: colorScheme.primaryContainer.withOpacity(
+                                  0.4,
+                                ),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
@@ -120,7 +131,10 @@ class _ChatInboxView extends StatelessWidget {
                               style: FilledButton.styleFrom(
                                 backgroundColor: colorScheme.primary,
                                 foregroundColor: colorScheme.onPrimary,
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(20),
                                 ),
@@ -137,7 +151,8 @@ class _ChatInboxView extends StatelessWidget {
                     itemCount: conversations.length,
                     itemBuilder: (context, index) {
                       final conv = conversations[index];
-                      final isGroup = conv.type == 'group';
+                      final isGroup =
+                          conv.type.endsWith('_group') || conv.type == 'group';
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
@@ -145,37 +160,61 @@ class _ChatInboxView extends StatelessWidget {
                         color: colorScheme.surfaceContainerLowest,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
-                          side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.3)),
+                          side: BorderSide(
+                            color: colorScheme.outlineVariant.withOpacity(0.3),
+                          ),
                         ),
                         child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 6,
+                            horizontal: 12,
+                          ),
                           leading: CircleAvatar(
                             radius: 24,
-                            backgroundColor: isGroup ? colorScheme.primaryContainer : colorScheme.secondaryContainer,
+                            backgroundColor: isGroup
+                                ? colorScheme.primaryContainer
+                                : colorScheme.secondaryContainer,
                             child: Icon(
                               isGroup ? Icons.groups : Icons.person,
-                              color: isGroup ? colorScheme.onPrimaryContainer : colorScheme.onSecondaryContainer,
+                              color: isGroup
+                                  ? colorScheme.onPrimaryContainer
+                                  : colorScheme.onSecondaryContainer,
                             ),
                           ),
                           title: Text(
-                            conv.title.isNotEmpty ? conv.title : (isGroup ? 'Hội nhóm thiện nguyện' : 'Người dùng'),
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            conv.title.isNotEmpty
+                                ? conv.title
+                                : (isGroup
+                                      ? 'Hội nhóm thiện nguyện'
+                                      : 'Người dùng'),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
                           ),
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 4.0),
                             child: Text(
-                              conv.lastMessage ?? 'Bắt đầu trò chuyện & quyên góp...',
+                              conv.lastMessage ??
+                                  'Bắt đầu trò chuyện & quyên góp...',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
+                              style: TextStyle(
+                                color: colorScheme.onSurfaceVariant,
+                                fontSize: 13,
+                              ),
                             ),
                           ),
                           trailing: const Icon(Icons.chevron_right, size: 20),
                           onTap: () {
-                            context.push(AppRoutes.chatRoom, extra: {
-                              'conversationId': conv.id,
-                              'name': conv.title,
-                            });
+                            context.push(
+                              AppRoutes.chatRoom,
+                              extra: {
+                                'conversationId': conv.id,
+                                'groupId': conv.groupId,
+                                'name': conv.title,
+                              },
+                            );
                           },
                         ),
                       );

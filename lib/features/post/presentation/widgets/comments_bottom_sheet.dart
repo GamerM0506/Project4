@@ -7,15 +7,25 @@ import '../cubit/post_comments_cubit.dart';
 
 class CommentsBottomSheet extends StatefulWidget {
   final String postId;
+  final VoidCallback? onCommentAdded;
 
-  const CommentsBottomSheet({Key? key, required this.postId}) : super(key: key);
+  const CommentsBottomSheet({
+    super.key,
+    required this.postId,
+    this.onCommentAdded,
+  });
 
-  static void show(BuildContext context, String postId) {
+  static void show(
+    BuildContext context,
+    String postId, {
+    VoidCallback? onCommentAdded,
+  }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => CommentsBottomSheet(postId: postId),
+      builder: (context) =>
+          CommentsBottomSheet(postId: postId, onCommentAdded: onCommentAdded),
     );
   }
 
@@ -202,14 +212,16 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                       const SizedBox(width: 8),
                       IconButton(
                         icon: Icon(Icons.send, color: colorScheme.primary),
-                        onPressed: () {
+                        onPressed: () async {
                           final text = _commentController.text.trim();
                           if (text.isNotEmpty) {
-                            ctx.read<PostCommentsCubit>().addComment(
-                              widget.postId,
-                              text,
-                            );
-                            _commentController.clear();
+                            final added = await ctx
+                                .read<PostCommentsCubit>()
+                                .addComment(widget.postId, text);
+                            if (added) {
+                              _commentController.clear();
+                              widget.onCommentAdded?.call();
+                            }
                           }
                         },
                       ),

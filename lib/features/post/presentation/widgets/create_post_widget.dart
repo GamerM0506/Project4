@@ -4,7 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../../../injection_container.dart';
-import '../../../../core/media/media_service.dart';
+import '../../../../core/network/media_service.dart';
 import '../cubit/group_feed_cubit.dart';
 import '../cubit/group_feed_state.dart';
 
@@ -60,7 +60,9 @@ class _CreatePostWidgetState extends State<CreatePostWidget> {
 
     try {
       for (var img in _selectedImages) {
-        final url = await mediaService.uploadImage(img, refType: 'post_images');
+        final bytes = await img.readAsBytes();
+        final mimeType = img.mimeType ?? MediaService.mimeFromFileName(img.name);
+        final url = await mediaService.uploadImage(bytes, mimeType, refType: 'post_images');
         uploadedUrls.add(url);
       }
     } catch (e) {

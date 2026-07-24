@@ -38,16 +38,21 @@ class PostCommentsCubit extends Cubit<PostCommentsState> {
     );
   }
 
-  Future<void> addComment(String postId, String content) async {
+  Future<bool> addComment(String postId, String content) async {
     final currentState = state;
     if (currentState is PostCommentsLoaded) {
       final result = await addCommentUseCase(postId, content);
-      result.fold(
-        (error) {}, // Could show a toast or error state
+      return result.fold(
+        (error) {
+          emit(PostCommentsError(error));
+          return false;
+        },
         (comment) {
-          emit(PostCommentsLoaded([comment, ...currentState.comments]));
+          emit(PostCommentsLoaded([...currentState.comments, comment]));
+          return true;
         },
       );
     }
+    return false;
   }
 }

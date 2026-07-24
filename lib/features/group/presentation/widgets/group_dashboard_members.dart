@@ -20,7 +20,12 @@ class GroupDashboardMembers extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.all(24),
-            child: Text('Cộng đồng', style: textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
+            child: Text(
+              'Cộng đồng',
+              style: textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
           TabBar(
             labelColor: const Color(0xFFB73A41),
@@ -34,7 +39,10 @@ class GroupDashboardMembers extends StatelessWidget {
           Expanded(
             child: TabBarView(
               children: [
-                GroupMembersTab(groupId: group.id),
+                GroupMembersTab(
+                  groupId: group.id,
+                  currentUserRole: group.myRole,
+                ),
                 GroupJoinRequestsTab(groupId: group.id),
               ],
             ),

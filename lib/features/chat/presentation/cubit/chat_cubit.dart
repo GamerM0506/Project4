@@ -18,6 +18,7 @@ class ChatCubit extends Cubit<ChatState> {
   final ApiClient? apiClient;
 
   IO.Socket? _socket;
+  String? _currentUserId;
   final String baseUrl = 'http://${AppConstants.apiHost}:8000';
 
   ChatCubit({
@@ -33,16 +34,16 @@ class ChatCubit extends Cubit<ChatState> {
 
     if (getMessagesUseCase != null) {
       final result = await getMessagesUseCase!(conversationId);
-      result.fold(
-        (l) => print('Failed to fetch messages: $l'),
-        (messages) {
-          emit(state.copyWith(messages: messages));
-        },
-      );
+      result.fold((failure) => emit(state.copyWith(error: failure)), (
+        messages,
+      ) {
+        emit(state.copyWith(messages: messages));
+      });
     }
 
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(AppConstants.keyAccessToken) ?? '';
+    _currentUserId = prefs.getString(AppConstants.keyUserId);
 
     _socket = IO.io(
       baseUrl,
@@ -57,7 +58,9 @@ class ChatCubit extends Cubit<ChatState> {
 
     _socket?.onConnect((_) {
       print('Socket Connected');
-      emit(state.copyWith(isConnected: true, activeConversationId: conversationId));
+      emit(
+        state.copyWith(isConnected: true, activeConversationId: conversationId),
+      );
       _socket?.emit('join_conversation', {'conversationId': conversationId});
     });
 
@@ -68,11 +71,13 @@ class ChatCubit extends Cubit<ChatState> {
 
     _socket?.on('new_message', (data) {
       print('New message received: $data');
-      if (data is Map<String, dynamic>) {
-        if (data['metadata_updated'] == true) {
-          final msgId = data['id']?.toString();
-          final metadata =
-              data['metadata'] != null ? Map<String, dynamic>.from(data['metadata']) : null;
+      if (data is Map) {
+        final payload = Map<String, dynamic>.from(data);
+        if (payload['metadata_updated'] == true) {
+          final msgId = payload['id']?.toString();
+          final metadata = payload['metadata'] != null
+              ? Map<String, dynamic>.from(payload['metadata'])
+              : null;
           final newMessages = state.messages.map((m) {
             if (m.id == msgId) {
               return m.copyWith(metadata: metadata);
@@ -84,20 +89,28 @@ class ChatCubit extends Cubit<ChatState> {
         }
 
         final newMessage = ChatMessage(
-          id: data['id']?.toString() ?? const Uuid().v4(),
-          content: data['content'] ?? '',
-          senderId: data['sender_id']?.toString() ?? '',
-          senderName: data['sender_name']?.toString(),
-          senderAvatar: data['sender_avatar']?.toString(),
-          createdAt: DateTime.tryParse(data['created_at']?.toString() ?? '') ?? DateTime.now(),
-          isMine: false,
-          type: data['type']?.toString() ?? 'text',
-          metadata: data['metadata'] != null ? Map<String, dynamic>.from(data['metadata']) : null,
+          id: payload['id']?.toString() ?? const Uuid().v4(),
+          content: payload['content']?.toString() ?? '',
+          senderId: payload['sender_id']?.toString() ?? '',
+          senderName: payload['sender_name']?.toString(),
+          senderAvatar: payload['sender_avatar']?.toString(),
+          createdAt:
+              DateTime.tryParse(payload['created_at']?.toString() ?? '') ??
+              DateTime.now(),
+          isMine: payload['sender_id']?.toString() == _currentUserId,
+          type: payload['type']?.toString() ?? 'text',
+          metadata: payload['metadata'] != null
+              ? Map<String, dynamic>.from(payload['metadata'])
+              : null,
         );
 
-        emit(state.copyWith(
-          messages: List.from(state.messages)..add(newMessage),
-        ));
+        if (!state.messages.any((message) => message.id == newMessage.id)) {
+          emit(
+            state.copyWith(
+              messages: List.from(state.messages)..add(newMessage),
+            ),
+          );
+        }
       }
     });
 
@@ -109,7 +122,11 @@ class ChatCubit extends Cubit<ChatState> {
     _socket?.connect();
   }
 
-  void sendMessage(String content, {String type = 'text', Map<String, dynamic>? metadata}) {
+  Future<void> sendMessage(
+    String content, {
+    String type = 'text',
+    Map<String, dynamic>? metadata,
+  }) async {
     if (content.trim().isEmpty && type == 'text') return;
     final convId = state.activeConversationId;
     if (convId == null) return;
@@ -124,17 +141,34 @@ class ChatCubit extends Cubit<ChatState> {
       metadata: metadata,
     );
 
-    emit(state.copyWith(
-      messages: List.from(state.messages)..add(tempMsg),
-    ));
+    emit(state.copyWith(messages: List.from(state.messages)..add(tempMsg)));
 
     if (sendMessageUseCase != null) {
-      sendMessageUseCase!.call(convId, content, type: type, metadata: metadata).then((result) {
-        result.fold(
-          (l) => print('Failed to send message: $l'),
-          (actualMsg) {},
-        );
-      });
+      final result = await sendMessageUseCase!(convId, content, type: type);
+      result.fold(
+        (failure) {
+          emit(
+            state.copyWith(
+              messages: state.messages
+                  .where((message) => message.id != tempMsg.id)
+                  .toList(),
+              error: failure,
+            ),
+          );
+        },
+        (actualMsg) {
+          final messages =
+              state.messages
+                  .where(
+                    (message) =>
+                        message.id != tempMsg.id && message.id != actualMsg.id,
+                  )
+                  .toList()
+                ..add(actualMsg);
+          messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+          emit(state.copyWith(messages: messages));
+        },
+      );
     } else {
       final data = <String, dynamic>{
         'conversationId': convId,
@@ -166,9 +200,11 @@ class ChatCubit extends Cubit<ChatState> {
       r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
     );
     if (!uuidRegex.hasMatch(groupId)) {
-      emit(state.copyWith(
-        error: 'Group ID không hợp lệ. Mở chat từ nhóm (cần UUID nhóm).',
-      ));
+      emit(
+        state.copyWith(
+          error: 'Group ID không hợp lệ. Mở chat từ nhóm (cần UUID nhóm).',
+        ),
+      );
       return;
     }
 
@@ -195,21 +231,7 @@ class ChatCubit extends Cubit<ChatState> {
         emit(state.copyWith(error: err));
       },
       (donation) async {
-        sendMessage(
-          'Tôi muốn quyên góp: $title',
-          type: 'donation_proposal',
-          metadata: {
-            'donation_id': donation.id,
-            'donation_code': donation.code,
-            'group_id': donation.groupId,
-            'name': title,
-            'description': description,
-            'condition': conditionMapped,
-            'quantity': quantity,
-            if (categoryId != null) 'category_id': categoryId,
-            'status': donation.status,
-          },
-        );
+        await sendMessage('Tôi muốn quyên góp: $title (Mã: ${donation.code})');
       },
     );
   }
@@ -221,9 +243,11 @@ class ChatCubit extends Cubit<ChatState> {
 
     final donationId = meta['donation_id']?.toString();
     if (donationId == null || donationId.isEmpty) {
-      emit(state.copyWith(
-        error: 'Thiếu donation_id. Hãy tạo thẻ quyên góp mới (API đúng).',
-      ));
+      emit(
+        state.copyWith(
+          error: 'Thiếu donation_id. Hãy tạo thẻ quyên góp mới (API đúng).',
+        ),
+      );
       return;
     }
 
@@ -261,16 +285,22 @@ class ChatCubit extends Cubit<ChatState> {
     );
   }
 
-  Future<void> _patchMessageMetadata(String messageId, Map<String, dynamic> metadata) async {
+  Future<void> _patchMessageMetadata(
+    String messageId,
+    Map<String, dynamic> metadata,
+  ) async {
     final convId = state.activeConversationId;
     if (convId == null) return;
 
     try {
-      final dio = apiClient?.dio ??
-          Dio(BaseOptions(
-            baseUrl: baseUrl,
-            headers: {'Content-Type': 'application/json'},
-          ));
+      final dio =
+          apiClient?.dio ??
+          Dio(
+            BaseOptions(
+              baseUrl: baseUrl,
+              headers: {'Content-Type': 'application/json'},
+            ),
+          );
 
       if (apiClient == null) {
         final prefs = await SharedPreferences.getInstance();
@@ -311,6 +341,10 @@ class ChatCubit extends Cubit<ChatState> {
 
   void clearError() {
     emit(state.copyWith(error: null));
+  }
+
+  void setError(String error) {
+    emit(state.copyWith(error: error));
   }
 
   void disconnect() {

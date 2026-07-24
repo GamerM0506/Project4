@@ -4,11 +4,17 @@ import '../../domain/entities/post_entity.dart';
 import '../cubit/group_feed_cubit.dart';
 import 'comments_bottom_sheet.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:share_plus/share_plus.dart';
 
 class PostCardWidget extends StatelessWidget {
   final PostEntity post;
+  final bool canModerate;
 
-  const PostCardWidget({super.key, required this.post});
+  const PostCardWidget({
+    super.key,
+    required this.post,
+    required this.canModerate,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -67,49 +73,50 @@ class PostCardWidget extends StatelessWidget {
                     ],
                   ),
                 ),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_horiz),
-                  onSelected: (value) {
-                    if (value == 'delete') {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Xóa bài đăng?'),
-                          content: const Text(
-                            'Bạn có chắc chắn muốn xóa bài đăng này không? Hành động này không thể hoàn tác.',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              child: const Text('Hủy'),
+                if (canModerate)
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_horiz),
+                    onSelected: (value) {
+                      if (value == 'delete') {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Ẩn bài đăng?'),
+                            content: const Text(
+                              'Bạn có chắc chắn muốn ẩn bài đăng này không?',
                             ),
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pop(ctx);
-                                context.read<GroupFeedCubit>().deletePost(
-                                  post.id,
-                                );
-                              },
-                              style: TextButton.styleFrom(
-                                foregroundColor: Colors.red,
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text('Hủy'),
                               ),
-                              child: const Text('Xóa'),
-                            ),
-                          ],
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  context.read<GroupFeedCubit>().deletePost(
+                                    post.id,
+                                  );
+                                },
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red,
+                                ),
+                                child: const Text('Xóa'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Text(
+                          'Ẩn bài viết',
+                          style: TextStyle(color: Colors.red),
                         ),
-                      );
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Text(
-                        'Xóa bài viết',
-                        style: TextStyle(color: Colors.red),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
               ],
             ),
             const SizedBox(height: 12),
@@ -163,7 +170,13 @@ class PostCardWidget extends StatelessWidget {
                 const SizedBox(width: 16),
                 InkWell(
                   onTap: () {
-                    CommentsBottomSheet.show(context, post.id);
+                    CommentsBottomSheet.show(
+                      context,
+                      post.id,
+                      onCommentAdded: () => context
+                          .read<GroupFeedCubit>()
+                          .incrementCommentCount(post.id),
+                    );
                   },
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
@@ -190,7 +203,12 @@ class PostCardWidget extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                _buildActionBtn(Icons.share_outlined, 'Chia sẻ', colorScheme),
+                _buildActionBtn(
+                  Icons.share_outlined,
+                  'Chia sẻ',
+                  colorScheme,
+                  onTap: () => _sharePost(),
+                ),
               ],
             ),
           ],
@@ -255,7 +273,7 @@ class PostCardWidget extends StatelessWidget {
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: imageUrls.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          separatorBuilder: (_, _) => const SizedBox(width: 8),
           itemBuilder: (context, index) {
             return ClipRRect(
               borderRadius: BorderRadius.circular(12),
@@ -272,9 +290,24 @@ class PostCardWidget extends StatelessWidget {
     }
   }
 
-  Widget _buildActionBtn(IconData icon, String label, ColorScheme colorScheme) {
+  Future<void> _sharePost() async {
+    final text = post.content.trim();
+    await Share.share(
+      '${text.isEmpty ? 'Bài viết từ ChoSV' : text}\n\n'
+      'Mã bài viết: ${post.id}\n'
+      'Nhóm: ${post.groupId}',
+      subject: 'Chia sẻ bài viết từ ChoSV',
+    );
+  }
+
+  Widget _buildActionBtn(
+    IconData icon,
+    String label,
+    ColorScheme colorScheme, {
+    required VoidCallback onTap,
+  }) {
     return InkWell(
-      onTap: () {},
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
         child: Row(

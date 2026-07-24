@@ -189,7 +189,7 @@ class _GroupDashboardPageState extends State<GroupDashboardPage> {
                 onPressed: () {
                   context.push(
                     AppRoutes.chatRoom,
-                    extra: {'conversationId': group.id, 'name': group.name},
+                    extra: {'groupId': group.id, 'name': group.name},
                   );
                 },
               ),

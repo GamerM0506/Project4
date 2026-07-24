@@ -25,7 +25,7 @@ class GroupFeedCubit extends Cubit<GroupFeedState> {
 
   Future<void> fetchPosts(String groupId, {bool isRefresh = false}) async {
     if (state is GroupFeedLoading && !isRefresh) return;
-    
+
     int offset = 0;
     if (!isRefresh && state is GroupFeedLoaded) {
       final currentState = state as GroupFeedLoaded;
@@ -35,28 +35,38 @@ class GroupFeedCubit extends Cubit<GroupFeedState> {
       emit(GroupFeedLoading());
     }
 
-    final result = await getPostsUseCase(groupId, offset: offset, limit: _limit);
+    final result = await getPostsUseCase(
+      groupId,
+      offset: offset,
+      limit: _limit,
+    );
 
-    result.fold(
-      (error) => emit(GroupFeedError(message: error)),
-      (posts) {
-        if (state is GroupFeedLoaded && !isRefresh) {
-          final currentState = state as GroupFeedLoaded;
-          emit(currentState.copyWith(
+    result.fold((error) => emit(GroupFeedError(message: error)), (posts) {
+      if (state is GroupFeedLoaded && !isRefresh) {
+        final currentState = state as GroupFeedLoaded;
+        emit(
+          currentState.copyWith(
             posts: currentState.posts + posts,
             hasReachedMax: posts.isEmpty || posts.length < _limit,
-          ));
-        } else {
-          emit(GroupFeedLoaded(
+          ),
+        );
+      } else {
+        emit(
+          GroupFeedLoaded(
             posts: posts,
             hasReachedMax: posts.isEmpty || posts.length < _limit,
-          ));
-        }
-      },
-    );
+          ),
+        );
+      }
+    });
   }
 
-  Future<void> createPost(String groupId, String content, String type, List<String> imageUrls) async {
+  Future<void> createPost(
+    String groupId,
+    String content,
+    String type,
+    List<String> imageUrls,
+  ) async {
     final currentState = state;
     emit(GroupFeedCreating());
 
@@ -77,9 +87,7 @@ class GroupFeedCubit extends Cubit<GroupFeedState> {
         emit(GroupFeedCreateSuccess(post: post));
         Future.delayed(const Duration(milliseconds: 100), () {
           if (currentState is GroupFeedLoaded) {
-            emit(currentState.copyWith(
-              posts: [post, ...currentState.posts],
-            ));
+            emit(currentState.copyWith(posts: [post, ...currentState.posts]));
           } else {
             fetchPosts(groupId, isRefresh: true);
           }
@@ -90,17 +98,25 @@ class GroupFeedCubit extends Cubit<GroupFeedState> {
 
   Future<void> deletePost(String postId) async {
     final currentState = state;
-    
+
     final result = await deletePostUseCase(postId);
 
     result.fold(
       (error) {
-        // Có thể emit lỗi xóa nếu cần thiết, hiện tại chỉ log hoặc báo snackbar
-        // Ở đây đơn giản không làm gì nếu lỗi, hoặc có thể thêm state GroupFeedDeleteError
+        if (currentState is GroupFeedLoaded) {
+          emit(
+            GroupFeedDeleteError(message: error, previousState: currentState),
+          );
+          emit(currentState);
+        } else {
+          emit(GroupFeedError(message: error));
+        }
       },
       (_) {
         if (currentState is GroupFeedLoaded) {
-          final newPosts = currentState.posts.where((p) => p.id != postId).toList();
+          final newPosts = currentState.posts
+              .where((p) => p.id != postId)
+              .toList();
           emit(currentState.copyWith(posts: newPosts));
         }
       },
@@ -109,37 +125,44 @@ class GroupFeedCubit extends Cubit<GroupFeedState> {
 
   Future<void> toggleLike(String postId) async {
     if (state is! GroupFeedLoaded) return;
-    
+
     final currentState = state as GroupFeedLoaded;
     final postIndex = currentState.posts.indexWhere((p) => p.id == postId);
     if (postIndex == -1) return;
 
     final post = currentState.posts[postIndex];
     final isCurrentlyLiked = post.isLiked;
-    
+
     // Optimistic UI update
     final updatedPost = post.copyWith(
       isLiked: !isCurrentlyLiked,
       likeCount: isCurrentlyLiked ? post.likeCount - 1 : post.likeCount + 1,
     );
-    
+
     final newPosts = List<PostEntity>.from(currentState.posts);
     newPosts[postIndex] = updatedPost;
     emit(currentState.copyWith(posts: newPosts));
 
     // API Call
-    final result = isCurrentlyLiked 
-        ? await unlikePostUseCase(postId) 
+    final result = isCurrentlyLiked
+        ? await unlikePostUseCase(postId)
         : await likePostUseCase(postId);
 
-    result.fold(
-      (error) {
-        // Rollback on error
-        final rollbackPosts = List<PostEntity>.from(currentState.posts);
-        rollbackPosts[postIndex] = post;
-        emit(currentState.copyWith(posts: rollbackPosts));
-      },
-      (_) {},
-    );
+    result.fold((error) {
+      // Rollback on error
+      final rollbackPosts = List<PostEntity>.from(currentState.posts);
+      rollbackPosts[postIndex] = post;
+      emit(currentState.copyWith(posts: rollbackPosts));
+    }, (_) {});
+  }
+
+  void incrementCommentCount(String postId) {
+    if (state is! GroupFeedLoaded) return;
+    final currentState = state as GroupFeedLoaded;
+    final posts = currentState.posts.map((post) {
+      if (post.id != postId) return post;
+      return post.copyWith(commentCount: post.commentCount + 1);
+    }).toList();
+    emit(currentState.copyWith(posts: posts));
   }
 }

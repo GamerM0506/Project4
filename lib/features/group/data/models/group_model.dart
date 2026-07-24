@@ -65,6 +65,30 @@ class GroupModel {
     );
   }
 
+  GroupModel copyWith({String? myRole, String? myStatus}) {
+    return GroupModel(
+      id: id,
+      name: name,
+      slug: slug,
+      description: description,
+      avatarUrl: avatarUrl,
+      coverUrl: coverUrl,
+      address: address,
+      provinceCode: provinceCode,
+      districtCode: districtCode,
+      ownerId: ownerId,
+      status: status,
+      allowMemberPost: allowMemberPost,
+      requirePostReview: requirePostReview,
+      memberCount: memberCount,
+      reputationScore: reputationScore,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      myRole: myRole ?? this.myRole,
+      myStatus: myStatus ?? this.myStatus,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,

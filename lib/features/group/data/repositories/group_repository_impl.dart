@@ -12,7 +12,12 @@ class GroupRepositoryImpl implements GroupRepository {
   GroupRepositoryImpl(this.remoteDataSource);
 
   @override
-  Future<Either<String, List<GroupModel>>> getGroups({int limit = 20, int offset = 0, String? query, String? provinceCode}) async {
+  Future<Either<String, List<GroupModel>>> getGroups({
+    int limit = 20,
+    int offset = 0,
+    String? query,
+    String? provinceCode,
+  }) async {
     try {
       final result = await remoteDataSource.getGroups(
         limit: limit,
@@ -22,7 +27,7 @@ class GroupRepositoryImpl implements GroupRepository {
       );
       return Right(result);
     } on DioException catch (e) {
-      return Left(e.response?.data?['detail']?[0]?['msg'] ?? 'Không thể tải danh sách nhóm');
+      return Left(_communityError(e, 'Không thể tải danh sách nhóm'));
     } catch (e) {
       return Left('Đã xảy ra lỗi: ${e.toString()}');
     }
@@ -31,10 +36,46 @@ class GroupRepositoryImpl implements GroupRepository {
   @override
   Future<Either<String, GroupModel>> getGroupDetail(String groupId) async {
     try {
-      final result = await remoteDataSource.getGroupDetail(groupId);
-      return Right(result);
+      final group = await remoteDataSource.getGroupDetail(groupId);
+      const pageSize = 100;
+      try {
+        for (final status in const [
+          'approved',
+          'pending',
+          'rejected',
+          'left',
+          'banned',
+        ]) {
+          var offset = 0;
+          while (true) {
+            final myGroups = await remoteDataSource.getMyGroups(
+              limit: pageSize,
+              offset: offset,
+              memberStatus: status,
+            );
+            final membership = myGroups
+                .where((item) => item.id == groupId)
+                .firstOrNull;
+            if (membership != null) {
+              return Right(
+                group.copyWith(
+                  myRole: membership.myRole,
+                  myStatus: membership.myStatus,
+                ),
+              );
+            }
+            if (myGroups.length < pageSize) break;
+            offset += pageSize;
+          }
+        }
+      } on DioException catch (e) {
+        if (e.response?.statusCode != 401 && e.response?.statusCode != 403) {
+          rethrow;
+        }
+      }
+      return Right(group);
     } on DioException catch (e) {
-      return Left(e.response?.data?['detail'] ?? 'Không thể tải thông tin nhóm');
+      return Left(_communityError(e, 'Không thể tải thông tin nhóm'));
     } catch (e) {
       return Left('Đã xảy ra lỗi: ${e.toString()}');
     }
@@ -47,6 +88,11 @@ class GroupRepositoryImpl implements GroupRepository {
     String? description,
     String? avatarUrl,
     String? coverUrl,
+    String? address,
+    String? provinceCode,
+    String? districtCode,
+    bool? allowMemberPost,
+    bool? requirePostReview,
   }) async {
     try {
       final group = await remoteDataSource.updateGroup(
@@ -55,6 +101,11 @@ class GroupRepositoryImpl implements GroupRepository {
         description: description,
         avatarUrl: avatarUrl,
         coverUrl: coverUrl,
+        address: address,
+        provinceCode: provinceCode,
+        districtCode: districtCode,
+        allowMemberPost: allowMemberPost,
+        requirePostReview: requirePostReview,
       );
       return Right(group);
     } catch (e) {
@@ -63,7 +114,11 @@ class GroupRepositoryImpl implements GroupRepository {
   }
 
   @override
-  Future<Either<String, List<GroupModel>>> getMyGroups({int limit = 20, int offset = 0, String? memberStatus}) async {
+  Future<Either<String, List<GroupModel>>> getMyGroups({
+    int limit = 20,
+    int offset = 0,
+    String? memberStatus,
+  }) async {
     try {
       final result = await remoteDataSource.getMyGroups(
         limit: limit,
@@ -72,7 +127,7 @@ class GroupRepositoryImpl implements GroupRepository {
       );
       return Right(result);
     } on DioException catch (e) {
-      return Left(e.response?.data?['detail']?[0]?['msg'] ?? 'Không thể tải danh sách nhóm của bạn');
+      return Left(_communityError(e, 'Không thể tải danh sách nhóm của bạn'));
     } catch (e) {
       return Left('Đã xảy ra lỗi: ${e.toString()}');
     }
@@ -105,9 +160,15 @@ class GroupRepositoryImpl implements GroupRepository {
   }
 
   @override
-  Future<Either<String, JoinRequestEntity>> joinGroup(String groupId, {String? message}) async {
+  Future<Either<String, JoinRequestEntity>> joinGroup(
+    String groupId, {
+    String? message,
+  }) async {
     try {
-      final request = await remoteDataSource.joinGroup(groupId, message: message);
+      final request = await remoteDataSource.joinGroup(
+        groupId,
+        message: message,
+      );
       return Right(request);
     } catch (e) {
       return Left(e.toString().replaceAll('Exception: ', ''));
@@ -115,9 +176,19 @@ class GroupRepositoryImpl implements GroupRepository {
   }
 
   @override
-  Future<Either<String, List<JoinRequestEntity>>> getJoinRequests(String groupId, {String? status, int limit = 20, int offset = 0}) async {
+  Future<Either<String, List<JoinRequestEntity>>> getJoinRequests(
+    String groupId, {
+    String? status,
+    int limit = 20,
+    int offset = 0,
+  }) async {
     try {
-      final requests = await remoteDataSource.getJoinRequests(groupId, status: status, limit: limit, offset: offset);
+      final requests = await remoteDataSource.getJoinRequests(
+        groupId,
+        status: status,
+        limit: limit,
+        offset: offset,
+      );
       return Right(requests.cast<JoinRequestEntity>());
     } catch (e) {
       return Left(e.toString().replaceAll('Exception: ', ''));
@@ -125,9 +196,15 @@ class GroupRepositoryImpl implements GroupRepository {
   }
 
   @override
-  Future<Either<String, JoinRequestEntity>> approveJoinRequest(String groupId, String requestId) async {
+  Future<Either<String, JoinRequestEntity>> approveJoinRequest(
+    String groupId,
+    String requestId,
+  ) async {
     try {
-      final request = await remoteDataSource.approveJoinRequest(groupId, requestId);
+      final request = await remoteDataSource.approveJoinRequest(
+        groupId,
+        requestId,
+      );
       return Right(request);
     } catch (e) {
       return Left(e.toString().replaceAll('Exception: ', ''));
@@ -135,9 +212,15 @@ class GroupRepositoryImpl implements GroupRepository {
   }
 
   @override
-  Future<Either<String, JoinRequestEntity>> rejectJoinRequest(String groupId, String requestId) async {
+  Future<Either<String, JoinRequestEntity>> rejectJoinRequest(
+    String groupId,
+    String requestId,
+  ) async {
     try {
-      final request = await remoteDataSource.rejectJoinRequest(groupId, requestId);
+      final request = await remoteDataSource.rejectJoinRequest(
+        groupId,
+        requestId,
+      );
       return Right(request);
     } catch (e) {
       return Left(e.toString().replaceAll('Exception: ', ''));
@@ -145,9 +228,19 @@ class GroupRepositoryImpl implements GroupRepository {
   }
 
   @override
-  Future<Either<String, List<MemberEntity>>> getGroupMembers(String groupId, {String? status, int limit = 20, int offset = 0}) async {
+  Future<Either<String, List<MemberEntity>>> getGroupMembers(
+    String groupId, {
+    String? status,
+    int limit = 20,
+    int offset = 0,
+  }) async {
     try {
-      final members = await remoteDataSource.getGroupMembers(groupId, status: status, limit: limit, offset: offset);
+      final members = await remoteDataSource.getGroupMembers(
+        groupId,
+        status: status,
+        limit: limit,
+        offset: offset,
+      );
       return Right(members.cast<MemberEntity>());
     } catch (e) {
       return Left(e.toString().replaceAll('Exception: ', ''));
@@ -155,7 +248,11 @@ class GroupRepositoryImpl implements GroupRepository {
   }
 
   @override
-  Future<Either<String, void>> updateMemberRole(String groupId, String userId, String role) async {
+  Future<Either<String, void>> updateMemberRole(
+    String groupId,
+    String userId,
+    String role,
+  ) async {
     try {
       await remoteDataSource.updateMemberRole(groupId, userId, role);
       return const Right(null);
@@ -165,7 +262,11 @@ class GroupRepositoryImpl implements GroupRepository {
   }
 
   @override
-  Future<Either<String, void>> updateMemberStatus(String groupId, String userId, String status) async {
+  Future<Either<String, void>> updateMemberStatus(
+    String groupId,
+    String userId,
+    String status,
+  ) async {
     try {
       await remoteDataSource.updateMemberStatus(groupId, userId, status);
       return const Right(null);
@@ -177,9 +278,7 @@ class GroupRepositoryImpl implements GroupRepository {
   @override
   Future<Either<String, void>> approveGroup(String groupId) async {
     try {
-      // Giả sử API endpoint là /admin/groups/:id/approve
-      // Hiện tại remoteDataSource chưa có hàm này nên bỏ qua hoặc throw unimplemented
-      // await remoteDataSource.approveGroup(groupId);
+      await remoteDataSource.approveGroup(groupId);
       return const Right(null);
     } catch (e) {
       return Left(e.toString().replaceAll('Exception: ', ''));
@@ -195,4 +294,22 @@ class GroupRepositoryImpl implements GroupRepository {
       return Left(e.toString().replaceAll('Exception: ', ''));
     }
   }
+}
+
+String _communityError(DioException exception, String fallback) {
+  final data = exception.response?.data;
+  if (data is! Map) return fallback;
+  final error = data['error'];
+  if (error is String && error.isNotEmpty) return error;
+  if (error is Map) {
+    final message = error['message'];
+    if (message is String && message.isNotEmpty) return message;
+    final details = error['details'];
+    if (details is List && details.isNotEmpty) {
+      final first = details.first;
+      if (first is Map && first['msg'] is String) return first['msg'] as String;
+      return details.join(', ');
+    }
+  }
+  return fallback;
 }
