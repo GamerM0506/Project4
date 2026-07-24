@@ -1,6 +1,16 @@
 import 'package:dartz/dartz.dart';
 import '../entities/listing_entity.dart';
+import '../entities/category_entity.dart';
 import '../repositories/marketplace_repository.dart';
+
+class GetCategoriesUseCase {
+  final MarketplaceRepository repository;
+  GetCategoriesUseCase(this.repository);
+
+  Future<Either<String, List<CategoryEntity>>> call() {
+    return repository.getCategories();
+  }
+}
 
 class GetCatalogUseCase {
   final MarketplaceRepository repository;

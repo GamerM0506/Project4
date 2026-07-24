@@ -15,6 +15,7 @@ class MarketplacePage extends StatefulWidget {
 
 class _MarketplacePageState extends State<MarketplacePage> {
   final MarketplaceCubit _marketplaceCubit = sl<MarketplaceCubit>();
+  String _selectedCategory = '';
 
   @override
   void initState() {
@@ -77,66 +78,76 @@ class _MarketplacePageState extends State<MarketplacePage> {
                 ),
               ),
             ),
-            // Filters
-            SizedBox(
-              height: 40,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: [
-                  _buildFilterChip('Tất cả', true, colorScheme),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('Quần áo', false, colorScheme),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('Điện tử', false, colorScheme),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('Sách vở', false, colorScheme),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('Đồ gia dụng', false, colorScheme),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Grid
             Expanded(
               child: BlocBuilder<MarketplaceCubit, MarketplaceState>(
                 builder: (context, state) {
+                  final categories = state is MarketplaceLoaded
+                      ? state.categories
+                      : const [];
+                  final filters = <Widget>[
+                    _buildFilterChip('Tất cả', '', colorScheme),
+                    const SizedBox(width: 8),
+                    ...categories.expand(
+                      (category) => [
+                        _buildFilterChip(
+                          category.name,
+                          category.id,
+                          colorScheme,
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                    ),
+                  ];
+                  Widget content;
                   if (state is MarketplaceLoading) {
-                    return const Center(child: CircularProgressIndicator());
+                    content = const Center(child: CircularProgressIndicator());
                   } else if (state is MarketplaceError) {
-                    return Center(child: Text(state.message));
+                    content = Center(child: Text(state.message));
                   } else if (state is MarketplaceLoaded) {
                     final listings = state.listings;
                     if (listings.isEmpty) {
-                      return const Center(
+                      content = const Center(
                         child: Text('Không có sản phẩm nào.'),
                       );
-                    }
-                    return GridView.builder(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            childAspectRatio: 0.65,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                          ),
-                      itemCount: listings.length,
-                      itemBuilder: (context, index) {
-                        final item = listings[index];
-                        return _buildProductCard(
-                          item,
+                    } else {
+                      content = GridView.builder(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              childAspectRatio: 0.65,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                            ),
+                        itemCount: listings.length,
+                        itemBuilder: (context, index) => _buildProductCard(
+                          listings[index],
                           colorScheme,
                           theme,
                           context,
-                        );
-                      },
-                    );
+                        ),
+                      );
+                    }
+                  } else {
+                    content = const SizedBox();
                   }
-                  return const SizedBox();
+                  return Column(
+                    children: [
+                      SizedBox(
+                        height: 40,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          children: filters,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Expanded(child: content),
+                    ],
+                  );
                 },
               ),
             ),
@@ -148,25 +159,35 @@ class _MarketplacePageState extends State<MarketplacePage> {
 
   Widget _buildFilterChip(
     String label,
-    bool isSelected,
+    String categoryId,
     ColorScheme colorScheme,
   ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isSelected
-            ? colorScheme.secondary
-            : colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        label,
-        style: TextStyle(
+    final isSelected = _selectedCategory == categoryId;
+    return GestureDetector(
+      onTap: () {
+        if (isSelected) return;
+        setState(() => _selectedCategory = categoryId);
+        _marketplaceCubit.loadCatalog(
+          category: categoryId.isEmpty ? null : categoryId,
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
           color: isSelected
-              ? colorScheme.onSecondary
-              : colorScheme.onSurfaceVariant,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ? colorScheme.secondary
+              : colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected
+                ? colorScheme.onSecondary
+                : colorScheme.onSurfaceVariant,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
         ),
       ),
     );

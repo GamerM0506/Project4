@@ -3,6 +3,7 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../models/listing_model.dart';
 import '../models/request_model.dart';
+import '../models/category_model.dart';
 
 abstract class MarketplaceRemoteDataSource {
   Future<List<ListingModel>> getCatalog({
@@ -10,6 +11,7 @@ abstract class MarketplaceRemoteDataSource {
     String? province,
     String? groupId,
   });
+  Future<List<CategoryModel>> getCategories();
   Future<List<ListingModel>> getListings();
   Future<ListingModel> getListingDetail(String id);
   Future<void> createListing(Map<String, dynamic> data);
@@ -63,6 +65,25 @@ class MarketplaceRemoteDataSourceImpl implements MarketplaceRemoteDataSource {
       return data.map((json) => ListingModel.fromJson(json)).toList();
     } catch (e) {
       throw Exception('Failed to get catalog: $e');
+    }
+  }
+
+  @override
+  Future<List<CategoryModel>> getCategories() async {
+    try {
+      final response = await apiClient.dio.get(
+        '${AppConstants.donationApiBaseUrl}/categories',
+      );
+      final data = response.data is Map ? response.data['data'] : response.data;
+      final items = data is List ? data : const [];
+      return items
+          .whereType<Map>()
+          .map(
+            (item) => CategoryModel.fromJson(Map<String, dynamic>.from(item)),
+          )
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to get categories: $e');
     }
   }
 

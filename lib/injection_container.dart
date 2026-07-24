@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/network/api_client.dart';
 import 'core/network/media_service.dart';
 import 'features/auth/data/datasources/auth_remote_data_source.dart';
+import 'features/home/data/home_repository.dart';
+import 'features/home/presentation/cubit/home_cubit.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/domain/usecases/login_usecase.dart';
@@ -196,6 +198,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetCommentsUseCase(sl()));
   sl.registerLazySingleton(() => AddCommentUseCase(sl()));
 
+  sl.registerLazySingleton(() => GetCategoriesUseCase(sl()));
   sl.registerLazySingleton(() => GetCatalogUseCase(sl()));
   sl.registerLazySingleton(() => GetListingDetailUseCase(sl()));
   sl.registerLazySingleton(() => CreateListingUseCase(sl()));
@@ -218,6 +221,8 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetMessagesUseCase(sl()));
   sl.registerLazySingleton(() => SendMessageUseCase(sl()));
   sl.registerLazySingleton(() => MarkAsReadUseCase(sl()));
+
+  sl.registerLazySingleton(() => HomeRepository(apiClient: sl()));
 
   sl.registerLazySingleton(
     () => AuthCubit(
@@ -246,7 +251,10 @@ Future<void> initDependencies() async {
       prefs: sl(),
     ),
   );
-  sl.registerFactory(() => MarketplaceCubit(getCatalogUseCase: sl()));
+  sl.registerFactory(
+    () => MarketplaceCubit(getCatalogUseCase: sl(), getCategoriesUseCase: sl()),
+  );
+  sl.registerFactory(() => HomeCubit(repository: sl()));
   sl.registerFactory(
     () => ListingDetailCubit(
       getListingDetailUseCase: sl(),
@@ -329,4 +337,7 @@ Future<void> initDependencies() async {
   );
 
   sl.registerFactory(() => NotificationCubit(repository: sl()));
+
+  sl.registerLazySingleton(() => HomeRepository(apiClient: sl()));
+  sl.registerFactory(() => HomeCubit(repository: sl()));
 }
