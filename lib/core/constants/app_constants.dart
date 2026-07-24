@@ -1,9 +1,16 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 class AppConstants {
-  static const String authApiBaseUrl = 'http://216.108.237.20:8000/api/identity';
-  static const String mediaApiBaseUrl = 'http://216.108.237.20:8000/api/media';
-  static const String productApiBaseUrl = 'http://10.0.2.2:3003/api';
-  static const String chatApiBaseUrl = 'http://10.0.2.2:3004/api';
-  static const String communityApiBaseUrl = 'http://216.108.237.20:8000/api/community';
+  static const String apiHost = '216.108.237.20';
+  static const String apiBaseUrl = 'http://$apiHost:8000/api';
+
+  static const String authApiBaseUrl = '$apiBaseUrl/identity';
+  static const String mediaApiBaseUrl = '$apiBaseUrl/media';
+  static const String productApiBaseUrl = '$apiBaseUrl/product';
+  static const String chatApiBaseUrl = '$apiBaseUrl/communication';
+  static const String communityApiBaseUrl = '$apiBaseUrl/community';
+  static const String marketplaceApiBaseUrl = '$apiBaseUrl/marketplace';
+  static const String aiApiBaseUrl = '$apiBaseUrl/ai';
 
   static const String supportEmail = 'support@chosv.vn';
   static const String supportPhone = '1900 1000';

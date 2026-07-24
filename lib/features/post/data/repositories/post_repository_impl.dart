@@ -40,6 +40,16 @@ class PostRepositoryImpl implements PostRepository {
   }
 
   @override
+  Future<Either<String, PostEntity>> updatePostStatus(String postId, String status) async {
+    try {
+      final post = await remoteDataSource.updatePostStatus(postId, status);
+      return Right(post);
+    } catch (e) {
+      return Left(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  @override
   Future<Either<String, PostEntity>> getPostDetail(String postId) async {
     try {
       final post = await remoteDataSource.getPostDetail(postId);

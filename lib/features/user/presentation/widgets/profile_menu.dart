@@ -23,11 +23,17 @@ class ProfileMenu extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _buildMenuItem(context, Icons.volunteer_activism_outlined, 'Vật phẩm của tôi'),
+          _buildMenuItem(context, Icons.volunteer_activism_outlined, 'Vật phẩm của tôi', onTap: () {
+            context.push(AppRoutes.myItems);
+          }),
           Divider(height: 1, thickness: 1, color: colorScheme.surfaceContainerHighest),
-          _buildMenuItem(context, Icons.real_estate_agent_outlined, 'Yêu cầu của tôi'),
+          _buildMenuItem(context, Icons.real_estate_agent_outlined, 'Yêu cầu của tôi', onTap: () {
+            context.push(AppRoutes.myRequests);
+          }),
           Divider(height: 1, thickness: 1, color: colorScheme.surfaceContainerHighest),
-          _buildMenuItem(context, Icons.bookmark_border_outlined, 'Nhóm đã lưu'),
+          _buildMenuItem(context, Icons.bookmark_border_outlined, 'Nhóm đã lưu', onTap: () {
+            context.push(AppRoutes.savedGroups);
+          }),
           Divider(height: 1, thickness: 1, color: colorScheme.surfaceContainerHighest),
           _buildMenuItem(context, Icons.manage_accounts_outlined, 'Cài đặt tài khoản', onTap: () {
             context.push(AppRoutes.settings);

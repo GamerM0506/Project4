@@ -46,7 +46,7 @@ class _GroupDetailViewState extends State<GroupDetailView> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -115,7 +115,7 @@ class _GroupDetailViewState extends State<GroupDetailView> with SingleTickerProv
                     ],
                     flexibleSpace: FlexibleSpaceBar(
                       background: Image.network(
-                        group.coverUrl ?? 'https://images.unsplash.com/photo-1593113565637-123456789abc?q=80&w=600&auto=format&fit=crop',
+                        group.coverUrl ?? 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=600&auto=format&fit=crop',
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
                           return Container(color: Colors.grey[300], child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)));
@@ -181,8 +181,11 @@ class _GroupDetailViewState extends State<GroupDetailView> with SingleTickerProv
                                     if (currentUserId == group.ownerId || group.myRole == 'owner' || group.myRole == 'moderator')
                                       Expanded(
                                         child: FilledButton.icon(
-                                          onPressed: () {
-                                            context.push('${AppRoutes.groupDashboard}/${group.id}');
+                                          onPressed: () async {
+                                            await context.push('${AppRoutes.groupDashboard}/${group.id}');
+                                            if (context.mounted) {
+                                              context.read<GroupDetailCubit>().fetchGroupDetail(group.id);
+                                            }
                                           },
                                           icon: const Icon(Icons.settings),
                                           label: const Text('Quản lý Nhóm'),
@@ -215,6 +218,21 @@ class _GroupDetailViewState extends State<GroupDetailView> with SingleTickerProv
                                           label: const Text('Đã tham gia'),
                                         ),
                                       ),
+                                     const SizedBox(width: 8),
+                                     FilledButton.icon(
+                                       onPressed: () {
+                                         context.push(AppRoutes.chatRoom, extra: {
+                                           'conversationId': group.id,
+                                           'name': group.name,
+                                         });
+                                       },
+                                       icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                                       label: const Text('Nhắn tin & Quyên góp'),
+                                       style: FilledButton.styleFrom(
+                                         backgroundColor: colorScheme.primaryContainer,
+                                         foregroundColor: colorScheme.onPrimaryContainer,
+                                       ),
+                                     ),
                                     const SizedBox(width: 12),
                                     IconButton.filledTonal(
                                       onPressed: () {},

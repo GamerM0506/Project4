@@ -16,11 +16,16 @@ class AppRoutes {
   static const String groups = '/groups';
   static const String profile = '/profile';
   static const String editProfile = '/profile/edit';
+  static const String myItems = '/profile/my-items';
+  static const String myRequests = '/profile/my-requests';
+  static const String savedGroups = '/profile/saved-groups';
   static const String productDetail = '/product-detail';
   static const String chatRoom = '/chat-room';
+  static const String chatInbox = '/chat';
   static const String notifications = '/notifications';
 
   static const String groupDashboard = '/groups/dashboard';
   static const String createGroup = '/groups/create';
   static const String groupDetail = '/groups/detail';
+  static const String editGroup = '/groups/edit';
 }

@@ -42,6 +42,7 @@ import 'features/group/domain/usecases/reject_join_usecase.dart';
 import 'features/group/domain/usecases/get_members_usecase.dart';
 import 'features/group/domain/usecases/update_member_role_usecase.dart';
 import 'features/group/domain/usecases/update_member_status_usecase.dart';
+import 'features/group/domain/usecases/update_group_usecase.dart';
 import 'features/marketplace/data/datasources/marketplace_remote_data_source.dart';
 import 'features/marketplace/data/repositories/marketplace_repository_impl.dart';
 import 'features/marketplace/domain/repositories/marketplace_repository.dart';
@@ -55,10 +56,15 @@ import 'features/group/presentation/cubit/group_detail_cubit.dart';
 import 'features/group/presentation/cubit/create_group_cubit.dart';
 import 'features/group/presentation/cubit/group_join_requests_cubit.dart';
 import 'features/group/presentation/cubit/group_members_cubit.dart';
+import 'features/group/presentation/cubit/group_dashboard_posts_cubit.dart';
+import 'features/group/presentation/cubit/group_inventory_cubit.dart';
+import 'features/group/presentation/cubit/update_group_cubit.dart';
 
 import 'features/post/data/datasources/post_remote_data_source.dart';
 import 'features/post/data/repositories/post_repository_impl.dart';
 import 'features/post/domain/repositories/post_repository.dart';
+import 'features/post/domain/usecases/get_post_detail_usecase.dart';
+import 'features/post/domain/usecases/update_post_status_usecase.dart';
 import 'features/post/domain/usecases/get_posts_usecase.dart';
 import 'features/post/domain/usecases/create_post_usecase.dart';
 import 'features/post/domain/usecases/delete_post_usecase.dart';
@@ -68,6 +74,18 @@ import 'features/post/domain/usecases/get_comments_usecase.dart';
 import 'features/post/domain/usecases/add_comment_usecase.dart';
 import 'features/post/presentation/cubit/group_feed_cubit.dart';
 import 'features/post/presentation/cubit/post_comments_cubit.dart';
+
+import 'features/chat/data/datasources/chat_remote_data_source.dart';
+import 'features/chat/domain/repositories/chat_repository.dart';
+import 'features/chat/data/repositories/chat_repository_impl.dart';
+import 'features/chat/domain/usecases/chat_usecases.dart';
+import 'features/chat/presentation/cubit/chat_cubit.dart';
+import 'features/chat/presentation/cubit/chat_inbox_cubit.dart';
+
+import 'features/notification/data/datasources/notification_remote_data_source.dart';
+import 'features/notification/domain/repositories/notification_repository.dart';
+import 'features/notification/data/repositories/notification_repository_impl.dart';
+import 'features/notification/presentation/cubit/notification_cubit.dart';
 
 import 'core/theme/theme_cubit.dart';
 
@@ -97,6 +115,12 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<MarketplaceRemoteDataSource>(
     () => MarketplaceRemoteDataSourceImpl(sl()),
   );
+  sl.registerLazySingleton<ChatRemoteDataSource>(
+    () => ChatRemoteDataSourceImpl(apiClient: sl()),
+  );
+  sl.registerLazySingleton<NotificationRemoteDataSource>(
+    () => NotificationRemoteDataSourceImpl(apiClient: sl()),
+  );
 
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(remoteDataSource: sl()),
@@ -112,6 +136,12 @@ Future<void> initDependencies() async {
   );
   sl.registerLazySingleton<MarketplaceRepository>(
     () => MarketplaceRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton<ChatRepository>(
+    () => ChatRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton<NotificationRepository>(
+    () => NotificationRepositoryImpl(remoteDataSource: sl()),
   );
 
   sl.registerLazySingleton(() => LoginUseCase(sl()));
@@ -139,10 +169,13 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetMembersUseCase(sl()));
   sl.registerLazySingleton(() => UpdateMemberRoleUseCase(sl()));
   sl.registerLazySingleton(() => UpdateMemberStatusUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateGroupUseCase(sl()));
 
   sl.registerLazySingleton(() => GetPostsUseCase(sl()));
   sl.registerLazySingleton(() => CreatePostUseCase(sl()));
   sl.registerLazySingleton(() => DeletePostUseCase(sl()));
+  sl.registerLazySingleton(() => GetPostDetailUseCase(sl()));
+  sl.registerLazySingleton(() => UpdatePostStatusUseCase(sl()));
   sl.registerLazySingleton(() => LikePostUseCase(sl()));
   sl.registerLazySingleton(() => UnlikePostUseCase(sl()));
   sl.registerLazySingleton(() => GetCommentsUseCase(sl()));
@@ -157,6 +190,11 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => RejectRequestUseCase(sl()));
   sl.registerLazySingleton(() => ScheduleRequestUseCase(sl()));
   sl.registerLazySingleton(() => CompleteRequestUseCase(sl()));
+
+  sl.registerLazySingleton(() => GetConversationsUseCase(sl()));
+  sl.registerLazySingleton(() => GetMessagesUseCase(sl()));
+  sl.registerLazySingleton(() => SendMessageUseCase(sl()));
+  sl.registerLazySingleton(() => MarkAsReadUseCase(sl()));
 
   sl.registerLazySingleton(() => AuthCubit(
         loginUseCase: sl(),
@@ -223,6 +261,17 @@ Future<void> initDependencies() async {
         updateMemberRoleUseCase: sl(),
         updateMemberStatusUseCase: sl(),
       ));
+  sl.registerFactory(() => UpdateGroupCubit(
+        updateGroupUseCase: sl(),
+      ));
+  sl.registerFactory(() => GroupDashboardPostsCubit(
+        getPostsUseCase: sl(),
+        updatePostStatusUseCase: sl(),
+        deletePostUseCase: sl(),
+      ));
+  sl.registerFactory(() => GroupInventoryCubit(
+        getCatalogUseCase: sl(),
+      ));
   sl.registerFactory(
     () => GroupFeedCubit(
       getPostsUseCase: sl(),
@@ -238,4 +287,12 @@ Future<void> initDependencies() async {
       addCommentUseCase: sl(),
     ),
   );
+
+  sl.registerFactory(() => ChatInboxCubit(getConversationsUseCase: sl()));
+  sl.registerFactory(() => ChatCubit(
+    getMessagesUseCase: sl(),
+    sendMessageUseCase: sl(),
+  ));
+
+  sl.registerFactory(() => NotificationCubit(repository: sl()));
 }

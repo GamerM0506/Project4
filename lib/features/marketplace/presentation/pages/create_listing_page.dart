@@ -5,12 +5,16 @@ import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '../../../../core/constants/app_constants.dart';
 import '../../../../injection_container.dart';
 import '../cubit/create_listing_cubit.dart';
 import '../cubit/create_listing_state.dart';
 
 class CreateListingPage extends StatefulWidget {
-  const CreateListingPage({super.key});
+  final String? groupId;
+
+  const CreateListingPage({super.key, this.groupId});
 
   @override
   State<CreateListingPage> createState() => _CreateListingPageState();
@@ -20,53 +24,109 @@ class _CreateListingPageState extends State<CreateListingPage> {
   final _cubit = sl<CreateListingCubit>();
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
-  
+  final _groupIdController = TextEditingController();
+
   String _category = 'clothing';
-  String _condition = 'New';
+  String _condition = 'Good';
   int _quantity = 1;
   XFile? _imageFile;
   bool _isDetecting = false;
+  bool _isGeneratingDesc = false;
+  bool _aiDetected = false;
   final ImagePicker _picker = ImagePicker();
+
+  final Map<String, Map<String, dynamic>> _categoryData = {
+    'clothing': {'label': 'Quần áo', 'icon': Icons.checkroom_outlined},
+    'food': {'label': 'Thực phẩm', 'icon': Icons.restaurant_outlined},
+    'furniture': {'label': 'Đồ gia dụng', 'icon': Icons.chair_outlined},
+    'electronics': {'label': 'Điện tử', 'icon': Icons.devices_outlined},
+    'others': {'label': 'Khác', 'icon': Icons.category_outlined},
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.groupId != null && widget.groupId!.isNotEmpty) {
+      _groupIdController.text = widget.groupId!;
+    } else {
+      _groupIdController.text = 'grp_123';
+    }
+  }
 
   @override
   void dispose() {
     _cubit.close();
     _titleController.dispose();
     _descController.dispose();
+    _groupIdController.dispose();
     super.dispose();
   }
 
   void _submit() {
-    if (_titleController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập tên sản phẩm')),
-      );
+    if (_titleController.text.trim().isEmpty) {
+      _showSnackBar('Vui lòng nhập tên món đồ quyên góp', isError: true);
       return;
     }
-    
-    // In a real app, these ID would come from the current user and selection
+
+    if (_groupIdController.text.trim().isEmpty) {
+      _showSnackBar('Vui lòng nhập ID Hội nhóm thiện nguyện', isError: true);
+      return;
+    }
+
     _cubit.createListing(
-      inventoryItemId: 'inv_123',
-      groupId: 'grp_123',
-      title: _titleController.text,
-      description: _descController.text,
+      inventoryItemId: 'inv_${DateTime.now().millisecondsSinceEpoch}',
+      groupId: _groupIdController.text.trim(),
+      title: _titleController.text.trim(),
+      description: _descController.text.trim(),
       categoryId: _category,
       condition: _condition,
       quantityTotal: _quantity,
-      createdBy: 'user_123',
+      createdBy: 'user_current',
+    );
+  }
+
+  void _showSnackBar(String message, {bool isError = false, bool isSuccess = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isSuccess
+                  ? Icons.check_circle_outline
+                  : (isError ? Icons.error_outline : Icons.info_outline),
+              color: Colors.white,
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: isSuccess
+            ? Colors.green.shade700
+            : (isError ? Colors.red.shade700 : const Color(0xFF1E88E5)),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+      ),
     );
   }
 
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final pickedFile = await _picker.pickImage(source: source, maxWidth: 1024, maxHeight: 1024);
+      final pickedFile = await _picker.pickImage(
+        source: source,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 70,
+      );
       if (pickedFile != null) {
         setState(() {
           _imageFile = pickedFile;
+          _aiDetected = false;
         });
+        _detectItem();
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
+      _showSnackBar('Lỗi khi chọn ảnh: $e', isError: true);
     }
   }
 
@@ -75,28 +135,36 @@ class _CreateListingPageState extends State<CreateListingPage> {
 
     setState(() => _isDetecting = true);
     try {
-      final bytes = await File(_imageFile!.path).readAsBytes();
+      final bytes = await _imageFile!.readAsBytes();
       final base64Image = base64Encode(bytes);
       final dataUri = 'data:image/jpeg;base64,$base64Image';
 
-      final dio = Dio();
+      final dio = Dio(BaseOptions(
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 15),
+      ));
+
       final response = await dio.post(
-        'http://10.0.2.2:3007/ai/detect-item',
+        '${AppConstants.aiApiBaseUrl}/detect-item',
         data: {'imageUrl': dataUri},
       );
 
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data;
         setState(() {
-          if (data['name'] != null) _titleController.text = data['name'];
+          if (data['name'] != null && data['name'].toString().isNotEmpty) {
+            _titleController.text = data['name'];
+          }
+
           if (data['categoryId'] != null) {
             final cat = data['categoryId'].toString().toLowerCase();
-            if (['clothing', 'food', 'furniture', 'electronics'].contains(cat)) {
+            if (_categoryData.containsKey(cat)) {
               _category = cat;
             } else {
               _category = 'others';
             }
           }
+
           if (data['condition'] != null) {
             final cond = data['condition'].toString();
             if (['New', 'Good', 'Used'].contains(cond)) {
@@ -105,24 +173,66 @@ class _CreateListingPageState extends State<CreateListingPage> {
               _condition = 'Used';
             }
           }
-          if (data['suggestedDescription'] != null) {
+
+          if (data['suggestedDescription'] != null &&
+              data['suggestedDescription'].toString().isNotEmpty) {
             _descController.text = data['suggestedDescription'];
           }
+
+          _aiDetected = true;
         });
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('AI nhận diện thành công!')));
+
+        _showSnackBar('✨ AI đã tự động điền thông tin món đồ!', isSuccess: true);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('AI không nhận diện được')));
+        _showSnackBar('AI không thể nhận diện được hình ảnh', isError: true);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi gọi AI: $e')));
+      _showSnackBar(
+        'Không kết nối được server AI (${AppConstants.apiHost}). Bạn có thể tự điền form.',
+        isError: true,
+      );
     } finally {
       setState(() => _isDetecting = false);
     }
   }
 
+  Future<void> _generateDescriptionWithAI() async {
+    if (_titleController.text.trim().isEmpty) {
+      _showSnackBar('Vui lòng nhập tên món đồ trước khi sinh mô tả', isError: true);
+      return;
+    }
+
+    setState(() => _isGeneratingDesc = true);
+    try {
+      final dio = Dio();
+      final response = await dio.post(
+        '${AppConstants.aiApiBaseUrl}/generate-description',
+        data: {
+          'name': _titleController.text.trim(),
+          'condition': _condition,
+        },
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final desc = response.data['description'];
+        if (desc != null) {
+          setState(() {
+            _descController.text = desc;
+          });
+          _showSnackBar('✨ AI đã tự động tạo đoạn văn mô tả ấm áp!', isSuccess: true);
+        }
+      }
+    } catch (e) {
+      _showSnackBar('Lỗi khi sinh mô tả tự động', isError: true);
+    } finally {
+      setState(() => _isGeneratingDesc = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return BlocProvider.value(
       value: _cubit,
@@ -131,45 +241,28 @@ class _CreateListingPageState extends State<CreateListingPage> {
         appBar: AppBar(
           backgroundColor: colorScheme.surface,
           elevation: 0,
+          scrolledUnderElevation: 2,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: colorScheme.onSurfaceVariant),
+            icon: Icon(Icons.arrow_back_ios_new, color: colorScheme.onSurface, size: 20),
             onPressed: () => context.pop(),
           ),
           title: Text(
-            'Add Item Details',
+            'Đăng bài Gian hàng 0 đồng',
             style: TextStyle(
-              color: colorScheme.primary,
+              color: colorScheme.onSurface,
               fontWeight: FontWeight.bold,
-              fontSize: 20,
+              fontSize: 18,
             ),
           ),
           centerTitle: true,
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: Center(
-                child: Text(
-                  'Step 2 of 3',
-                  style: TextStyle(
-                    color: colorScheme.onSurfaceVariant,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ),
-          ],
         ),
         body: BlocConsumer<CreateListingCubit, CreateListingState>(
           listener: (context, state) {
             if (state is CreateListingSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Tạo tin thành công!')),
-              );
+              _showSnackBar('Đăng bài quyên góp thành công!', isSuccess: true);
               context.pop();
             } else if (state is CreateListingError) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.message)),
-              );
+              _showSnackBar(state.message, isError: true);
             }
           },
           builder: (context, state) {
@@ -178,201 +271,173 @@ class _CreateListingPageState extends State<CreateListingPage> {
             }
 
             return ListView(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               children: [
-                // Image Upload Area
-                GestureDetector(
-                  onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      builder: (_) => SafeArea(
-                        child: Wrap(
-                          children: [
-                            ListTile(
-                              leading: const Icon(Icons.photo_library),
-                              title: const Text('Chọn từ thư viện'),
-                              onTap: () {
-                                context.pop();
-                                _pickImage(ImageSource.gallery);
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.camera_alt),
-                              title: const Text('Chụp ảnh mới'),
-                              onTap: () {
-                                context.pop();
-                                _pickImage(ImageSource.camera);
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    height: 200,
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: colorScheme.outlineVariant,
-                        width: 2,
-                        style: BorderStyle.solid,
-                      ),
-                      image: _imageFile != null
-                          ? DecorationImage(
-                              image: FileImage(File(_imageFile!.path)),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
-                    ),
-                    child: _imageFile == null
-                        ? Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.add_a_photo, size: 40, color: colorScheme.primary),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Tap to take a photo or upload',
-                                style: TextStyle(color: colorScheme.onSurfaceVariant),
-                              ),
-                            ],
-                          )
-                        : null,
-                  ),
-                ),
-                if (_imageFile != null) ...[
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _isDetecting ? null : _detectItem,
-                      icon: _isDetecting 
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.auto_awesome),
-                      label: Text(_isDetecting ? 'Đang phân tích...' : 'AI Tự động Điền Form'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colorScheme.primaryContainer,
-                        foregroundColor: colorScheme.onPrimaryContainer,
-                      ),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    _buildSmallPhotoSlot(colorScheme),
-                    const SizedBox(width: 12),
-                    _buildSmallPhotoSlot(colorScheme),
-                    const SizedBox(width: 12),
-                    _buildSmallPhotoSlot(colorScheme),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                
-                // Form
+                // 1. Image Header Upload Card
+                _buildImagePickerHeader(colorScheme),
+
+                const SizedBox(height: 16),
+
+                // 2. AI Auto-fill Banner / Magic Action
+                _buildAiBanner(colorScheme),
+
+                const SizedBox(height: 20),
+
+                // 3. Form Content Container
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: colorScheme.surfaceContainerLowest,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: colorScheme.surfaceContainerHighest),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.4)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.02),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                        color: Colors.black.withOpacity(0.03),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
                       ),
                     ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Item Name
+                      // Group Selector / Group ID
+                      _buildLabel('Hội nhóm tiếp nhận (Group)', Icons.groups_outlined),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _groupIdController,
+                        readOnly: widget.groupId != null,
+                        style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.w500),
+                        decoration: InputDecoration(
+                          hintText: 'Nhập ID nhóm thiện nguyện tiếp nhận',
+                          prefixIcon: Icon(Icons.group_outlined, color: colorScheme.primary),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: colorScheme.outlineVariant),
+                          ),
+                          filled: true,
+                          fillColor: colorScheme.surface,
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Item Name Field
+                      _buildLabel('Tên món đồ quyên góp *', Icons.card_giftcard),
+                      const SizedBox(height: 8),
                       TextField(
                         controller: _titleController,
+                        style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.w500),
                         decoration: InputDecoration(
-                          labelText: 'Item Name',
+                          hintText: 'Ví dụ: Áo khoác gió nam, Cây lau nhà...',
+                          prefixIcon: Icon(Icons.edit_outlined, color: colorScheme.primary),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(16),
                             borderSide: BorderSide(color: colorScheme.outlineVariant),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.6)),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: colorScheme.primary),
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: colorScheme.primary, width: 2),
                           ),
+                          filled: true,
+                          fillColor: colorScheme.surface,
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      
-                      // Category
-                      DropdownButtonFormField<String>(
-                        value: _category,
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: colorScheme.outlineVariant),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        ),
-                        items: const [
-                          DropdownMenuItem(value: 'clothing', child: Text('Clothing')),
-                          DropdownMenuItem(value: 'food', child: Text('Food')),
-                          DropdownMenuItem(value: 'furniture', child: Text('Furniture')),
-                          DropdownMenuItem(value: 'electronics', child: Text('Electronics')),
-                          DropdownMenuItem(value: 'others', child: Text('Others')),
-                        ],
-                        onChanged: (val) {
-                          if (val != null) setState(() => _category = val);
-                        },
+
+                      const SizedBox(height: 20),
+
+                      // Category Selector Chips
+                      _buildLabel('Danh mục món đồ', Icons.grid_view_rounded),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _categoryData.entries.map((entry) {
+                          final key = entry.key;
+                          final label = entry.value['label'] as String;
+                          final icon = entry.value['icon'] as IconData;
+                          final isSelected = _category == key;
+
+                          return ChoiceChip(
+                            avatar: Icon(
+                              icon,
+                              size: 18,
+                              color: isSelected
+                                  ? colorScheme.onPrimary
+                                  : colorScheme.onSurfaceVariant,
+                            ),
+                            label: Text(label),
+                            selected: isSelected,
+                            selectedColor: colorScheme.primary,
+                            backgroundColor: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                            labelStyle: TextStyle(
+                              color: isSelected
+                                  ? colorScheme.onPrimary
+                                  : colorScheme.onSurface,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 13,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              side: BorderSide(
+                                color: isSelected
+                                    ? colorScheme.primary
+                                    : colorScheme.outlineVariant.withOpacity(0.3),
+                              ),
+                            ),
+                            onSelected: (selected) {
+                              if (selected) setState(() => _category = key);
+                            },
+                          );
+                        }).toList(),
                       ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.auto_awesome, size: 16, color: colorScheme.secondary),
-                          const SizedBox(width: 4),
-                          Text(
-                            'AI suggests: Clothing / Winter Gear',
-                            style: TextStyle(color: colorScheme.secondary, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Quantity & Condition
+
+                      const SizedBox(height: 24),
+
+                      // Quantity and Condition Row
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Quantity
                           Expanded(
+                            flex: 4,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Quantity', style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14)),
+                                _buildLabel('Số lượng', Icons.numbers),
                                 const SizedBox(height: 8),
                                 Container(
-                                  padding: const EdgeInsets.all(4),
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: colorScheme.surfaceContainerHighest,
-                                    borderRadius: BorderRadius.circular(12),
+                                    color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.3)),
                                   ),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
                                       IconButton(
-                                        icon: const Icon(Icons.remove),
+                                        icon: const Icon(Icons.remove_circle_outline, size: 22),
                                         onPressed: () {
                                           if (_quantity > 1) setState(() => _quantity--);
                                         },
-                                        color: colorScheme.onSurfaceVariant,
+                                        color: colorScheme.primary,
                                       ),
-                                      Text('$_quantity', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                      Text(
+                                        '$_quantity',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: colorScheme.onSurface,
+                                        ),
+                                      ),
                                       IconButton(
-                                        icon: const Icon(Icons.add),
-                                        onPressed: () {
-                                          setState(() => _quantity++);
-                                        },
+                                        icon: const Icon(Icons.add_circle_outline, size: 22),
+                                        onPressed: () => setState(() => _quantity++),
                                         color: colorScheme.primary,
                                       ),
                                     ],
@@ -381,25 +446,29 @@ class _CreateListingPageState extends State<CreateListingPage> {
                               ],
                             ),
                           ),
+
                           const SizedBox(width: 16),
-                          // Condition
+
+                          // Condition Segmented Pills
                           Expanded(
+                            flex: 6,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Condition', style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14)),
+                                _buildLabel('Tình trạng đồ', Icons.stars_outlined),
                                 const SizedBox(height: 8),
                                 Container(
                                   padding: const EdgeInsets.all(4),
                                   decoration: BoxDecoration(
-                                    color: colorScheme.surfaceContainerHighest,
-                                    borderRadius: BorderRadius.circular(12),
+                                    color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.3)),
                                   ),
                                   child: Row(
                                     children: [
-                                      _buildConditionOption('New', colorScheme),
-                                      _buildConditionOption('Good', colorScheme),
-                                      _buildConditionOption('Used', colorScheme),
+                                      _buildConditionPill('New', 'Mới', colorScheme),
+                                      _buildConditionPill('Good', 'Tốt', colorScheme),
+                                      _buildConditionPill('Used', 'Cũ', colorScheme),
                                     ],
                                   ),
                                 ),
@@ -408,30 +477,73 @@ class _CreateListingPageState extends State<CreateListingPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      
-                      // Description
+
+                      const SizedBox(height: 24),
+
+                      // Description Field with Magic AI Assistant Button
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildLabel('Mô tả chi tiết', Icons.description_outlined),
+                          InkWell(
+                            onTap: _isGeneratingDesc ? null : _generateDescriptionWithAI,
+                            borderRadius: BorderRadius.circular(12),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              child: Row(
+                                children: [
+                                  if (_isGeneratingDesc)
+                                    const SizedBox(
+                                      width: 12,
+                                      height: 12,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  else
+                                    Icon(Icons.auto_awesome, size: 14, color: colorScheme.primary),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Sinh bằng AI',
+                                    style: TextStyle(
+                                      color: colorScheme.primary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
                       TextField(
                         controller: _descController,
                         maxLines: 4,
+                        style: TextStyle(color: colorScheme.onSurface),
                         decoration: InputDecoration(
-                          labelText: 'Description & Notes',
+                          hintText: 'Nhập mô tả về kiểu dáng, màu sắc, địa điểm nhận đồ...',
                           alignLabelWithHint: true,
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(16),
                             borderSide: BorderSide(color: colorScheme.outlineVariant),
                           ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: colorScheme.primary),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.6)),
                           ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                          ),
+                          filled: true,
+                          fillColor: colorScheme.surface,
                         ),
                       ),
                     ],
                   ),
                 ),
-                
-                const SizedBox(height: 100), // Bottom padding
+
+                const SizedBox(height: 100),
               ],
             );
           },
@@ -440,73 +552,283 @@ class _CreateListingPageState extends State<CreateListingPage> {
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerLowest,
+            color: colorScheme.surface,
+            border: Border(top: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.3))),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withOpacity(0.04),
                 offset: const Offset(0, -4),
-                blurRadius: 12,
+                blurRadius: 10,
               ),
             ],
           ),
-          child: ElevatedButton(
-            onPressed: _submit,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colorScheme.primary,
-              foregroundColor: colorScheme.onPrimary,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
+          child: SafeArea(
+            child: ElevatedButton(
+              onPressed: _submit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colorScheme.primary,
+                foregroundColor: colorScheme.onPrimary,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Đăng bài quyên góp',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(width: 8),
+                  Icon(Icons.arrow_forward_rounded, size: 20),
+                ],
               ),
             ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLabel(String text, IconData icon) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: colorScheme.primary),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: TextStyle(
+            color: colorScheme.onSurface,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImagePickerHeader(ColorScheme colorScheme) {
+    return GestureDetector(
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          builder: (_) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Wrap(
+                children: [
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.photo_library, color: colorScheme.primary),
+                    ),
+                    title: const Text('Chọn ảnh từ thư viện', style: TextStyle(fontWeight: FontWeight.bold)),
+                    onTap: () {
+                      context.pop();
+                      _pickImage(ImageSource.gallery);
+                    },
+                  ),
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: colorScheme.secondaryContainer,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.camera_alt, color: colorScheme.secondary),
+                    ),
+                    title: const Text('Chụp ảnh mới', style: TextStyle(fontWeight: FontWeight.bold)),
+                    onTap: () {
+                      context.pop();
+                      _pickImage(ImageSource.camera);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        width: double.infinity,
+        height: 220,
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withOpacity(0.4),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: _imageFile != null ? colorScheme.primary : colorScheme.outlineVariant.withOpacity(0.5),
+            width: _imageFile != null ? 2 : 1.5,
+          ),
+          image: _imageFile != null
+              ? DecorationImage(
+                  image: kIsWeb
+                      ? NetworkImage(_imageFile!.path) as ImageProvider
+                      : FileImage(File(_imageFile!.path)) as ImageProvider,
+                  fit: BoxFit.cover,
+                )
+              : null,
+        ),
+        child: _imageFile == null
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer.withOpacity(0.7),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.add_a_photo_outlined, size: 36, color: colorScheme.primary),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Chụp hoặc tải ảnh món đồ quyên góp',
+                    style: TextStyle(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'AI sẽ tự động đọc ảnh và điền Form giúp bạn',
+                    style: TextStyle(
+                      color: colorScheme.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              )
+            : Stack(
+                children: [
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: CircleAvatar(
+                      backgroundColor: Colors.black54,
+                      child: IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.white, size: 18),
+                        onPressed: () => _pickImage(ImageSource.gallery),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildAiBanner(ColorScheme colorScheme) {
+    if (_imageFile == null) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.primaryContainer,
+            colorScheme.tertiaryContainer.withOpacity(0.8),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.9),
+              shape: BoxShape.circle,
+            ),
+            child: _isDetecting
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: colorScheme.primary,
+                    ),
+                  )
+                : Icon(Icons.auto_awesome, color: colorScheme.primary, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Next: Delivery Method', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                SizedBox(width: 8),
-                Icon(Icons.arrow_forward),
+                Text(
+                  _isDetecting
+                      ? 'AI đang đọc hình ảnh...'
+                      : (_aiDetected ? '✨ AI đã điền Form thành công' : 'Phân tích hình ảnh với AI'),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onPrimaryContainer,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _isDetecting
+                      ? 'Đang gửi ảnh sang AI (${AppConstants.apiHost})...'
+                      : (_aiDetected
+                          ? 'Bạn có thể chỉnh sửa lại thông tin nếu cần'
+                          : 'Bấm nút để AI tự nhận diện lại'),
+                  style: TextStyle(
+                    color: colorScheme.onPrimaryContainer.withOpacity(0.8),
+                    fontSize: 12,
+                  ),
+                ),
               ],
             ),
           ),
-        ),
+          if (!_isDetecting)
+            TextButton.icon(
+              onPressed: _detectItem,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: Text(_aiDetected ? 'Phân tích lại' : 'Chạy AI'),
+              style: TextButton.styleFrom(
+                foregroundColor: colorScheme.primary,
+                backgroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+        ],
       ),
     );
   }
 
-  Widget _buildSmallPhotoSlot(ColorScheme colorScheme) {
-    return Expanded(
-      child: AspectRatio(
-        aspectRatio: 1,
-        child: Container(
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
-          ),
-          child: Icon(Icons.add, color: colorScheme.onSurfaceVariant),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildConditionOption(String text, ColorScheme colorScheme) {
-    final isSelected = _condition == text;
+  Widget _buildConditionPill(String value, String label, ColorScheme colorScheme) {
+    final isSelected = _condition == value;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _condition = text),
+        onTap: () => setState(() => _condition = value),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? colorScheme.primaryContainer : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
+            color: isSelected ? colorScheme.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
           ),
           alignment: Alignment.center,
           child: Text(
-            text,
+            label,
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
-              color: isSelected ? colorScheme.onPrimaryContainer : colorScheme.onSurfaceVariant,
+              color: isSelected ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
             ),
           ),
         ),

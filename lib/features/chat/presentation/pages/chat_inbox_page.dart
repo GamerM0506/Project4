@@ -1,0 +1,193 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/router/app_routes.dart';
+import '../../../../injection_container.dart';
+import '../cubit/chat_inbox_cubit.dart';
+import '../cubit/chat_inbox_state.dart';
+
+class ChatInboxPage extends StatelessWidget {
+  const ChatInboxPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => sl<ChatInboxCubit>()..fetchConversations(),
+      child: const _ChatInboxView(),
+    );
+  }
+}
+
+class _ChatInboxView extends StatelessWidget {
+  const _ChatInboxView();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Tin nhắn', style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Tìm kiếm tin nhắn...',
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+            ),
+          ),
+          Expanded(
+            child: BlocBuilder<ChatInboxCubit, ChatInboxState>(
+              builder: (context, state) {
+                if (state is ChatInboxLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (state is ChatInboxError) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error_outline, size: 48, color: colorScheme.error),
+                        const SizedBox(height: 16),
+                        Text(state.message),
+                        const SizedBox(height: 16),
+                        FilledButton(
+                          onPressed: () => context.read<ChatInboxCubit>().fetchConversations(),
+                          child: const Text('Thử lại'),
+                        ),
+                      ],
+                    ),
+                  );
+                } else if (state is ChatInboxLoaded) {
+                  final conversations = state.conversations;
+
+                  if (conversations.isEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: colorScheme.primaryContainer.withOpacity(0.4),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.chat_bubble_outline,
+                                size: 56,
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              'Chưa có cuộc trò chuyện nào',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Hãy tham gia Hội nhóm và bấm "Nhắn tin & Quyên góp" để bắt đầu kết nối với nhóm!',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: colorScheme.onSurfaceVariant,
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            FilledButton.icon(
+                              onPressed: () {
+                                context.go(AppRoutes.groups);
+                              },
+                              icon: const Icon(Icons.groups_outlined),
+                              label: const Text('Khám phá Hội nhóm ngay'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: colorScheme.primary,
+                                foregroundColor: colorScheme.onPrimary,
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: conversations.length,
+                    itemBuilder: (context, index) {
+                      final conv = conversations[index];
+                      final isGroup = conv.type == 'group';
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        elevation: 0,
+                        color: colorScheme.surfaceContainerLowest,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.3)),
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                          leading: CircleAvatar(
+                            radius: 24,
+                            backgroundColor: isGroup ? colorScheme.primaryContainer : colorScheme.secondaryContainer,
+                            child: Icon(
+                              isGroup ? Icons.groups : Icons.person,
+                              color: isGroup ? colorScheme.onPrimaryContainer : colorScheme.onSecondaryContainer,
+                            ),
+                          ),
+                          title: Text(
+                            conv.title.isNotEmpty ? conv.title : (isGroup ? 'Hội nhóm thiện nguyện' : 'Người dùng'),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 4.0),
+                            child: Text(
+                              conv.lastMessage ?? 'Bắt đầu trò chuyện & quyên góp...',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
+                            ),
+                          ),
+                          trailing: const Icon(Icons.chevron_right, size: 20),
+                          onTap: () {
+                            context.push(AppRoutes.chatRoom, extra: {
+                              'conversationId': conv.id,
+                              'name': conv.title,
+                            });
+                          },
+                        ),
+                      );
+                    },
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

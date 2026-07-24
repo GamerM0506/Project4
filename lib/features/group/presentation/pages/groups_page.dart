@@ -192,7 +192,7 @@ class GroupsView extends StatelessWidget {
                           padding: const EdgeInsets.only(bottom: 24),
                           child: GroupCard(
                             name: group.name,
-                            coverUrl: group.coverUrl ?? 'https://images.unsplash.com/photo-1593113565637-123456789abc?q=80&w=600&auto=format&fit=crop',
+                            coverUrl: group.coverUrl ?? 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=600&auto=format&fit=crop',
                             logoUrl: group.avatarUrl ?? 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(group.name)}&background=random',
                             members: '${group.memberCount} Thành viên',
                             location: group.provinceCode ?? 'Vietnam',

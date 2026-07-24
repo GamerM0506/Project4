@@ -16,6 +16,7 @@ abstract class MarketplaceRemoteDataSource {
   Future<void> rejectRequest(String id, String reviewedBy, String reason);
   Future<void> scheduleRequest(String id, String reviewedBy, DateTime scheduledAt);
   Future<void> completeRequest(String id, String confirmedBy, String qrToken, String photoUrl);
+  Future<Map<String, dynamic>> getStats();
 }
 
 class MarketplaceRemoteDataSourceImpl implements MarketplaceRemoteDataSource {
@@ -23,7 +24,7 @@ class MarketplaceRemoteDataSourceImpl implements MarketplaceRemoteDataSource {
 
   MarketplaceRemoteDataSourceImpl(this.apiClient);
 
-  String get _baseUrl => 'http://216.108.237.20:8000/api/marketplace';
+  String get _baseUrl => AppConstants.marketplaceApiBaseUrl;
 
   @override
   Future<List<ListingModel>> getCatalog({String? category, String? province, String? groupId}) async {
@@ -68,7 +69,34 @@ class MarketplaceRemoteDataSourceImpl implements MarketplaceRemoteDataSource {
   @override
   Future<void> createListing(Map<String, dynamic> data) async {
     try {
-      await apiClient.dio.post('$_baseUrl/listings', data: data);
+      final payload = Map<String, dynamic>.from(data);
+      final groupId = payload['group_id']?.toString() ?? '';
+
+      // Query donation-service inventory for a valid UUID item ID
+      try {
+        final query = groupId.isNotEmpty ? {'group_id': groupId} : <String, dynamic>{};
+        final response = await apiClient.dio.get(
+          '${AppConstants.apiBaseUrl}/donation/inventory',
+          queryParameters: query,
+        );
+        if (response.data != null) {
+          final rawData = response.data is Map ? response.data['data'] : response.data;
+          List items = [];
+          if (rawData is Map && rawData['items'] is List) {
+            items = rawData['items'];
+          } else if (rawData is List) {
+            items = rawData;
+          }
+          if (items.isNotEmpty) {
+            final validId = items.first['id']?.toString();
+            if (validId != null && validId.isNotEmpty) {
+              payload['inventory_item_id'] = validId;
+            }
+          }
+        }
+      } catch (_) {}
+
+      await apiClient.dio.post('$_baseUrl/listings', data: payload);
     } catch (e) {
       throw Exception('Failed to create listing: $e');
     }
@@ -134,6 +162,15 @@ class MarketplaceRemoteDataSourceImpl implements MarketplaceRemoteDataSource {
       });
     } catch (e) {
       throw Exception('Failed to complete request: $e');
+    }
+  }
+  @override
+  Future<Map<String, dynamic>> getStats() async {
+    try {
+      final response = await apiClient.dio.get('$_baseUrl/stats');
+      return response.data['data'] as Map<String, dynamic>? ?? response.data;
+    } catch (e) {
+      throw Exception('Failed to get stats: $e');
     }
   }
 }

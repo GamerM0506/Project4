@@ -18,7 +18,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      fontFamily: GoogleFonts.quicksand().fontFamily,
+      fontFamily: GoogleFonts.nunito().fontFamily,
       scaffoldBackgroundColor: colorScheme.surface,
       textTheme: AppTypography.textTheme.apply(
         bodyColor: colorScheme.onSurface,

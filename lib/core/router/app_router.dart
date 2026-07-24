@@ -20,16 +20,23 @@ import '../../features/group/presentation/pages/groups_page.dart';
 import '../../features/group/presentation/pages/group_detail_page.dart';
 import '../../features/group/presentation/pages/create_group_page.dart';
 import '../../features/group/presentation/pages/group_dashboard_page.dart';
-// import '../../features/search/presentation/pages/search_page.dart';
-// import '../../features/chat/presentation/pages/chat_page.dart';
+import '../../features/group/presentation/pages/edit_group_page.dart';
+import '../../features/group/data/models/group_model.dart';
+import '../../features/chat/presentation/pages/chat_inbox_page.dart';
+import '../../features/chat/presentation/pages/chat_room_page.dart';
 import '../../features/user/presentation/pages/profile_page.dart';
 import '../../features/user/presentation/pages/edit_profile_page.dart';
 import '../../features/user/presentation/pages/settings_page.dart';
 import '../../features/user/presentation/pages/support_page.dart';
-// import '../../features/notifications/presentation/pages/notification_page.dart';
+import '../../features/user/presentation/pages/my_items_page.dart';
+import '../../features/user/presentation/pages/my_requests_page.dart';
+import '../../features/user/presentation/pages/saved_groups_page.dart';
 
-// Import the flutter global navigator key
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+final GlobalKey<NavigatorState> _shellHomeKey = GlobalKey<NavigatorState>(debugLabel: 'shellHome');
+final GlobalKey<NavigatorState> _shellMarketplaceKey = GlobalKey<NavigatorState>(debugLabel: 'shellMarketplace');
+final GlobalKey<NavigatorState> _shellGroupsKey = GlobalKey<NavigatorState>(debugLabel: 'shellGroups');
+final GlobalKey<NavigatorState> _shellProfileKey = GlobalKey<NavigatorState>(debugLabel: 'shellProfile');
 
 CustomTransitionPage _buildPageWithAnimation(Widget page, {bool slideUp = false}) {
   return CustomTransitionPage(
@@ -68,12 +75,12 @@ final GoRouter appRouter = GoRouter(
   routes: [
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
-        // Return the MainLayout with the navigation shell
         return MainLayout(navigationShell: navigationShell);
       },
       branches: [
         // Branch 0: Home
         StatefulShellBranch(
+          navigatorKey: _shellHomeKey,
           routes: [
             GoRoute(
               path: AppRoutes.home,
@@ -83,6 +90,7 @@ final GoRouter appRouter = GoRouter(
         ),
         // Branch 1: Marketplace
         StatefulShellBranch(
+          navigatorKey: _shellMarketplaceKey,
           routes: [
             GoRoute(
               path: AppRoutes.marketplace,
@@ -97,14 +105,20 @@ final GoRouter appRouter = GoRouter(
                 ),
                 GoRoute(
                   path: 'create',
-                  builder: (context, state) => const CreateListingPage(),
+                  parentNavigatorKey: _rootNavigatorKey,
+                  builder: (context, state) {
+                    final extra = state.extra as Map<String, dynamic>?;
+                    final groupId = extra?['groupId'] as String? ?? state.uri.queryParameters['groupId'];
+                    return CreateListingPage(groupId: groupId);
+                  },
                 ),
               ],
             ),
           ],
         ),
-        // Branch 2: Groups (Thay cho Messages lúc đầu)
+        // Branch 2: Groups
         StatefulShellBranch(
+          navigatorKey: _shellGroupsKey,
           routes: [
             GoRoute(
               path: AppRoutes.groups,
@@ -128,12 +142,20 @@ final GoRouter appRouter = GoRouter(
                     return GroupDashboardPage(groupId: id);
                   },
                 ),
+                GoRoute(
+                  path: 'edit',
+                  builder: (context, state) {
+                    final group = state.extra as GroupModel;
+                    return EditGroupPage(group: group);
+                  },
+                ),
               ],
             ),
           ],
         ),
         // Branch 3: Profile
         StatefulShellBranch(
+          navigatorKey: _shellProfileKey,
           routes: [
             GoRoute(
               path: AppRoutes.profile,
@@ -151,14 +173,27 @@ final GoRouter appRouter = GoRouter(
               path: AppRoutes.support,
               pageBuilder: (context, state) => _buildPageWithAnimation(const SupportPage(), slideUp: true),
             ),
+            GoRoute(
+              path: AppRoutes.myItems,
+              pageBuilder: (context, state) => _buildPageWithAnimation(const MyItemsPage(), slideUp: false),
+            ),
+            GoRoute(
+              path: AppRoutes.myRequests,
+              pageBuilder: (context, state) => _buildPageWithAnimation(const MyRequestsPage(), slideUp: false),
+            ),
+            GoRoute(
+              path: AppRoutes.savedGroups,
+              pageBuilder: (context, state) => _buildPageWithAnimation(const SavedGroupsPage(), slideUp: false),
+            ),
           ],
         ),
       ],
     ),
     
-    // Other top-level routes that don't need BottomNavigationBar
+    // Standalone full-screen routes on _rootNavigatorKey
     GoRoute(
       path: AppRoutes.splash,
+      parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const SplashPage(),
     ),
     GoRoute(
@@ -222,6 +257,21 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const Scaffold(body: Center(child: Text('Product Detail Page'))),
     ),
     GoRoute(
+      path: AppRoutes.chatInbox,
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const ChatInboxPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.chatRoom,
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final extraArgs = state.extra as Map<String, dynamic>?;
+        final conversationId = extraArgs?['conversationId'] as String? ?? '1';
+        final name = extraArgs?['name'] as String? ?? 'Hội nhóm';
+        return ChatRoomPage(conversationId: conversationId, name: name);
+      },
+    ),
+    GoRoute(
       path: AppRoutes.notifications,
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) {
@@ -230,5 +280,3 @@ final GoRouter appRouter = GoRouter(
     ),
   ],
 );
-
-

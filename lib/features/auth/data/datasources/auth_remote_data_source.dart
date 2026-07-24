@@ -5,7 +5,7 @@ import '../../../../core/network/api_client.dart';
 
 abstract class AuthRemoteDataSource {
   Future<AuthModel> login(String? email, String? phone, String password);
-  Future<AuthModel> register(String fullName, String? email, String? phone, String password);
+  Future<AuthModel> register(String username, String fullName, String? email, String? phone, String password);
   Future<void> verify(String emailOrPhone, String code);
   Future<void> resendVerification(String emailOrPhone);
   Future<void> forgotPassword(String email);
@@ -15,6 +15,8 @@ abstract class AuthRemoteDataSource {
   Future<TwoFactorSetupModel> setupTwoFactor();
   Future<void> enableTwoFactor(String code);
   Future<void> disableTwoFactor(String code);
+  Future<AuthModel> login2FA(String emailOrPhone, String code);
+  Future<void> logout();
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -36,13 +38,35 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<AuthModel> register(String fullName, String? email, String? phone, String password) async {
+  Future<AuthModel> login2FA(String emailOrPhone, String code) async {
+    final body = <String, dynamic>{'code': code};
+    if (emailOrPhone.contains('@')) {
+      body['email'] = emailOrPhone;
+    } else {
+      body['phone'] = emailOrPhone;
+    }
+
+    final response = await apiClient.dio.post(
+      '${AppConstants.authApiBaseUrl}/auth/login/2fa',
+      data: body,
+    );
+    return AuthModel.fromJson(response.data);
+  }
+
+  @override
+  Future<void> logout() async {
+    await apiClient.dio.post('${AppConstants.authApiBaseUrl}/auth/logout');
+  }
+
+  @override
+  Future<AuthModel> register(String username, String fullName, String? email, String? phone, String password) async {
     final response = await apiClient.dio.post(
       '${AppConstants.authApiBaseUrl}/auth/register',
       data: {
+        'username': username,
         'full_name': fullName,
-        if (email != null) 'email': email,
-        if (phone != null) 'phone': phone,
+        if (email != null && email.isNotEmpty) 'email': email,
+        if (phone != null && phone.isNotEmpty) 'phone': phone,
         'password': password,
       },
     );
