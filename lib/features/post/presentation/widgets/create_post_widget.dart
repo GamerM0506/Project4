@@ -62,7 +62,7 @@ class _CreatePostWidgetState extends State<CreatePostWidget> {
       for (var img in _selectedImages) {
         final bytes = await img.readAsBytes();
         final mimeType = img.mimeType ?? MediaService.mimeFromFileName(img.name);
-        final url = await mediaService.uploadImage(bytes, mimeType, refType: 'post_images');
+        final url = await mediaService.uploadImage(bytes, mimeType, refType: 'post');
         uploadedUrls.add(url);
       }
     } catch (e) {
