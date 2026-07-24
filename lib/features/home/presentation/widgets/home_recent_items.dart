@@ -1,31 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../data/models/listing_model.dart';
+
 class HomeRecentItems extends StatelessWidget {
-  const HomeRecentItems({super.key});
+  final List<ListingModel> items;
+
+  const HomeRecentItems({super.key, required this.items});
 
   @override
   Widget build(BuildContext context) {
-    final items = [
-      {
-        'name': 'Winter Jacket',
-        'type': 'Clothing',
-        'donor': 'Red Cross',
-        'image': 'https://lh3.googleusercontent.com/aida-public/AB6AXuAA3MKdv3wXXZpRjT_25whtOOUt7i2qV_Kf8GV9HVTs9MQOYNs_xXexoIM_ntmGfS598smcr0DOEK-6wej6qDNwBwp5auPWSjHd34krmV4VDBERZk6NIpkW-T0M-N7-PUSCrCZfDVhfZQ2Al2W6erdBhtwXfyJJQv02R24rZpbQjKABumUKJ8L33abvulOmNxUhdjALm8P8Z7FcOd-pgp27rJ1b62JLmevp2lUa-GkCJ1LtD3jjtyWNRg'
-      },
-      {
-        'name': 'Baby Crib',
-        'type': 'Furniture',
-        'donor': 'Local Resident',
-        'image': 'https://lh3.googleusercontent.com/aida-public/AB6AXuAUnnM-aoudYiyJ1OCyTCW_p6AZ88UOBgqRxUyrJT24ZyrdY-_vn0ABSMqEqFtCh-9Nht2MSGoUO3pU6PohJehBJt2FiKVmvaPEbGszefy2NMy4HeuiGz9BvEj9Re3F1wfamhoePfchAFfaQwCUQ8-0z-cdwAdvhX5BS6H45rFXqQolHyJ8OZAXjKbNS7uonmq64AO74WxutfyahGK8u0vqQyP1cMGZMKadAY2fBYFkhanMqmHRwpjyUQ'
-      },
-      {
-        'name': 'Pantry Staples Box',
-        'type': 'Food',
-        'donor': 'Community Fridge',
-        'image': 'https://lh3.googleusercontent.com/aida-public/AB6AXuArpiAD4MM9pUq2PTYcBmxncOFEL82t7iq0KYE-8fDaV-oeTfslvkYUHO2Sz0zpksZf6cMutX3-UPjbckHCVaVogHlJ07L_McdRIzZjtZPS0S5ZFCSK0h-GkLj1szqm3cnlJNy69vdOhKNo5lrcc_l1d3Tu1_S63BFV1sPBUUbcoN8ipos1xdaP95vSjugZkJDuC6_i7YCAz-x8np8YqCS_2Ht2lec9zJ7G-Ebl2GgKm0dYqvclIuHoYw'
-      },
-    ];
 
     return ListView.separated(
       shrinkWrap: true,
@@ -48,10 +32,13 @@ class HomeRecentItems extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: Image.network(
-                  item['image']!,
+                  item.imageUrl,
                   width: 80,
                   height: 80,
                   fit: BoxFit.cover,
+                  errorBuilder: (c,e,s) => Container(
+                    width: 80, height: 80, color: Colors.grey, child: Icon(Icons.image)
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
@@ -62,9 +49,13 @@ class HomeRecentItems extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          item['name']!,
-                          style: Theme.of(context).textTheme.labelLarge,
+                        Flexible(
+                          child: Text(
+                            item.name,
+                            style: Theme.of(context).textTheme.labelLarge,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -88,7 +79,7 @@ class HomeRecentItems extends StatelessWidget {
                         Icon(Icons.sell_outlined, size: 14, color: colorScheme.onSurfaceVariant),
                         const SizedBox(width: 4),
                         Text(
-                          item['type']!,
+                          item.type,
                           style: Theme.of(context).textTheme.labelSmall?.copyWith(
                             color: colorScheme.onSurfaceVariant,
                           ),
@@ -100,10 +91,14 @@ class HomeRecentItems extends StatelessWidget {
                       children: [
                         Icon(Icons.verified_outlined, size: 14, color: colorScheme.onSurfaceVariant),
                         const SizedBox(width: 4),
-                        Text(
-                          item['donor']!,
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
+                        Flexible(
+                          child: Text(
+                            item.donor,
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],

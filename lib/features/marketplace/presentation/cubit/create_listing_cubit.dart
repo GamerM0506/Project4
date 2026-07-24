@@ -4,8 +4,20 @@ import 'create_listing_state.dart';
 
 class CreateListingCubit extends Cubit<CreateListingState> {
   final CreateListingUseCase createListingUseCase;
+  final GetCategoriesUseCase getCategoriesUseCase;
 
-  CreateListingCubit({required this.createListingUseCase}) : super(CreateListingInitial());
+  CreateListingCubit({
+    required this.createListingUseCase,
+    required this.getCategoriesUseCase,
+  }) : super(const CreateListingInitial());
+
+  Future<void> loadCategories() async {
+    final result = await getCategoriesUseCase();
+    result.fold(
+      (error) => emit(CreateListingError(message: error)),
+      (categories) => emit(CreateListingInitial(categories: categories)),
+    );
+  }
 
   Future<void> createListing({
     required String inventoryItemId,

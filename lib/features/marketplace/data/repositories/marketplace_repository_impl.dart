@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import '../../domain/entities/listing_entity.dart';
 import '../../domain/entities/request_entity.dart';
+import '../../domain/entities/category_entity.dart';
 import '../../domain/repositories/marketplace_repository.dart';
 import '../datasources/marketplace_remote_data_source.dart';
 
@@ -8,6 +9,16 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   final MarketplaceRemoteDataSource remoteDataSource;
 
   MarketplaceRepositoryImpl({required this.remoteDataSource});
+
+  @override
+  Future<Either<String, List<CategoryEntity>>> getCategories() async {
+    try {
+      final items = await remoteDataSource.getCategories();
+      return Right(items);
+    } catch (e) {
+      return Left(e.toString());
+    }
+  }
 
   @override
   Future<Either<String, List<ListingEntity>>> getCatalog({String? category, String? province, String? groupId}) async {

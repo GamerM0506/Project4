@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../domain/entities/category_entity.dart';
 
 abstract class CreateListingState extends Equatable {
   const CreateListingState();
@@ -7,7 +8,13 @@ abstract class CreateListingState extends Equatable {
   List<Object?> get props => [];
 }
 
-class CreateListingInitial extends CreateListingState {}
+class CreateListingInitial extends CreateListingState {
+  final List<CategoryEntity> categories;
+  const CreateListingInitial({this.categories = const []});
+
+  @override
+  List<Object?> get props => [categories];
+}
 
 class CreateListingLoading extends CreateListingState {}
 
