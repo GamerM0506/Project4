@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_routes.dart';
+import '../constants/app_constants.dart';
 import '../layout/main_layout.dart';
+import '../../injection_container.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/auth/presentation/pages/verification_page.dart';
@@ -32,37 +35,46 @@ import '../../features/user/presentation/pages/my_items_page.dart';
 import '../../features/user/presentation/pages/my_requests_page.dart';
 import '../../features/user/presentation/pages/saved_groups_page.dart';
 
-final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
-final GlobalKey<NavigatorState> _shellHomeKey = GlobalKey<NavigatorState>(debugLabel: 'shellHome');
-final GlobalKey<NavigatorState> _shellMarketplaceKey = GlobalKey<NavigatorState>(debugLabel: 'shellMarketplace');
-final GlobalKey<NavigatorState> _shellGroupsKey = GlobalKey<NavigatorState>(debugLabel: 'shellGroups');
-final GlobalKey<NavigatorState> _shellProfileKey = GlobalKey<NavigatorState>(debugLabel: 'shellProfile');
+final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
+  debugLabel: 'root',
+);
+final GlobalKey<NavigatorState> _shellHomeKey = GlobalKey<NavigatorState>(
+  debugLabel: 'shellHome',
+);
+final GlobalKey<NavigatorState> _shellMarketplaceKey =
+    GlobalKey<NavigatorState>(debugLabel: 'shellMarketplace');
+final GlobalKey<NavigatorState> _shellGroupsKey = GlobalKey<NavigatorState>(
+  debugLabel: 'shellGroups',
+);
+final GlobalKey<NavigatorState> _shellProfileKey = GlobalKey<NavigatorState>(
+  debugLabel: 'shellProfile',
+);
 
-CustomTransitionPage _buildPageWithAnimation(Widget page, {bool slideUp = false}) {
+CustomTransitionPage _buildPageWithAnimation(
+  Widget page, {
+  bool slideUp = false,
+}) {
   return CustomTransitionPage(
     child: page,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       if (slideUp) {
         return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0.0, 0.1),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-          child: FadeTransition(
-            opacity: animation,
-            child: child,
-          ),
+          position:
+              Tween<Offset>(
+                begin: const Offset(0.0, 0.1),
+                end: Offset.zero,
+              ).animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+              ),
+          child: FadeTransition(opacity: animation, child: child),
         );
       }
       return SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(1.0, 0.0),
-          end: Offset.zero,
-        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-        child: FadeTransition(
-          opacity: animation,
-          child: child,
-        ),
+        position: Tween<Offset>(begin: const Offset(1.0, 0.0), end: Offset.zero)
+            .animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+            ),
+        child: FadeTransition(opacity: animation, child: child),
       );
     },
     transitionDuration: const Duration(milliseconds: 300),
@@ -72,6 +84,30 @@ CustomTransitionPage _buildPageWithAnimation(Widget page, {bool slideUp = false}
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: AppRoutes.splash,
+  redirect: (context, state) {
+    final prefs = sl<SharedPreferences>();
+    final hasSession =
+        (prefs.getString(AppConstants.keyAccessToken)?.isNotEmpty ?? false) ||
+        (prefs.getString(AppConstants.keyRefreshToken)?.isNotEmpty ?? false);
+    final path = state.uri.path;
+    final publicPaths = {
+      AppRoutes.splash,
+      AppRoutes.login,
+      AppRoutes.register,
+      AppRoutes.verify,
+      AppRoutes.forgotPassword,
+      AppRoutes.forgotPasswordVerification,
+      AppRoutes.resetPassword,
+    };
+
+    if (!hasSession && !publicPaths.contains(path)) {
+      return AppRoutes.login;
+    }
+    if (hasSession && path == AppRoutes.login) {
+      return AppRoutes.splash;
+    }
+    return null;
+  },
   routes: [
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
@@ -108,7 +144,9 @@ final GoRouter appRouter = GoRouter(
                   parentNavigatorKey: _rootNavigatorKey,
                   builder: (context, state) {
                     final extra = state.extra as Map<String, dynamic>?;
-                    final groupId = extra?['groupId'] as String? ?? state.uri.queryParameters['groupId'];
+                    final groupId =
+                        extra?['groupId'] as String? ??
+                        state.uri.queryParameters['groupId'];
                     return CreateListingPage(groupId: groupId);
                   },
                 ),
@@ -163,33 +201,45 @@ final GoRouter appRouter = GoRouter(
             ),
             GoRoute(
               path: AppRoutes.editProfile,
-              pageBuilder: (context, state) => _buildPageWithAnimation(const EditProfilePage(), slideUp: true),
+              pageBuilder: (context, state) => _buildPageWithAnimation(
+                const EditProfilePage(),
+                slideUp: true,
+              ),
             ),
             GoRoute(
               path: AppRoutes.settings,
-              pageBuilder: (context, state) => _buildPageWithAnimation(const SettingsPage(), slideUp: true),
+              pageBuilder: (context, state) =>
+                  _buildPageWithAnimation(const SettingsPage(), slideUp: true),
             ),
             GoRoute(
               path: AppRoutes.support,
-              pageBuilder: (context, state) => _buildPageWithAnimation(const SupportPage(), slideUp: true),
+              pageBuilder: (context, state) =>
+                  _buildPageWithAnimation(const SupportPage(), slideUp: true),
             ),
             GoRoute(
               path: AppRoutes.myItems,
-              pageBuilder: (context, state) => _buildPageWithAnimation(const MyItemsPage(), slideUp: false),
+              pageBuilder: (context, state) =>
+                  _buildPageWithAnimation(const MyItemsPage(), slideUp: false),
             ),
             GoRoute(
               path: AppRoutes.myRequests,
-              pageBuilder: (context, state) => _buildPageWithAnimation(const MyRequestsPage(), slideUp: false),
+              pageBuilder: (context, state) => _buildPageWithAnimation(
+                const MyRequestsPage(),
+                slideUp: false,
+              ),
             ),
             GoRoute(
               path: AppRoutes.savedGroups,
-              pageBuilder: (context, state) => _buildPageWithAnimation(const SavedGroupsPage(), slideUp: false),
+              pageBuilder: (context, state) => _buildPageWithAnimation(
+                const SavedGroupsPage(),
+                slideUp: false,
+              ),
             ),
           ],
         ),
       ],
     ),
-    
+
     // Standalone full-screen routes on _rootNavigatorKey
     GoRoute(
       path: AppRoutes.splash,
@@ -199,32 +249,41 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.login,
       parentNavigatorKey: _rootNavigatorKey,
-      pageBuilder: (context, state) => _buildPageWithAnimation(const LoginPage()),
+      pageBuilder: (context, state) =>
+          _buildPageWithAnimation(const LoginPage()),
     ),
     GoRoute(
       path: AppRoutes.register,
       parentNavigatorKey: _rootNavigatorKey,
-      pageBuilder: (context, state) => _buildPageWithAnimation(const RegisterPage()),
+      pageBuilder: (context, state) =>
+          _buildPageWithAnimation(const RegisterPage()),
     ),
     GoRoute(
       path: AppRoutes.verify,
       parentNavigatorKey: _rootNavigatorKey,
       pageBuilder: (context, state) {
-        final emailOrPhone = state.extra as String? ?? state.uri.queryParameters['email'] ?? '';
-        return _buildPageWithAnimation(VerificationPage(emailOrPhone: emailOrPhone));
+        final emailOrPhone =
+            state.extra as String? ?? state.uri.queryParameters['email'] ?? '';
+        return _buildPageWithAnimation(
+          VerificationPage(emailOrPhone: emailOrPhone),
+        );
       },
     ),
     GoRoute(
       path: AppRoutes.forgotPassword,
       parentNavigatorKey: _rootNavigatorKey,
-      pageBuilder: (context, state) => _buildPageWithAnimation(const ForgotPasswordPage()),
+      pageBuilder: (context, state) =>
+          _buildPageWithAnimation(const ForgotPasswordPage()),
     ),
     GoRoute(
       path: AppRoutes.forgotPasswordVerification,
       parentNavigatorKey: _rootNavigatorKey,
       pageBuilder: (context, state) {
-        final email = state.extra as String? ?? state.uri.queryParameters['email'] ?? '';
-        return _buildPageWithAnimation(ForgotPasswordVerificationPage(email: email));
+        final email =
+            state.extra as String? ?? state.uri.queryParameters['email'] ?? '';
+        return _buildPageWithAnimation(
+          ForgotPasswordVerificationPage(email: email),
+        );
       },
     ),
     GoRoute(
@@ -232,18 +291,21 @@ final GoRouter appRouter = GoRouter(
       parentNavigatorKey: _rootNavigatorKey,
       pageBuilder: (context, state) {
         final extraArgs = state.extra as Map<String, String>?;
-        final args = extraArgs ?? {
-          'email': state.uri.queryParameters['email'] ?? '',
-          'code': state.uri.queryParameters['code'] ?? '',
-          'resetToken': state.uri.queryParameters['token'] ?? '',
-        };
+        final args =
+            extraArgs ??
+            {
+              'email': state.uri.queryParameters['email'] ?? '',
+              'code': state.uri.queryParameters['code'] ?? '',
+              'resetToken': state.uri.queryParameters['token'] ?? '',
+            };
         return _buildPageWithAnimation(ResetPasswordPage(args: args));
       },
     ),
     GoRoute(
       path: AppRoutes.changePassword,
       parentNavigatorKey: _rootNavigatorKey,
-      pageBuilder: (context, state) => _buildPageWithAnimation(const ChangePasswordPage()),
+      pageBuilder: (context, state) =>
+          _buildPageWithAnimation(const ChangePasswordPage()),
     ),
     GoRoute(
       path: AppRoutes.twoFactor,
@@ -254,7 +316,8 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.productDetail,
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const Scaffold(body: Center(child: Text('Product Detail Page'))),
+      builder: (context, state) =>
+          const Scaffold(body: Center(child: Text('Trang chi tiết vật phẩm'))),
     ),
     GoRoute(
       path: AppRoutes.chatInbox,
@@ -275,7 +338,7 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.notifications,
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) {
-        return const Scaffold(body: Center(child: Text('Notification Page')));
+        return const Scaffold(body: Center(child: Text('Trang thông báo')));
       },
     ),
   ],

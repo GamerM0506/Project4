@@ -48,23 +48,29 @@ class ProductCard extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                  child: Image.network(
-                    imageUrl,
-                    fit: BoxFit.cover,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
                   ),
+                  child: Image.network(imageUrl, fit: BoxFit.cover),
                 ),
                 Positioned(
                   top: 8,
                   left: 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: isNew ? colorScheme.error.withValues(alpha: 0.9) : const Color(0xFFC0CA33).withValues(alpha: 0.9), // Red for NEW, Yellow-green for USED
+                      color: isNew
+                          ? colorScheme.error.withValues(alpha: 0.9)
+                          : const Color(0xFFC0CA33).withValues(
+                              alpha: 0.9,
+                            ), // Red for NEW, Yellow-green for USED
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      isNew ? 'NEW' : 'USED',
+                      isNew ? 'MỚI' : 'ĐÃ SỬ DỤNG',
                       style: textTheme.labelSmall?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
@@ -76,7 +82,7 @@ class ProductCard extends StatelessWidget {
               ],
             ),
           ),
-          
+
           // Content Details
           Expanded(
             flex: 6,
@@ -96,7 +102,7 @@ class ProductCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
-                  
+
                   // Provider Info
                   Row(
                     children: [
@@ -119,11 +125,15 @@ class ProductCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  
+
                   // Location Info
                   Row(
                     children: [
-                      Icon(Icons.location_on_outlined, size: 14, color: colorScheme.onSurfaceVariant),
+                      Icon(
+                        Icons.location_on_outlined,
+                        size: 14,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
@@ -137,16 +147,17 @@ class ProductCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  
+
                   const Spacer(),
-                  
+
                   // Receive Button
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
                       onPressed: onReceive,
                       style: FilledButton.styleFrom(
-                        backgroundColor: colorScheme.primary, // Teal color as per theme primary
+                        backgroundColor: colorScheme
+                            .primary, // Teal color as per theme primary
                         foregroundColor: colorScheme.onPrimary,
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         shape: RoundedRectangleBorder(

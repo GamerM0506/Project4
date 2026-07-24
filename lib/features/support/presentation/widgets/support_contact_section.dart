@@ -23,9 +23,9 @@ class SupportContactSection extends StatelessWidget {
         Expanded(
           child: _ContactCard(
             icon: Icons.phone_outlined,
-            title: 'Hotline',
+            title: 'Đường dây nóng',
             value: AppConstants.supportPhone,
-            onTap: () => onCopy(AppConstants.supportPhone, 'số hotline'),
+            onTap: () => onCopy(AppConstants.supportPhone, 'số đường dây nóng'),
           ),
         ),
       ],
@@ -79,7 +79,9 @@ class _ContactCard extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 title,
-                style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                style: textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 4),
               Text(

@@ -88,10 +88,12 @@ class _SettingsPageState extends State<SettingsPage> {
                 return _buildSwitchTile(
                   context,
                   icon: Icons.dark_mode_outlined,
-                  title: 'Chế độ tối (Dark Mode)',
+                  title: 'Chế độ tối',
                   value: themeMode == ThemeMode.dark,
                   onChanged: (val) {
-                    context.read<ThemeCubit>().updateTheme(val ? ThemeMode.dark : ThemeMode.light);
+                    context.read<ThemeCubit>().updateTheme(
+                      val ? ThemeMode.dark : ThemeMode.light,
+                    );
                   },
                 );
               },
@@ -112,7 +114,7 @@ class _SettingsPageState extends State<SettingsPage> {
             _buildSwitchTile(
               context,
               icon: Icons.email_outlined,
-              title: 'Thông báo Email',
+              title: 'Thông báo qua email',
               value: _emailNotifications,
               onChanged: (val) {
                 setState(() => _emailNotifications = val);
@@ -153,7 +155,10 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
                 style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                   backgroundColor: colorScheme.error.withValues(alpha: 0.1),
                 ),
               ),
@@ -165,7 +170,11 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildSectionHeader(String title, TextTheme textTheme, ColorScheme colorScheme) {
+  Widget _buildSectionHeader(
+    String title,
+    TextTheme textTheme,
+    ColorScheme colorScheme,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12, left: 4),
       child: Text(
@@ -179,7 +188,13 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildListTile(BuildContext context, {required IconData icon, required String title, String? subtitle, required VoidCallback onTap}) {
+  Widget _buildListTile(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    required VoidCallback onTap,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -193,15 +208,31 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         child: Icon(icon, color: colorScheme.onSurfaceVariant),
       ),
-      title: Text(title, style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500)),
-      subtitle: subtitle != null ? Text(subtitle, style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant)) : null,
+      title: Text(
+        title,
+        style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+      ),
+      subtitle: subtitle != null
+          ? Text(
+              subtitle,
+              style: textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            )
+          : null,
       trailing: Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       onTap: onTap,
     );
   }
 
-  Widget _buildSwitchTile(BuildContext context, {required IconData icon, required String title, required bool value, required ValueChanged<bool> onChanged}) {
+  Widget _buildSwitchTile(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -215,7 +246,10 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         child: Icon(icon, color: colorScheme.onSurfaceVariant),
       ),
-      title: Text(title, style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500)),
+      title: Text(
+        title,
+        style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+      ),
       value: value,
       onChanged: onChanged,
       activeColor: colorScheme.primary,
@@ -223,14 +257,14 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-
-
   void _showDeleteAccountDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Xóa tài khoản'),
-        content: const Text('Hành động này không thể hoàn tác. Mọi dữ liệu của bạn sẽ bị xóa vĩnh viễn.'),
+        content: const Text(
+          'Hành động này không thể hoàn tác. Mọi dữ liệu của bạn sẽ bị xóa vĩnh viễn.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -240,7 +274,10 @@ class _SettingsPageState extends State<SettingsPage> {
             onPressed: () {
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: const Text('Tính năng đang phát triển'), backgroundColor: Theme.of(context).colorScheme.secondary),
+                SnackBar(
+                  content: const Text('Tính năng đang phát triển'),
+                  backgroundColor: Theme.of(context).colorScheme.secondary,
+                ),
               );
             },
             style: FilledButton.styleFrom(

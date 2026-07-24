@@ -5,6 +5,8 @@ class AuthModel extends AuthEntity {
     super.accessToken,
     super.refreshToken,
     super.userId,
+    super.twoFactorRequired,
+    super.challengeToken,
   });
 
   factory AuthModel.fromJson(Map<String, dynamic> json) {
@@ -13,11 +15,13 @@ class AuthModel extends AuthEntity {
         : null;
 
     return AuthModel(
-      accessToken:
-          (data?['access_token'] ?? json['access_token'])?.toString(),
-      refreshToken:
-          (data?['refresh_token'] ?? json['refresh_token'])?.toString(),
-      userId: (data?['user_id'] ?? json['user_id'] ?? data?['sub'])
+      accessToken: (data?['access_token'] ?? json['access_token'])?.toString(),
+      refreshToken: (data?['refresh_token'] ?? json['refresh_token'])
+          ?.toString(),
+      userId: (data?['user_id'] ?? json['user_id'] ?? data?['sub'])?.toString(),
+      twoFactorRequired:
+          (data?['two_factor_required'] ?? json['two_factor_required']) == true,
+      challengeToken: (data?['challenge_token'] ?? json['challenge_token'])
           ?.toString(),
     );
   }
@@ -27,6 +31,8 @@ class AuthModel extends AuthEntity {
       'access_token': accessToken,
       'refresh_token': refreshToken,
       'user_id': userId,
+      'two_factor_required': twoFactorRequired,
+      'challenge_token': challengeToken,
     };
   }
 }

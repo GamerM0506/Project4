@@ -10,6 +10,7 @@ class AppConstants {
   static const String chatApiBaseUrl = '$apiBaseUrl/communication';
   static const String communityApiBaseUrl = '$apiBaseUrl/community';
   static const String marketplaceApiBaseUrl = '$apiBaseUrl/marketplace';
+  static const String donationApiBaseUrl = '$apiBaseUrl/donation';
   static const String aiApiBaseUrl = '$apiBaseUrl/ai';
 
   static const String supportEmail = 'support@chosv.vn';

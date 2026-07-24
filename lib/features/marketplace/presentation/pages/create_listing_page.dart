@@ -7,6 +7,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/network/media_service.dart';
+import '../../../donation/data/models/donation_model.dart';
+import '../../../group/data/models/group_model.dart';
 import '../../../../injection_container.dart';
 import '../cubit/create_listing_cubit.dart';
 import '../cubit/create_listing_state.dart';
@@ -24,9 +27,11 @@ class _CreateListingPageState extends State<CreateListingPage> {
   final _cubit = sl<CreateListingCubit>();
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
-  final _groupIdController = TextEditingController();
 
-  String _category = 'clothing';
+  String? _selectedCategoryId;
+  String? _selectedGroupId;
+  List<DonationCategoryModel> _categories = [];
+  List<GroupModel> _groups = [];
   String _condition = 'Good';
   int _quantity = 1;
   XFile? _imageFile;
@@ -35,22 +40,10 @@ class _CreateListingPageState extends State<CreateListingPage> {
   bool _aiDetected = false;
   final ImagePicker _picker = ImagePicker();
 
-  final Map<String, Map<String, dynamic>> _categoryData = {
-    'clothing': {'label': 'Quần áo', 'icon': Icons.checkroom_outlined},
-    'food': {'label': 'Thực phẩm', 'icon': Icons.restaurant_outlined},
-    'furniture': {'label': 'Đồ gia dụng', 'icon': Icons.chair_outlined},
-    'electronics': {'label': 'Điện tử', 'icon': Icons.devices_outlined},
-    'others': {'label': 'Khác', 'icon': Icons.category_outlined},
-  };
-
   @override
   void initState() {
     super.initState();
-    if (widget.groupId != null && widget.groupId!.isNotEmpty) {
-      _groupIdController.text = widget.groupId!;
-    } else {
-      _groupIdController.text = 'grp_123';
-    }
+    _cubit.loadForm(preferredGroupId: widget.groupId);
   }
 
   @override
@@ -58,34 +51,41 @@ class _CreateListingPageState extends State<CreateListingPage> {
     _cubit.close();
     _titleController.dispose();
     _descController.dispose();
-    _groupIdController.dispose();
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (_titleController.text.trim().isEmpty) {
       _showSnackBar('Vui lòng nhập tên món đồ quyên góp', isError: true);
       return;
     }
 
-    if (_groupIdController.text.trim().isEmpty) {
-      _showSnackBar('Vui lòng nhập ID Hội nhóm thiện nguyện', isError: true);
+    if (_selectedGroupId == null) {
+      _showSnackBar('Vui lòng chọn hội nhóm tiếp nhận', isError: true);
       return;
     }
 
-    _cubit.createListing(
-      inventoryItemId: 'inv_${DateTime.now().millisecondsSinceEpoch}',
-      groupId: _groupIdController.text.trim(),
+    final imageBytes = await _imageFile?.readAsBytes();
+    final imageMimeType = _imageFile == null
+        ? null
+        : MediaService.mimeFromFileName(_imageFile!.name);
+    _cubit.createDonation(
+      groupId: _selectedGroupId!,
       title: _titleController.text.trim(),
       description: _descController.text.trim(),
-      categoryId: _category,
       condition: _condition,
-      quantityTotal: _quantity,
-      createdBy: 'user_current',
+      quantity: _quantity,
+      categoryId: _selectedCategoryId,
+      imageBytes: imageBytes,
+      imageMimeType: imageMimeType,
     );
   }
 
-  void _showSnackBar(String message, {bool isError = false, bool isSuccess = false}) {
+  void _showSnackBar(
+    String message, {
+    bool isError = false,
+    bool isSuccess = false,
+  }) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -139,10 +139,12 @@ class _CreateListingPageState extends State<CreateListingPage> {
       final base64Image = base64Encode(bytes);
       final dataUri = 'data:image/jpeg;base64,$base64Image';
 
-      final dio = Dio(BaseOptions(
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 15),
-      ));
+      final dio = Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 15),
+        ),
+      );
 
       final response = await dio.post(
         '${AppConstants.aiApiBaseUrl}/detect-item',
@@ -157,11 +159,14 @@ class _CreateListingPageState extends State<CreateListingPage> {
           }
 
           if (data['categoryId'] != null) {
-            final cat = data['categoryId'].toString().toLowerCase();
-            if (_categoryData.containsKey(cat)) {
-              _category = cat;
-            } else {
-              _category = 'others';
+            final candidate = data['categoryId'].toString().toLowerCase();
+            final matches = _categories.where(
+              (category) =>
+                  category.id.toLowerCase() == candidate ||
+                  category.slug.toLowerCase() == candidate,
+            );
+            if (matches.isNotEmpty) {
+              _selectedCategoryId = matches.first.id;
             }
           }
 
@@ -182,13 +187,16 @@ class _CreateListingPageState extends State<CreateListingPage> {
           _aiDetected = true;
         });
 
-        _showSnackBar('✨ AI đã tự động điền thông tin món đồ!', isSuccess: true);
+        _showSnackBar(
+          '✨ AI đã tự động điền thông tin món đồ!',
+          isSuccess: true,
+        );
       } else {
         _showSnackBar('AI không thể nhận diện được hình ảnh', isError: true);
       }
     } catch (e) {
       _showSnackBar(
-        'Không kết nối được server AI (${AppConstants.apiHost}). Bạn có thể tự điền form.',
+        'Không kết nối được máy chủ AI (${AppConstants.apiHost}). Bạn có thể tự điền biểu mẫu.',
         isError: true,
       );
     } finally {
@@ -198,7 +206,10 @@ class _CreateListingPageState extends State<CreateListingPage> {
 
   Future<void> _generateDescriptionWithAI() async {
     if (_titleController.text.trim().isEmpty) {
-      _showSnackBar('Vui lòng nhập tên món đồ trước khi sinh mô tả', isError: true);
+      _showSnackBar(
+        'Vui lòng nhập tên món đồ trước khi sinh mô tả',
+        isError: true,
+      );
       return;
     }
 
@@ -207,10 +218,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
       final dio = Dio();
       final response = await dio.post(
         '${AppConstants.aiApiBaseUrl}/generate-description',
-        data: {
-          'name': _titleController.text.trim(),
-          'condition': _condition,
-        },
+        data: {'name': _titleController.text.trim(), 'condition': _condition},
       );
 
       if (response.statusCode == 200 && response.data != null) {
@@ -219,7 +227,10 @@ class _CreateListingPageState extends State<CreateListingPage> {
           setState(() {
             _descController.text = desc;
           });
-          _showSnackBar('✨ AI đã tự động tạo đoạn văn mô tả ấm áp!', isSuccess: true);
+          _showSnackBar(
+            '✨ AI đã tự động tạo đoạn văn mô tả ấm áp!',
+            isSuccess: true,
+          );
         }
       }
     } catch (e) {
@@ -243,11 +254,15 @@ class _CreateListingPageState extends State<CreateListingPage> {
           elevation: 0,
           scrolledUnderElevation: 2,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back_ios_new, color: colorScheme.onSurface, size: 20),
+            icon: Icon(
+              Icons.arrow_back_ios_new,
+              color: colorScheme.onSurface,
+              size: 20,
+            ),
             onPressed: () => context.pop(),
           ),
           title: Text(
-            'Đăng bài Gian hàng 0 đồng',
+            'Tạo đơn quyên góp',
             style: TextStyle(
               color: colorScheme.onSurface,
               fontWeight: FontWeight.bold,
@@ -258,8 +273,22 @@ class _CreateListingPageState extends State<CreateListingPage> {
         ),
         body: BlocConsumer<CreateListingCubit, CreateListingState>(
           listener: (context, state) {
-            if (state is CreateListingSuccess) {
-              _showSnackBar('Đăng bài quyên góp thành công!', isSuccess: true);
+            if (state is CreateListingFormReady) {
+              setState(() {
+                _groups = state.groups;
+                _categories = state.categories;
+                _selectedGroupId =
+                    state.selectedGroupId ??
+                    (_groups.length == 1 ? _groups.first.id : null);
+                _selectedCategoryId ??= _categories.isEmpty
+                    ? null
+                    : _categories.first.id;
+              });
+            } else if (state is CreateListingSuccess) {
+              _showSnackBar(
+                'Đã tạo đơn quyên góp (chờ nhóm duyệt)!',
+                isSuccess: true,
+              );
               context.pop();
             } else if (state is CreateListingError) {
               _showSnackBar(state.message, isError: true);
@@ -289,7 +318,9 @@ class _CreateListingPageState extends State<CreateListingPage> {
                   decoration: BoxDecoration(
                     color: colorScheme.surfaceContainerLowest,
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.4)),
+                    border: Border.all(
+                      color: colorScheme.outlineVariant.withOpacity(0.4),
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.03),
@@ -301,19 +332,35 @@ class _CreateListingPageState extends State<CreateListingPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Group Selector / Group ID
-                      _buildLabel('Hội nhóm tiếp nhận (Group)', Icons.groups_outlined),
+                      _buildLabel('Hội nhóm tiếp nhận', Icons.groups_outlined),
                       const SizedBox(height: 8),
-                      TextField(
-                        controller: _groupIdController,
-                        readOnly: widget.groupId != null,
-                        style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.w500),
+                      DropdownButtonFormField<String>(
+                        initialValue: _selectedGroupId,
+                        items: _groups
+                            .map(
+                              (group) => DropdownMenuItem(
+                                value: group.id,
+                                child: Text(group.name),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: widget.groupId != null
+                            ? null
+                            : (value) =>
+                                  setState(() => _selectedGroupId = value),
                         decoration: InputDecoration(
-                          hintText: 'Nhập ID nhóm thiện nguyện tiếp nhận',
-                          prefixIcon: Icon(Icons.group_outlined, color: colorScheme.primary),
+                          hintText: _groups.isEmpty
+                              ? 'Bạn chưa tham gia nhóm nào'
+                              : 'Chọn nhóm thiện nguyện tiếp nhận',
+                          prefixIcon: Icon(
+                            Icons.group_outlined,
+                            color: colorScheme.primary,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(color: colorScheme.outlineVariant),
+                            borderSide: BorderSide(
+                              color: colorScheme.outlineVariant,
+                            ),
                           ),
                           filled: true,
                           fillColor: colorScheme.surface,
@@ -323,25 +370,43 @@ class _CreateListingPageState extends State<CreateListingPage> {
                       const SizedBox(height: 20),
 
                       // Item Name Field
-                      _buildLabel('Tên món đồ quyên góp *', Icons.card_giftcard),
+                      _buildLabel(
+                        'Tên món đồ quyên góp *',
+                        Icons.card_giftcard,
+                      ),
                       const SizedBox(height: 8),
                       TextField(
                         controller: _titleController,
-                        style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w500,
+                        ),
                         decoration: InputDecoration(
                           hintText: 'Ví dụ: Áo khoác gió nam, Cây lau nhà...',
-                          prefixIcon: Icon(Icons.edit_outlined, color: colorScheme.primary),
+                          prefixIcon: Icon(
+                            Icons.edit_outlined,
+                            color: colorScheme.primary,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(color: colorScheme.outlineVariant),
+                            borderSide: BorderSide(
+                              color: colorScheme.outlineVariant,
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.6)),
+                            borderSide: BorderSide(
+                              color: colorScheme.outlineVariant.withOpacity(
+                                0.6,
+                              ),
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                            borderSide: BorderSide(
+                              color: colorScheme.primary,
+                              width: 2,
+                            ),
                           ),
                           filled: true,
                           fillColor: colorScheme.surface,
@@ -356,29 +421,29 @@ class _CreateListingPageState extends State<CreateListingPage> {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: _categoryData.entries.map((entry) {
-                          final key = entry.key;
-                          final label = entry.value['label'] as String;
-                          final icon = entry.value['icon'] as IconData;
-                          final isSelected = _category == key;
+                        children: _categories.map((category) {
+                          final isSelected = _selectedCategoryId == category.id;
 
                           return ChoiceChip(
                             avatar: Icon(
-                              icon,
+                              _categoryIcon(category.slug),
                               size: 18,
                               color: isSelected
                                   ? colorScheme.onPrimary
                                   : colorScheme.onSurfaceVariant,
                             ),
-                            label: Text(label),
+                            label: Text(category.name),
                             selected: isSelected,
                             selectedColor: colorScheme.primary,
-                            backgroundColor: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                            backgroundColor: colorScheme.surfaceContainerHighest
+                                .withOpacity(0.5),
                             labelStyle: TextStyle(
                               color: isSelected
                                   ? colorScheme.onPrimary
                                   : colorScheme.onSurface,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                               fontSize: 13,
                             ),
                             shape: RoundedRectangleBorder(
@@ -386,11 +451,17 @@ class _CreateListingPageState extends State<CreateListingPage> {
                               side: BorderSide(
                                 color: isSelected
                                     ? colorScheme.primary
-                                    : colorScheme.outlineVariant.withOpacity(0.3),
+                                    : colorScheme.outlineVariant.withOpacity(
+                                        0.3,
+                                      ),
                               ),
                             ),
                             onSelected: (selected) {
-                              if (selected) setState(() => _category = key);
+                              if (selected) {
+                                setState(
+                                  () => _selectedCategoryId = category.id,
+                                );
+                              }
                             },
                           );
                         }).toList(),
@@ -411,19 +482,32 @@ class _CreateListingPageState extends State<CreateListingPage> {
                                 _buildLabel('Số lượng', Icons.numbers),
                                 const SizedBox(height: 8),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                                    color: colorScheme.surfaceContainerHighest
+                                        .withOpacity(0.5),
                                     borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.3)),
+                                    border: Border.all(
+                                      color: colorScheme.outlineVariant
+                                          .withOpacity(0.3),
+                                    ),
                                   ),
                                   child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       IconButton(
-                                        icon: const Icon(Icons.remove_circle_outline, size: 22),
+                                        icon: const Icon(
+                                          Icons.remove_circle_outline,
+                                          size: 22,
+                                        ),
                                         onPressed: () {
-                                          if (_quantity > 1) setState(() => _quantity--);
+                                          if (_quantity > 1) {
+                                            setState(() => _quantity--);
+                                          }
                                         },
                                         color: colorScheme.primary,
                                       ),
@@ -436,8 +520,12 @@ class _CreateListingPageState extends State<CreateListingPage> {
                                         ),
                                       ),
                                       IconButton(
-                                        icon: const Icon(Icons.add_circle_outline, size: 22),
-                                        onPressed: () => setState(() => _quantity++),
+                                        icon: const Icon(
+                                          Icons.add_circle_outline,
+                                          size: 22,
+                                        ),
+                                        onPressed: () =>
+                                            setState(() => _quantity++),
                                         color: colorScheme.primary,
                                       ),
                                     ],
@@ -455,20 +543,39 @@ class _CreateListingPageState extends State<CreateListingPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildLabel('Tình trạng đồ', Icons.stars_outlined),
+                                _buildLabel(
+                                  'Tình trạng đồ',
+                                  Icons.stars_outlined,
+                                ),
                                 const SizedBox(height: 8),
                                 Container(
                                   padding: const EdgeInsets.all(4),
                                   decoration: BoxDecoration(
-                                    color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                                    color: colorScheme.surfaceContainerHighest
+                                        .withOpacity(0.5),
                                     borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.3)),
+                                    border: Border.all(
+                                      color: colorScheme.outlineVariant
+                                          .withOpacity(0.3),
+                                    ),
                                   ),
                                   child: Row(
                                     children: [
-                                      _buildConditionPill('New', 'Mới', colorScheme),
-                                      _buildConditionPill('Good', 'Tốt', colorScheme),
-                                      _buildConditionPill('Used', 'Cũ', colorScheme),
+                                      _buildConditionPill(
+                                        'New',
+                                        'Mới',
+                                        colorScheme,
+                                      ),
+                                      _buildConditionPill(
+                                        'Good',
+                                        'Tốt',
+                                        colorScheme,
+                                      ),
+                                      _buildConditionPill(
+                                        'Used',
+                                        'Cũ',
+                                        colorScheme,
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -484,22 +591,36 @@ class _CreateListingPageState extends State<CreateListingPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _buildLabel('Mô tả chi tiết', Icons.description_outlined),
+                          _buildLabel(
+                            'Mô tả chi tiết',
+                            Icons.description_outlined,
+                          ),
                           InkWell(
-                            onTap: _isGeneratingDesc ? null : _generateDescriptionWithAI,
+                            onTap: _isGeneratingDesc
+                                ? null
+                                : _generateDescriptionWithAI,
                             borderRadius: BorderRadius.circular(12),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               child: Row(
                                 children: [
                                   if (_isGeneratingDesc)
                                     const SizedBox(
                                       width: 12,
                                       height: 12,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
                                     )
                                   else
-                                    Icon(Icons.auto_awesome, size: 14, color: colorScheme.primary),
+                                    Icon(
+                                      Icons.auto_awesome,
+                                      size: 14,
+                                      color: colorScheme.primary,
+                                    ),
                                   const SizedBox(width: 4),
                                   Text(
                                     'Sinh bằng AI',
@@ -521,19 +642,29 @@ class _CreateListingPageState extends State<CreateListingPage> {
                         maxLines: 4,
                         style: TextStyle(color: colorScheme.onSurface),
                         decoration: InputDecoration(
-                          hintText: 'Nhập mô tả về kiểu dáng, màu sắc, địa điểm nhận đồ...',
+                          hintText:
+                              'Nhập mô tả về kiểu dáng, màu sắc, địa điểm nhận đồ...',
                           alignLabelWithHint: true,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(color: colorScheme.outlineVariant),
+                            borderSide: BorderSide(
+                              color: colorScheme.outlineVariant,
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.6)),
+                            borderSide: BorderSide(
+                              color: colorScheme.outlineVariant.withOpacity(
+                                0.6,
+                              ),
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                            borderSide: BorderSide(
+                              color: colorScheme.primary,
+                              width: 2,
+                            ),
                           ),
                           filled: true,
                           fillColor: colorScheme.surface,
@@ -553,7 +684,11 @@ class _CreateListingPageState extends State<CreateListingPage> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: colorScheme.surface,
-            border: Border(top: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.3))),
+            border: Border(
+              top: BorderSide(
+                color: colorScheme.outlineVariant.withOpacity(0.3),
+              ),
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.04),
@@ -564,7 +699,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
           ),
           child: SafeArea(
             child: ElevatedButton(
-              onPressed: _submit,
+              onPressed: _groups.isEmpty ? null : _submit,
               style: ElevatedButton.styleFrom(
                 backgroundColor: colorScheme.primary,
                 foregroundColor: colorScheme.onPrimary,
@@ -578,7 +713,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Đăng bài quyên góp',
+                    'Gửi đơn quyên góp',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   SizedBox(width: 8),
@@ -610,6 +745,16 @@ class _CreateListingPageState extends State<CreateListingPage> {
     );
   }
 
+  IconData _categoryIcon(String slug) {
+    return switch (slug.toLowerCase()) {
+      'clothing' => Icons.checkroom_outlined,
+      'food' => Icons.restaurant_outlined,
+      'furniture' || 'household' => Icons.chair_outlined,
+      'electronics' => Icons.devices_outlined,
+      _ => Icons.category_outlined,
+    };
+  }
+
   Widget _buildImagePickerHeader(ColorScheme colorScheme) {
     return GestureDetector(
       onTap: () {
@@ -630,9 +775,15 @@ class _CreateListingPageState extends State<CreateListingPage> {
                         color: colorScheme.primaryContainer,
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.photo_library, color: colorScheme.primary),
+                      child: Icon(
+                        Icons.photo_library,
+                        color: colorScheme.primary,
+                      ),
                     ),
-                    title: const Text('Chọn ảnh từ thư viện', style: TextStyle(fontWeight: FontWeight.bold)),
+                    title: const Text(
+                      'Chọn ảnh từ thư viện',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     onTap: () {
                       context.pop();
                       _pickImage(ImageSource.gallery);
@@ -645,9 +796,15 @@ class _CreateListingPageState extends State<CreateListingPage> {
                         color: colorScheme.secondaryContainer,
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.camera_alt, color: colorScheme.secondary),
+                      child: Icon(
+                        Icons.camera_alt,
+                        color: colorScheme.secondary,
+                      ),
                     ),
-                    title: const Text('Chụp ảnh mới', style: TextStyle(fontWeight: FontWeight.bold)),
+                    title: const Text(
+                      'Chụp ảnh mới',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     onTap: () {
                       context.pop();
                       _pickImage(ImageSource.camera);
@@ -667,7 +824,9 @@ class _CreateListingPageState extends State<CreateListingPage> {
           color: colorScheme.surfaceContainerHighest.withOpacity(0.4),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: _imageFile != null ? colorScheme.primary : colorScheme.outlineVariant.withOpacity(0.5),
+            color: _imageFile != null
+                ? colorScheme.primary
+                : colorScheme.outlineVariant.withOpacity(0.5),
             width: _imageFile != null ? 2 : 1.5,
           ),
           image: _imageFile != null
@@ -689,7 +848,11 @@ class _CreateListingPageState extends State<CreateListingPage> {
                       color: colorScheme.primaryContainer.withOpacity(0.7),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.add_a_photo_outlined, size: 36, color: colorScheme.primary),
+                    child: Icon(
+                      Icons.add_a_photo_outlined,
+                      size: 36,
+                      color: colorScheme.primary,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -702,7 +865,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'AI sẽ tự động đọc ảnh và điền Form giúp bạn',
+                    'AI sẽ tự động đọc ảnh và điền biểu mẫu giúp bạn',
                     style: TextStyle(
                       color: colorScheme.onSurfaceVariant,
                       fontSize: 12,
@@ -718,7 +881,11 @@ class _CreateListingPageState extends State<CreateListingPage> {
                     child: CircleAvatar(
                       backgroundColor: Colors.black54,
                       child: IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.white, size: 18),
+                        icon: const Icon(
+                          Icons.edit,
+                          color: Colors.white,
+                          size: 18,
+                        ),
                         onPressed: () => _pickImage(ImageSource.gallery),
                       ),
                     ),
@@ -762,7 +929,11 @@ class _CreateListingPageState extends State<CreateListingPage> {
                       color: colorScheme.primary,
                     ),
                   )
-                : Icon(Icons.auto_awesome, color: colorScheme.primary, size: 22),
+                : Icon(
+                    Icons.auto_awesome,
+                    color: colorScheme.primary,
+                    size: 22,
+                  ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -772,7 +943,9 @@ class _CreateListingPageState extends State<CreateListingPage> {
                 Text(
                   _isDetecting
                       ? 'AI đang đọc hình ảnh...'
-                      : (_aiDetected ? '✨ AI đã điền Form thành công' : 'Phân tích hình ảnh với AI'),
+                      : (_aiDetected
+                            ? '✨ AI đã điền biểu mẫu thành công'
+                            : 'Phân tích hình ảnh với AI'),
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: colorScheme.onPrimaryContainer,
@@ -784,8 +957,8 @@ class _CreateListingPageState extends State<CreateListingPage> {
                   _isDetecting
                       ? 'Đang gửi ảnh sang AI (${AppConstants.apiHost})...'
                       : (_aiDetected
-                          ? 'Bạn có thể chỉnh sửa lại thông tin nếu cần'
-                          : 'Bấm nút để AI tự nhận diện lại'),
+                            ? 'Bạn có thể chỉnh sửa lại thông tin nếu cần'
+                            : 'Bấm nút để AI tự nhận diện lại'),
                   style: TextStyle(
                     color: colorScheme.onPrimaryContainer.withOpacity(0.8),
                     fontSize: 12,
@@ -802,8 +975,13 @@ class _CreateListingPageState extends State<CreateListingPage> {
               style: TextButton.styleFrom(
                 foregroundColor: colorScheme.primary,
                 backgroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
         ],
@@ -811,7 +989,11 @@ class _CreateListingPageState extends State<CreateListingPage> {
     );
   }
 
-  Widget _buildConditionPill(String value, String label, ColorScheme colorScheme) {
+  Widget _buildConditionPill(
+    String value,
+    String label,
+    ColorScheme colorScheme,
+  ) {
     final isSelected = _condition == value;
     return Expanded(
       child: GestureDetector(
@@ -828,7 +1010,9 @@ class _CreateListingPageState extends State<CreateListingPage> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
-              color: isSelected ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
+              color: isSelected
+                  ? colorScheme.onPrimary
+                  : colorScheme.onSurfaceVariant,
             ),
           ),
         ),

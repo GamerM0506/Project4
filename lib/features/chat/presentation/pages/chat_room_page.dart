@@ -67,7 +67,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   }
 
   void _openDonateFormWithAI() {
-    context.push('/marketplace/create', extra: {'groupId': widget.conversationId});
+    context.push(
+      '/marketplace/create',
+      extra: {'groupId': widget.conversationId},
+    );
   }
 
   @override
@@ -97,8 +100,14 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                     radius: 18,
                     backgroundColor: colorScheme.primaryContainer,
                     child: Text(
-                      widget.name.isNotEmpty ? widget.name[0].toUpperCase() : '?',
-                      style: TextStyle(color: colorScheme.onPrimaryContainer, fontWeight: FontWeight.bold, fontSize: 14),
+                      widget.name.isNotEmpty
+                          ? widget.name[0].toUpperCase()
+                          : '?',
+                      style: TextStyle(
+                        color: colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                   Positioned(
@@ -110,7 +119,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                       decoration: BoxDecoration(
                         color: Colors.greenAccent[400],
                         shape: BoxShape.circle,
-                        border: Border.all(color: colorScheme.surface, width: 2),
+                        border: Border.all(
+                          color: colorScheme.surface,
+                          width: 2,
+                        ),
                       ),
                     ),
                   ),
@@ -124,12 +136,18 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   children: [
                     Text(
                       widget.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       'Hội nhóm tiếp nhận',
-                      style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -143,12 +161,20 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               child: FilledButton.icon(
                 onPressed: _openDonateFormWithAI,
                 icon: const Icon(Icons.card_giftcard, size: 16),
-                label: const Text('Gửi đồ quyên góp', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                label: const Text(
+                  'Gửi đồ quyên góp',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
                 style: FilledButton.styleFrom(
                   backgroundColor: colorScheme.primaryContainer,
                   foregroundColor: colorScheme.onPrimaryContainer,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                 ),
               ),
             ),
@@ -162,12 +188,20 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               color: colorScheme.secondaryContainer.withOpacity(0.4),
               child: Row(
                 children: [
-                  Icon(Icons.auto_awesome, color: colorScheme.secondary, size: 18),
+                  Icon(
+                    Icons.auto_awesome,
+                    color: colorScheme.secondary,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Bạn có đồ muốn gửi cho ${widget.name}? Dùng AI điền nhanh form quyên góp!',
-                      style: TextStyle(fontSize: 12, color: colorScheme.onSecondaryContainer, fontWeight: FontWeight.w500),
+                      'Bạn có đồ muốn gửi cho ${widget.name}? Dùng AI để điền nhanh biểu mẫu quyên góp!',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colorScheme.onSecondaryContainer,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -175,14 +209,21 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                     onTap: _openDonateFormWithAI,
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: colorScheme.secondary,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         'Điền AI',
-                        style: TextStyle(fontSize: 12, color: colorScheme.onSecondary, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.onSecondary,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -192,18 +233,33 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             Expanded(
               child: BlocConsumer<ChatCubit, ChatState>(
                 listener: (context, state) {
-                  Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+                  if (state.error != null && state.error!.isNotEmpty) {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(state.error!)));
+                    context.read<ChatCubit>().clearError();
+                  }
+                  Future.delayed(
+                    const Duration(milliseconds: 100),
+                    _scrollToBottom,
+                  );
                 },
                 builder: (context, state) {
                   if (state.messages.isEmpty) {
                     return Center(
-                      child: Text('Chưa có tin nhắn nào trong hội nhóm này', style: TextStyle(color: colorScheme.onSurfaceVariant)),
+                      child: Text(
+                        'Chưa có tin nhắn nào trong hội nhóm này',
+                        style: TextStyle(color: colorScheme.onSurfaceVariant),
+                      ),
                     );
                   }
 
                   return ListView.builder(
                     controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 20,
+                    ),
                     itemCount: state.messages.length,
                     itemBuilder: (context, index) {
                       final msg = state.messages[index];
@@ -217,9 +273,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                       }
 
                       return Align(
-                        alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+                        alignment: isMine
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
                         child: Column(
-                          crossAxisAlignment: isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                          crossAxisAlignment: isMine
+                              ? CrossAxisAlignment.end
+                              : CrossAxisAlignment.start,
                           children: [
                             Row(
                               mainAxisSize: MainAxisSize.min,
@@ -228,24 +288,51 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                                 if (!isMine) ...[
                                   CircleAvatar(
                                     radius: 16,
-                                    backgroundImage: msg.senderAvatar != null ? NetworkImage(msg.senderAvatar!) : null,
-                                    backgroundColor: colorScheme.secondaryContainer,
+                                    backgroundImage: msg.senderAvatar != null
+                                        ? NetworkImage(msg.senderAvatar!)
+                                        : null,
+                                    backgroundColor:
+                                        colorScheme.secondaryContainer,
                                     child: msg.senderAvatar == null
-                                        ? Text(msg.senderName != null && msg.senderName!.isNotEmpty ? msg.senderName![0].toUpperCase() : '?', style: TextStyle(fontSize: 12, color: colorScheme.onSecondaryContainer))
+                                        ? Text(
+                                            msg.senderName != null &&
+                                                    msg.senderName!.isNotEmpty
+                                                ? msg.senderName![0]
+                                                      .toUpperCase()
+                                                : '?',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: colorScheme
+                                                  .onSecondaryContainer,
+                                            ),
+                                          )
                                         : null,
                                   ),
                                   const SizedBox(width: 8),
                                 ],
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
+                                  constraints: BoxConstraints(
+                                    maxWidth:
+                                        MediaQuery.of(context).size.width *
+                                        0.75,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: isMine ? colorScheme.primary : colorScheme.surfaceContainerHigh,
+                                    color: isMine
+                                        ? colorScheme.primary
+                                        : colorScheme.surfaceContainerHigh,
                                     borderRadius: BorderRadius.only(
                                       topLeft: const Radius.circular(16),
                                       topRight: const Radius.circular(16),
-                                      bottomLeft: Radius.circular(isMine ? 16 : 4),
-                                      bottomRight: Radius.circular(isMine ? 4 : 16),
+                                      bottomLeft: Radius.circular(
+                                        isMine ? 16 : 4,
+                                      ),
+                                      bottomRight: Radius.circular(
+                                        isMine ? 4 : 16,
+                                      ),
                                     ),
                                     boxShadow: [
                                       BoxShadow(
@@ -258,7 +345,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                                   child: Text(
                                     msg.content,
                                     style: TextStyle(
-                                      color: isMine ? colorScheme.onPrimary : colorScheme.onSurface,
+                                      color: isMine
+                                          ? colorScheme.onPrimary
+                                          : colorScheme.onSurface,
                                       fontSize: 16,
                                     ),
                                   ),
@@ -275,7 +364,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    '${msg.createdAt.hour}:${msg.createdAt.minute.toString().padLeft(2, '0')} ${msg.createdAt.hour >= 12 ? 'PM' : 'AM'}',
+                                    '${msg.createdAt.hour.toString().padLeft(2, '0')}:${msg.createdAt.minute.toString().padLeft(2, '0')}',
                                     style: TextStyle(
                                       color: colorScheme.onSurfaceVariant,
                                       fontSize: 12,
@@ -284,7 +373,11 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                                   ),
                                   if (isMine) ...[
                                     const SizedBox(width: 4),
-                                    Icon(Icons.done_all, size: 14, color: Colors.teal[400]),
+                                    Icon(
+                                      Icons.done_all,
+                                      size: 14,
+                                      color: Colors.teal[400],
+                                    ),
                                   ],
                                 ],
                               ),
@@ -309,7 +402,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: colorScheme.surface,
-        border: Border(top: BorderSide(color: colorScheme.surfaceContainerHighest)),
+        border: Border(
+          top: BorderSide(color: colorScheme.surfaceContainerHighest),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -339,7 +434,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   decoration: InputDecoration(
                     hintText: 'Nhập tin nhắn với nhóm...',
                     border: InputBorder.none,
-                    hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 15),
+                    hintStyle: TextStyle(
+                      color: colorScheme.onSurfaceVariant,
+                      fontSize: 15,
+                    ),
                   ),
                   style: TextStyle(color: colorScheme.onSurface, fontSize: 15),
                 ),
@@ -353,11 +451,15 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                       color: Colors.black.withOpacity(0.1),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
-                    )
+                    ),
                   ],
                 ),
                 child: IconButton(
-                  icon: Icon(Icons.send, color: colorScheme.onPrimary, size: 20),
+                  icon: Icon(
+                    Icons.send,
+                    color: colorScheme.onPrimary,
+                    size: 20,
+                  ),
                   onPressed: _sendMessage,
                 ),
               ),
@@ -389,8 +491,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                     ),
                     child: const Icon(Icons.auto_awesome, color: Colors.orange),
                   ),
-                  title: const Text('Quyên góp đồ bằng AI', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: const Text('Chụp/chọn ảnh để AI tự động điền form và gửi cho nhóm'),
+                  title: const Text(
+                    'Quyên góp đồ bằng AI',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: const Text(
+                    'Chụp/chọn ảnh để AI tự động điền biểu mẫu và gửi cho nhóm',
+                  ),
                   onTap: () {
                     context.pop();
                     _openDonateFormWithAI();
@@ -406,7 +513,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                     child: const Icon(Icons.card_giftcard, color: Colors.green),
                   ),
                   title: const Text('Tạo thẻ quyên góp thủ công'),
-                  subtitle: const Text('Điền thông tin và gửi yêu cầu vào khung chat'),
+                  subtitle: const Text(
+                    'Điền thông tin và gửi yêu cầu vào cuộc trò chuyện',
+                  ),
                   onTap: () {
                     context.pop();
                     _showDonationForm(context);
@@ -444,16 +553,12 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       builder: (context) {
         return DonationBottomSheet(
           onSubmit: (title, description, quantity) {
-            _chatCubit.sendMessage(
-              'Tôi muốn quyên góp: $title',
-              type: 'donation_proposal',
-              metadata: {
-                'name': title,
-                'description': description,
-                'condition': 'used',
-                'category_id': 'default',
-                'status': 'pending',
-              },
+            _chatCubit.submitDonationProposal(
+              groupId: widget.conversationId,
+              title: title,
+              description: description,
+              quantity: quantity,
+              condition: 'used',
             );
           },
         );

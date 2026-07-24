@@ -8,10 +8,10 @@ class HomeQuickActions extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildActionItem(context, Icons.storefront_outlined, 'Marketplace'),
-        _buildActionItem(context, Icons.group_outlined, 'Find Groups'),
-        _buildActionItem(context, Icons.my_location_outlined, 'My Tracking'),
-        _buildActionItem(context, Icons.emoji_events_outlined, 'Leaderboard'),
+        _buildActionItem(context, Icons.storefront_outlined, 'Gian hàng'),
+        _buildActionItem(context, Icons.group_outlined, 'Tìm hội nhóm'),
+        _buildActionItem(context, Icons.my_location_outlined, 'Theo dõi'),
+        _buildActionItem(context, Icons.emoji_events_outlined, 'Xếp hạng'),
       ],
     );
   }

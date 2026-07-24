@@ -26,8 +26,12 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.group.name);
-    _descriptionController = TextEditingController(text: widget.group.description);
-    _provinceController = TextEditingController(text: widget.group.provinceCode);
+    _descriptionController = TextEditingController(
+      text: widget.group.description,
+    );
+    _provinceController = TextEditingController(
+      text: widget.group.provinceCode,
+    );
     _avatarUrl = widget.group.avatarUrl;
     _coverUrl = widget.group.coverUrl;
   }
@@ -52,13 +56,13 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
     }
 
     context.read<UpdateGroupCubit>().updateGroup(
-          widget.group.id,
-          name: _nameController.text.trim(),
-          description: _descriptionController.text.trim(),
-          avatarUrl: _avatarUrl,
-          coverUrl: _coverUrl,
-          // provinceCode: _provinceController.text.trim(), // Assuming UpdateGroupUseCase doesn't support this yet, so we skip or update it if supported
-        );
+      widget.group.id,
+      name: _nameController.text.trim(),
+      description: _descriptionController.text.trim(),
+      avatarUrl: _avatarUrl,
+      coverUrl: _coverUrl,
+      // provinceCode: _provinceController.text.trim(), // Assuming UpdateGroupUseCase doesn't support this yet, so we skip or update it if supported
+    );
   }
 
   @override
@@ -96,15 +100,19 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
               children: [
                 Text(
                   'Cài đặt nhóm',
-                  style: textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+                  style: textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Chỉnh sửa thông tin cơ bản và tùy chọn nâng cao.',
-                  style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurfaceVariant),
+                  style: textTheme.bodyLarge?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 32),
-                
+
                 // Name Field
                 _buildModernTextField(
                   controller: _nameController,
@@ -114,7 +122,7 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
                   textTheme: textTheme,
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Description Field
                 _buildModernTextField(
                   controller: _descriptionController,
@@ -144,13 +152,13 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Avatar Picker
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     ImagePickerWidget(
-                      label: 'Ảnh Logo (Avatar)',
+                      label: 'Ảnh biểu trưng',
                       isAvatar: true,
                       initialUrl: _avatarUrl,
                       onImageUploaded: (url) {
@@ -162,10 +170,10 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Cover Picker
                 ImagePickerWidget(
-                  label: 'Ảnh Bìa (Cover)',
+                  label: 'Ảnh bìa',
                   initialUrl: _coverUrl,
                   onImageUploaded: (url) {
                     setState(() {
@@ -177,23 +185,33 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
 
                 // Save Button
                 ElevatedButton(
-                  onPressed: state is UpdateGroupLoading ? null : () => _submit(context),
+                  onPressed: state is UpdateGroupLoading
+                      ? null
+                      : () => _submit(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFB73A41),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     elevation: 2,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                   child: state is UpdateGroupLoading
                       ? const SizedBox(
                           width: 24,
                           height: 24,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
                         )
                       : const Text(
                           'Lưu Thay Đổi',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                 ),
               ],
@@ -230,14 +248,27 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
             color: colorScheme.onSurfaceVariant.withOpacity(0.8),
           ),
           prefixIcon: maxLines == 1
-              ? Icon(icon, color: colorScheme.onSurfaceVariant.withOpacity(0.7), size: 22)
+              ? Icon(
+                  icon,
+                  color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+                  size: 22,
+                )
               : Padding(
-                  padding: const EdgeInsets.only(bottom: 60), // Align top for multiline
-                  child: Icon(icon, color: colorScheme.onSurfaceVariant.withOpacity(0.7), size: 22),
+                  padding: const EdgeInsets.only(
+                    bottom: 60,
+                  ), // Align top for multiline
+                  child: Icon(
+                    icon,
+                    color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+                    size: 22,
+                  ),
                 ),
           filled: true,
           fillColor: Colors.transparent,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 18,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,

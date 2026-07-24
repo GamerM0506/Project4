@@ -4,30 +4,22 @@ import '../../../../core/constants/app_constants.dart';
 import '../../domain/entities/two_factor_setup_entity.dart';
 import '../../domain/usecases/disable_two_factor_usecase.dart';
 import '../../domain/usecases/enable_two_factor_usecase.dart';
+import '../../domain/usecases/get_two_factor_status_usecase.dart';
 import '../../domain/usecases/setup_two_factor_usecase.dart';
 
 abstract class TwoFactorState {
   final bool isEnabled;
   final TwoFactorSetupEntity? pendingSetup;
 
-  const TwoFactorState({
-    required this.isEnabled,
-    this.pendingSetup,
-  });
+  const TwoFactorState({required this.isEnabled, this.pendingSetup});
 }
 
 class TwoFactorInitial extends TwoFactorState {
-  const TwoFactorInitial({
-    required super.isEnabled,
-    super.pendingSetup,
-  });
+  const TwoFactorInitial({required super.isEnabled, super.pendingSetup});
 }
 
 class TwoFactorLoading extends TwoFactorState {
-  const TwoFactorLoading({
-    required super.isEnabled,
-    super.pendingSetup,
-  });
+  const TwoFactorLoading({required super.isEnabled, super.pendingSetup});
 }
 
 class TwoFactorSetupReady extends TwoFactorState {
@@ -61,40 +53,64 @@ class TwoFactorFailure extends TwoFactorState {
 
 class TwoFactorCubit extends Cubit<TwoFactorState> {
   final SetupTwoFactorUseCase setupTwoFactorUseCase;
+  final GetTwoFactorStatusUseCase getTwoFactorStatusUseCase;
   final EnableTwoFactorUseCase enableTwoFactorUseCase;
   final DisableTwoFactorUseCase disableTwoFactorUseCase;
   final SharedPreferences sharedPreferences;
 
   TwoFactorCubit({
     required this.setupTwoFactorUseCase,
+    required this.getTwoFactorStatusUseCase,
     required this.enableTwoFactorUseCase,
     required this.disableTwoFactorUseCase,
     required this.sharedPreferences,
   }) : super(
-          TwoFactorInitial(
-            isEnabled: sharedPreferences.getBool(
-                  AppConstants.keyTwoFactorEnabled,
-                ) ??
-                false,
-          ),
+         TwoFactorInitial(
+           isEnabled:
+               sharedPreferences.getBool(AppConstants.keyTwoFactorEnabled) ??
+               false,
+         ),
+       );
+
+  Future<void> loadStatus() async {
+    emit(TwoFactorLoading(isEnabled: state.isEnabled));
+    final result = await getTwoFactorStatusUseCase();
+    if (isClosed) return;
+
+    await result.fold<Future<void>>(
+      (error) async {
+        emit(TwoFactorFailure(message: error, isEnabled: state.isEnabled));
+      },
+      (enabled) async {
+        await sharedPreferences.setBool(
+          AppConstants.keyTwoFactorEnabled,
+          enabled,
         );
+        if (isClosed) return;
+        emit(TwoFactorInitial(isEnabled: enabled));
+      },
+    );
+  }
 
   Future<void> startSetup() async {
     final wasEnabled = state.isEnabled;
+    if (wasEnabled) {
+      emit(
+        const TwoFactorFailure(
+          message: '2FA đang được bật. Hãy tắt trước khi thiết lập lại.',
+          isEnabled: true,
+        ),
+      );
+      return;
+    }
     emit(TwoFactorLoading(isEnabled: wasEnabled));
 
     final result = await setupTwoFactorUseCase();
     if (isClosed) return;
 
     result.fold(
-      (error) => emit(TwoFactorFailure(
-        message: error,
-        isEnabled: wasEnabled,
-      )),
-      (setup) => emit(TwoFactorSetupReady(
-        setup: setup,
-        isEnabled: false,
-      )),
+      (error) => emit(TwoFactorFailure(message: error, isEnabled: wasEnabled)),
+      (setup) => emit(TwoFactorSetupReady(setup: setup, isEnabled: false)),
     );
   }
 
@@ -103,11 +119,13 @@ class TwoFactorCubit extends Cubit<TwoFactorState> {
     final pending = state.pendingSetup;
 
     if (trimmed.length < 6) {
-      emit(TwoFactorFailure(
-        message: 'Vui lòng nhập mã 6 số từ app Authenticator.',
-        isEnabled: false,
-        pendingSetup: pending,
-      ));
+      emit(
+        TwoFactorFailure(
+          message: 'Vui lòng nhập mã 6 số từ app Authenticator.',
+          isEnabled: false,
+          pendingSetup: pending,
+        ),
+      );
       return;
     }
 
@@ -117,22 +135,19 @@ class TwoFactorCubit extends Cubit<TwoFactorState> {
 
     await result.fold<Future<void>>(
       (error) async {
-        emit(TwoFactorFailure(
-          message: error,
-          isEnabled: false,
-          pendingSetup: pending,
-        ));
+        emit(
+          TwoFactorFailure(
+            message: error,
+            isEnabled: false,
+            pendingSetup: pending,
+          ),
+        );
       },
       (_) async {
-        await sharedPreferences.setBool(
-          AppConstants.keyTwoFactorEnabled,
-          true,
-        );
-        if (isClosed) return;
-        emit(const TwoFactorSuccess(
+        await _syncAfterMutation(
+          fallbackEnabled: true,
           message: 'Đã bật xác thực 2 bước.',
-          isEnabled: true,
-        ));
+        );
       },
     );
   }
@@ -140,10 +155,12 @@ class TwoFactorCubit extends Cubit<TwoFactorState> {
   Future<void> disable(String code) async {
     final trimmed = code.trim();
     if (trimmed.length < 6) {
-      emit(TwoFactorFailure(
-        message: 'Vui lòng nhập mã 6 số từ app Authenticator.',
-        isEnabled: true,
-      ));
+      emit(
+        TwoFactorFailure(
+          message: 'Vui lòng nhập mã 6 số từ app Authenticator.',
+          isEnabled: true,
+        ),
+      );
       return;
     }
 
@@ -156,20 +173,27 @@ class TwoFactorCubit extends Cubit<TwoFactorState> {
         emit(TwoFactorFailure(message: error, isEnabled: true));
       },
       (_) async {
-        await sharedPreferences.setBool(
-          AppConstants.keyTwoFactorEnabled,
-          false,
-        );
-        if (isClosed) return;
-        emit(const TwoFactorSuccess(
+        await _syncAfterMutation(
+          fallbackEnabled: false,
           message: 'Đã tắt xác thực 2 bước.',
-          isEnabled: false,
-        ));
+        );
       },
     );
   }
 
   void resetToIdle() {
     emit(TwoFactorInitial(isEnabled: state.isEnabled));
+  }
+
+  Future<void> _syncAfterMutation({
+    required bool fallbackEnabled,
+    required String message,
+  }) async {
+    final status = await getTwoFactorStatusUseCase();
+    var enabled = fallbackEnabled;
+    status.fold((_) {}, (value) => enabled = value);
+    await sharedPreferences.setBool(AppConstants.keyTwoFactorEnabled, enabled);
+    if (isClosed) return;
+    emit(TwoFactorSuccess(message: message, isEnabled: enabled));
   }
 }

@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/router/app_routes.dart';
+import '../../../../features/user/presentation/cubit/user_cubit.dart';
+import '../../../../injection_container.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -35,15 +40,30 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
 
     _progressController.forward();
     _heartController.repeat(reverse: true);
+    _bootstrapSession();
+  }
 
-    // Navigate to Login after 3 seconds
-    _progressController.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        if (mounted) {
-          context.go(AppRoutes.login);
-        }
-      }
-    });
+  Future<void> _bootstrapSession() async {
+    final prefs = sl<SharedPreferences>();
+    final accessToken = prefs.getString(AppConstants.keyAccessToken);
+    final refreshToken = prefs.getString(AppConstants.keyRefreshToken);
+    final hasSession =
+        (accessToken?.isNotEmpty ?? false) ||
+        (refreshToken?.isNotEmpty ?? false);
+
+    if (hasSession) {
+      await context.read<UserCubit>().fetchProfile();
+    }
+
+    await _progressController.forward().orCancel;
+    if (!mounted) return;
+
+    final validAccessToken = prefs.getString(AppConstants.keyAccessToken);
+    context.go(
+      validAccessToken != null && validAccessToken.isNotEmpty
+          ? AppRoutes.home
+          : AppRoutes.login,
+    );
   }
 
   @override
@@ -68,7 +88,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
               fit: BoxFit.cover,
             ),
           ),
-          
+
           // Thanh loading và trái tim chạy ở dưới cùng
           Positioned(
             left: 40,
@@ -77,18 +97,18 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                
                 // Loading bar container
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final maxWidth = constraints.maxWidth;
-                    
+
                     return AnimatedBuilder(
                       animation: _progressController,
                       builder: (context, child) {
                         final progress = _progressController.value;
                         const heartSize = 32.0;
-                        final currentPosition = progress * (maxWidth - heartSize);
+                        final currentPosition =
+                            progress * (maxWidth - heartSize);
 
                         return SizedBox(
                           height: heartSize + 12,
@@ -121,7 +141,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                                   ),
                                 ),
                               ),
-                              
+
                               // Trái tim đập chạy dọc thanh
                               Positioned(
                                 left: currentPosition,

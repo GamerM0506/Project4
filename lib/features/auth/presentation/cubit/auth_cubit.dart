@@ -1,7 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../domain/usecases/login_usecase.dart';
+import '../../domain/usecases/login_two_factor_usecase.dart';
+import '../../domain/usecases/logout_usecase.dart';
 import '../../domain/usecases/register_usecase.dart';
 import '../../domain/usecases/verify_usecase.dart';
 import '../../domain/usecases/resend_verification_usecase.dart';
@@ -12,6 +16,8 @@ import 'auth_state.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   final LoginUseCase loginUseCase;
+  final LoginTwoFactorUseCase loginTwoFactorUseCase;
+  final LogoutUseCase logoutUseCase;
   final RegisterUseCase registerUseCase;
   final VerifyUseCase verifyUseCase;
   final ResendVerificationUseCase resendVerificationUseCase;
@@ -19,9 +25,12 @@ class AuthCubit extends Cubit<AuthState> {
   final VerifyResetCodeUseCase verifyResetCodeUseCase;
   final ResetPasswordUseCase resetPasswordUseCase;
   final SharedPreferences sharedPreferences;
+  String? _challengeToken;
 
   AuthCubit({
     required this.loginUseCase,
+    required this.loginTwoFactorUseCase,
+    required this.logoutUseCase,
     required this.registerUseCase,
     required this.verifyUseCase,
     required this.resendVerificationUseCase,
@@ -53,15 +62,54 @@ class AuthCubit extends Cubit<AuthState> {
     result.fold(
       (failureMessage) => emit(AuthFailure(message: failureMessage)),
       (authEntity) async {
+        if (authEntity.twoFactorRequired) {
+          final challengeToken = authEntity.challengeToken;
+          if (challengeToken == null || challengeToken.isEmpty) {
+            emit(AuthFailure(message: 'Máy chủ không trả về mã xác thực 2FA.'));
+            return;
+          }
+          _challengeToken = challengeToken;
+          emit(AuthTwoFactorRequired());
+          return;
+        }
         await _persistTokens(authEntity.accessToken, authEntity.refreshToken);
+        await _persistUserId(authEntity.userId, authEntity.accessToken);
         if (authEntity.accessToken != null &&
             authEntity.accessToken!.isNotEmpty) {
           emit(AuthSuccess());
         } else {
-          emit(AuthFailure(
-            message: 'Đăng nhập chưa nhận được token. Kiểm tra 2FA hoặc thử lại.',
-          ));
+          emit(
+            AuthFailure(
+              message:
+                  'Đăng nhập chưa nhận được token. Kiểm tra 2FA hoặc thử lại.',
+            ),
+          );
         }
+      },
+    );
+  }
+
+  Future<void> verifyLoginTwoFactor(String code) async {
+    final challengeToken = _challengeToken;
+    if (challengeToken == null || challengeToken.isEmpty) {
+      emit(AuthFailure(message: 'Phiên xác thực 2FA không còn hợp lệ.'));
+      return;
+    }
+    if (code.length < 6) {
+      emit(AuthFailure(message: 'Vui lòng nhập mã xác thực hợp lệ.'));
+      return;
+    }
+
+    emit(AuthLoading());
+    final result = await loginTwoFactorUseCase(challengeToken, code);
+    await result.fold(
+      (failureMessage) async => emit(AuthFailure(message: failureMessage)),
+      (authEntity) async {
+        await _persistTokens(authEntity.accessToken, authEntity.refreshToken);
+        await _persistUserId(authEntity.userId, authEntity.accessToken);
+        await sharedPreferences.setBool(AppConstants.keyTwoFactorEnabled, true);
+        _challengeToken = null;
+        emit(AuthSuccess());
       },
     );
   }
@@ -75,13 +123,46 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  Future<void> _persistUserId(String? userId, String? accessToken) async {
+    final resolvedUserId = userId ?? _readJwtSubject(accessToken);
+    if (resolvedUserId != null && resolvedUserId.isNotEmpty) {
+      await sharedPreferences.setString(AppConstants.keyUserId, resolvedUserId);
+    }
+  }
+
+  String? _readJwtSubject(String? token) {
+    if (token == null || token.isEmpty) return null;
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+      final payload = utf8.decode(
+        base64Url.decode(base64Url.normalize(parts[1])),
+      );
+      final json = jsonDecode(payload);
+      return json is Map ? json['sub']?.toString() : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> handleSessionExpired() async {
-    await sharedPreferences.remove(AppConstants.keyAccessToken);
-    await sharedPreferences.remove(AppConstants.keyRefreshToken);
+    await _clearSession();
     emit(AuthUnauthenticated());
   }
 
-  Future<void> registerUser(String fullName, String emailOrPhone, String password) async {
+  Future<void> _clearSession() async {
+    _challengeToken = null;
+    await sharedPreferences.remove(AppConstants.keyAccessToken);
+    await sharedPreferences.remove(AppConstants.keyRefreshToken);
+    await sharedPreferences.remove(AppConstants.keyUserId);
+    await sharedPreferences.remove(AppConstants.keyTwoFactorEnabled);
+  }
+
+  Future<void> registerUser(
+    String fullName,
+    String emailOrPhone,
+    String password,
+  ) async {
     if (fullName.isEmpty || emailOrPhone.isEmpty || password.isEmpty) {
       emit(AuthFailure(message: 'Vui lòng nhập đầy đủ thông tin.'));
       return;
@@ -114,7 +195,13 @@ class AuthCubit extends Cubit<AuthState> {
     if (username.length < 3) username = 'usr$username';
     if (username.length > 30) username = username.substring(0, 30);
 
-    final result = await registerUseCase(username, fullName, email, phone, password);
+    final result = await registerUseCase(
+      username,
+      fullName,
+      email,
+      phone,
+      password,
+    );
 
     result.fold(
       (failureMessage) => emit(AuthFailure(message: failureMessage)),
@@ -126,7 +213,11 @@ class AuthCubit extends Cubit<AuthState> {
 
   Future<void> verify(String emailOrPhone, String code) async {
     if (emailOrPhone.isEmpty) {
-      emit(VerifyFailure(message: 'Không tìm thấy thông tin email. Vui lòng thử lại từ đầu.'));
+      emit(
+        VerifyFailure(
+          message: 'Không tìm thấy thông tin email. Vui lòng thử lại từ đầu.',
+        ),
+      );
       return;
     }
     if (code.isEmpty) {
@@ -174,14 +265,24 @@ class AuthCubit extends Cubit<AuthState> {
     );
   }
 
-  Future<void> resetPassword(String email, String code, String resetToken, String newPassword) async {
+  Future<void> resetPassword(
+    String email,
+    String code,
+    String resetToken,
+    String newPassword,
+  ) async {
     if (newPassword.isEmpty || newPassword.length < 8) {
       emit(AuthFailure(message: 'Mật khẩu phải có ít nhất 8 ký tự.'));
       return;
     }
 
     emit(ResetPasswordLoading());
-    final result = await resetPasswordUseCase(email, code, resetToken, newPassword);
+    final result = await resetPasswordUseCase(
+      email,
+      code,
+      resetToken,
+      newPassword,
+    );
 
     result.fold(
       (failureMessage) => emit(AuthFailure(message: failureMessage)),
@@ -191,7 +292,11 @@ class AuthCubit extends Cubit<AuthState> {
 
   Future<void> resendVerification(String emailOrPhone) async {
     if (emailOrPhone.isEmpty) {
-      emit(VerifyFailure(message: 'Không tìm thấy thông tin email. Vui lòng đăng ký lại.'));
+      emit(
+        VerifyFailure(
+          message: 'Không tìm thấy thông tin email. Vui lòng đăng ký lại.',
+        ),
+      );
       return;
     }
     final result = await resendVerificationUseCase(emailOrPhone);
@@ -203,6 +308,12 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   Future<void> logout() async {
+    final refreshToken = sharedPreferences.getString(
+      AppConstants.keyRefreshToken,
+    );
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      await logoutUseCase(refreshToken);
+    }
     await handleSessionExpired();
   }
 }

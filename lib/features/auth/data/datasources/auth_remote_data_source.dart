@@ -5,18 +5,30 @@ import '../../../../core/network/api_client.dart';
 
 abstract class AuthRemoteDataSource {
   Future<AuthModel> login(String? email, String? phone, String password);
-  Future<AuthModel> register(String username, String fullName, String? email, String? phone, String password);
+  Future<AuthModel> register(
+    String username,
+    String fullName,
+    String? email,
+    String? phone,
+    String password,
+  );
   Future<void> verify(String emailOrPhone, String code);
   Future<void> resendVerification(String emailOrPhone);
   Future<void> forgotPassword(String email);
   Future<String> verifyResetCode(String email, String code);
-  Future<void> resetPassword(String email, String code, String resetToken, String newPassword);
+  Future<void> resetPassword(
+    String email,
+    String code,
+    String resetToken,
+    String newPassword,
+  );
   Future<void> changePassword(String currentPassword, String newPassword);
   Future<TwoFactorSetupModel> setupTwoFactor();
+  Future<bool> getTwoFactorStatus();
   Future<void> enableTwoFactor(String code);
   Future<void> disableTwoFactor(String code);
-  Future<AuthModel> login2FA(String emailOrPhone, String code);
-  Future<void> logout();
+  Future<AuthModel> login2FA(String challengeToken, String code);
+  Future<void> logout(String refreshToken);
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -38,28 +50,30 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<AuthModel> login2FA(String emailOrPhone, String code) async {
-    final body = <String, dynamic>{'code': code};
-    if (emailOrPhone.contains('@')) {
-      body['email'] = emailOrPhone;
-    } else {
-      body['phone'] = emailOrPhone;
-    }
-
+  Future<AuthModel> login2FA(String challengeToken, String code) async {
     final response = await apiClient.dio.post(
       '${AppConstants.authApiBaseUrl}/auth/login/2fa',
-      data: body,
+      data: {'challenge_token': challengeToken, 'code': code},
     );
     return AuthModel.fromJson(response.data);
   }
 
   @override
-  Future<void> logout() async {
-    await apiClient.dio.post('${AppConstants.authApiBaseUrl}/auth/logout');
+  Future<void> logout(String refreshToken) async {
+    await apiClient.dio.post(
+      '${AppConstants.authApiBaseUrl}/auth/logout',
+      data: {'refresh_token': refreshToken},
+    );
   }
 
   @override
-  Future<AuthModel> register(String username, String fullName, String? email, String? phone, String password) async {
+  Future<AuthModel> register(
+    String username,
+    String fullName,
+    String? email,
+    String? phone,
+    String password,
+  ) async {
     final response = await apiClient.dio.post(
       '${AppConstants.authApiBaseUrl}/auth/register',
       data: {
@@ -121,7 +135,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<void> resetPassword(String email, String code, String resetToken, String newPassword) async {
+  Future<void> resetPassword(
+    String email,
+    String code,
+    String resetToken,
+    String newPassword,
+  ) async {
     await apiClient.dio.post(
       '${AppConstants.authApiBaseUrl}/auth/reset-password',
       data: {
@@ -134,13 +153,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<void> changePassword(String currentPassword, String newPassword) async {
+  Future<void> changePassword(
+    String currentPassword,
+    String newPassword,
+  ) async {
     await apiClient.dio.post(
       '${AppConstants.authApiBaseUrl}/auth/change-password',
-      data: {
-        'old_password': currentPassword,
-        'new_password': newPassword,
-      },
+      data: {'old_password': currentPassword, 'new_password': newPassword},
     );
   }
 
@@ -154,6 +173,18 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           ? response.data as Map<String, dynamic>
           : <String, dynamic>{},
     );
+  }
+
+  @override
+  Future<bool> getTwoFactorStatus() async {
+    final response = await apiClient.dio.get(
+      '${AppConstants.authApiBaseUrl}/auth/2fa/status',
+    );
+    final body = response.data;
+    final data = body is Map && body['data'] is Map
+        ? body['data'] as Map
+        : body as Map?;
+    return data?['enabled'] == true;
   }
 
   @override

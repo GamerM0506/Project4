@@ -12,7 +12,7 @@ class TwoFactorPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<TwoFactorCubit>(),
+      create: (_) => sl<TwoFactorCubit>()..loadStatus(),
       child: const _TwoFactorView(),
     );
   }
@@ -85,7 +85,7 @@ class _TwoFactorViewState extends State<_TwoFactorView> {
                 _StatusCard(isEnabled: isEnabled),
                 const SizedBox(height: 24),
                 Text(
-                  'Dùng app Authenticator (Google Authenticator, Authy, Microsoft Authenticator…) để quét mã QR hoặc nhập secret, rồi nhập mã 6 số để bật/tắt.',
+                  'Dùng ứng dụng Authenticator (Google Authenticator, Authy, Microsoft Authenticator…) để quét mã QR hoặc nhập khóa bí mật, rồi nhập mã 6 số để bật hoặc tắt.',
                   style: textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                     height: 1.4,
@@ -137,17 +137,15 @@ class _TwoFactorViewState extends State<_TwoFactorView> {
                     keyboardType: TextInputType.number,
                     maxLength: 6,
                     textAlign: TextAlign.center,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   ),
                   const SizedBox(height: 16),
                   FilledButton(
                     onPressed: isLoading
                         ? null
-                        : () => context
-                            .read<TwoFactorCubit>()
-                            .enable(_codeController.text),
+                        : () => context.read<TwoFactorCubit>().enable(
+                            _codeController.text,
+                          ),
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -186,17 +184,15 @@ class _TwoFactorViewState extends State<_TwoFactorView> {
                     keyboardType: TextInputType.number,
                     maxLength: 6,
                     textAlign: TextAlign.center,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   ),
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
                     onPressed: isLoading
                         ? null
-                        : () => context
-                            .read<TwoFactorCubit>()
-                            .disable(_codeController.text),
+                        : () => context.read<TwoFactorCubit>().disable(
+                            _codeController.text,
+                          ),
                     icon: isLoading
                         ? SizedBox(
                             width: 18,
@@ -290,10 +286,7 @@ class _SetupCard extends StatelessWidget {
   final String secret;
   final String otpauthUrl;
 
-  const _SetupCard({
-    required this.secret,
-    required this.otpauthUrl,
-  });
+  const _SetupCard({required this.secret, required this.otpauthUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -337,7 +330,7 @@ class _SetupCard extends StatelessWidget {
             ),
           const SizedBox(height: 20),
           Text(
-            'Hoặc nhập secret thủ công',
+            'Hoặc nhập khóa bí mật thủ công',
             style: textTheme.labelLarge?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
@@ -368,7 +361,9 @@ class _SetupCard extends StatelessWidget {
                     await Clipboard.setData(ClipboardData(text: secret));
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Đã sao chép secret')),
+                        const SnackBar(
+                          content: Text('Đã sao chép khóa bí mật'),
+                        ),
                       );
                     }
                   },

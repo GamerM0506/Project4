@@ -69,7 +69,10 @@ class _MarketplacePageState extends State<MarketplacePage> {
                     hintText: 'Tìm kiếm vật phẩm 0 đồng...',
                     prefixIcon: Icon(Icons.search),
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 15,
+                    ),
                   ),
                 ),
               ),
@@ -105,20 +108,31 @@ class _MarketplacePageState extends State<MarketplacePage> {
                   } else if (state is MarketplaceLoaded) {
                     final listings = state.listings;
                     if (listings.isEmpty) {
-                      return const Center(child: Text('Không có sản phẩm nào.'));
+                      return const Center(
+                        child: Text('Không có sản phẩm nào.'),
+                      );
                     }
                     return GridView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        childAspectRatio: 0.65,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
                       ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 0.65,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                          ),
                       itemCount: listings.length,
                       itemBuilder: (context, index) {
                         final item = listings[index];
-                        return _buildProductCard(item, colorScheme, theme, context);
+                        return _buildProductCard(
+                          item,
+                          colorScheme,
+                          theme,
+                          context,
+                        );
                       },
                     );
                   }
@@ -132,25 +146,38 @@ class _MarketplacePageState extends State<MarketplacePage> {
     );
   }
 
-  Widget _buildFilterChip(String label, bool isSelected, ColorScheme colorScheme) {
+  Widget _buildFilterChip(
+    String label,
+    bool isSelected,
+    ColorScheme colorScheme,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: isSelected ? colorScheme.secondary : colorScheme.surfaceContainerHighest,
+        color: isSelected
+            ? colorScheme.secondary
+            : colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(20),
       ),
       alignment: Alignment.center,
       child: Text(
         label,
         style: TextStyle(
-          color: isSelected ? colorScheme.onSecondary : colorScheme.onSurfaceVariant,
+          color: isSelected
+              ? colorScheme.onSecondary
+              : colorScheme.onSurfaceVariant,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
       ),
     );
   }
 
-  Widget _buildProductCard(ListingEntity item, ColorScheme colorScheme, ThemeData theme, BuildContext context) {
+  Widget _buildProductCard(
+    ListingEntity item,
+    ColorScheme colorScheme,
+    ThemeData theme,
+    BuildContext context,
+  ) {
     return GestureDetector(
       onTap: () {
         context.push('/marketplace/detail/${item.id}');
@@ -178,39 +205,56 @@ class _MarketplacePageState extends State<MarketplacePage> {
                   Container(
                     decoration: BoxDecoration(
                       color: colorScheme.surfaceContainerHighest,
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16),
+                      ),
                     ),
                     width: double.infinity,
                     child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16),
+                      ),
                       child: item.imageUrl != null
                           ? Image.network(
                               item.imageUrl!,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Icon(
-                                Icons.broken_image,
-                                size: 50,
-                                color: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                              ),
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Icon(
+                                    Icons.broken_image,
+                                    size: 50,
+                                    color: colorScheme.onSurfaceVariant
+                                        .withOpacity(0.5),
+                                  ),
                             )
-                          : Icon(Icons.image, size: 50, color: colorScheme.onSurfaceVariant.withOpacity(0.5)),
+                          : Icon(
+                              Icons.image,
+                              size: 50,
+                              color: colorScheme.onSurfaceVariant.withOpacity(
+                                0.5,
+                              ),
+                            ),
                     ),
                   ),
                   Positioned(
                     top: 8,
                     left: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: item.condition == 'New' ? colorScheme.primaryContainer : colorScheme.tertiaryContainer,
+                        color: item.condition.toLowerCase() == 'new'
+                            ? colorScheme.primaryContainer
+                            : colorScheme.tertiaryContainer,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        item.condition.toUpperCase(),
+                        _conditionText(item.condition).toUpperCase(),
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: item.condition == 'New'
+                          color: item.condition.toLowerCase() == 'new'
                               ? colorScheme.onPrimaryContainer
                               : colorScheme.onTertiaryContainer,
                         ),
@@ -242,7 +286,11 @@ class _MarketplacePageState extends State<MarketplacePage> {
                         CircleAvatar(
                           radius: 8,
                           backgroundColor: colorScheme.surfaceContainerHighest,
-                          child: Icon(Icons.person, size: 10, color: colorScheme.onSurfaceVariant),
+                          child: Icon(
+                            Icons.person,
+                            size: 10,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
                         ),
                         const SizedBox(width: 4),
                         Expanded(
@@ -250,7 +298,10 @@ class _MarketplacePageState extends State<MarketplacePage> {
                             item.createdBy,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 10, color: colorScheme.onSurfaceVariant),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
                       ],
@@ -258,14 +309,21 @@ class _MarketplacePageState extends State<MarketplacePage> {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(Icons.location_on, size: 12, color: colorScheme.onSurfaceVariant),
+                        Icon(
+                          Icons.location_on,
+                          size: 12,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                         const SizedBox(width: 2),
                         Expanded(
                           child: Text(
                             'Địa điểm',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 10, color: colorScheme.onSurfaceVariant),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
                       ],
@@ -286,7 +344,10 @@ class _MarketplacePageState extends State<MarketplacePage> {
                           padding: const EdgeInsets.symmetric(vertical: 0),
                           minimumSize: const Size(double.infinity, 30),
                         ),
-                        child: const Text('Nhận món này', style: TextStyle(fontSize: 12)),
+                        child: const Text(
+                          'Nhận món này',
+                          style: TextStyle(fontSize: 12),
+                        ),
                       ),
                     ),
                   ],
@@ -298,4 +359,17 @@ class _MarketplacePageState extends State<MarketplacePage> {
       ),
     );
   }
+}
+
+String _conditionText(String value) {
+  return switch (value.toLowerCase()) {
+    'new' => 'Mới',
+    'like_new' => 'Gần như mới',
+    'good' => 'Tốt',
+    'used' => 'Đã qua sử dụng',
+    'worn' => 'Hao mòn',
+    'fair' => 'Khá',
+    'poor' => 'Kém',
+    _ => 'Không xác định',
+  };
 }

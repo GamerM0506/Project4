@@ -34,9 +34,8 @@ class HomeHeroBanner extends StatelessWidget {
                   'https://images.unsplash.com/photo-1593113565694-c702f2351abf?auto=format&fit=crop&q=80&w=800',
                   fit: BoxFit.cover,
                   colorBlendMode: BlendMode.multiply,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    color: colorScheme.surfaceContainerHighest,
-                  ),
+                  errorBuilder: (context, error, stackTrace) =>
+                      Container(color: colorScheme.surfaceContainerHighest),
                 ),
               ),
             ),
@@ -63,7 +62,7 @@ class HomeHeroBanner extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Help a Neighbor\nToday',
+                    'Giúp đỡ cộng đồng\nngay hôm nay',
                     style: textTheme.headlineSmall?.copyWith(
                       color: colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
@@ -71,7 +70,7 @@ class HomeHeroBanner extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Your small donation makes\na big difference.',
+                    'Một món quà nhỏ của bạn có thể\ntạo nên khác biệt lớn.',
                     style: textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
@@ -80,7 +79,7 @@ class HomeHeroBanner extends StatelessWidget {
                   ElevatedButton.icon(
                     onPressed: () {},
                     icon: const Icon(Icons.volunteer_activism, size: 18),
-                    label: const Text('Donate Now'),
+                    label: const Text('Quyên góp ngay'),
                   ),
                 ],
               ),

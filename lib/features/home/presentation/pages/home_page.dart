@@ -26,25 +26,25 @@ class HomePage extends StatelessWidget {
                 // Hero Banner
                 const HomeHeroBanner(),
                 const SizedBox(height: 32),
-                
+
                 // Quick Actions
                 const HomeQuickActions(),
                 const SizedBox(height: 32),
-                
+
                 // Featured Charity Groups
                 HomeSectionTitle(
-                  title: 'Featured Groups',
-                  action: 'See all',
+                  title: 'Hội nhóm nổi bật',
+                  action: 'Xem tất cả',
                   onActionTap: () {},
                 ),
                 const SizedBox(height: 16),
                 const HomeFeaturedGroups(),
                 const SizedBox(height: 32),
-                
+
                 // Recent Free Items
                 HomeSectionTitle(
-                  title: 'Recent Free Items',
-                  action: 'View map',
+                  title: 'Vật phẩm miễn phí gần đây',
+                  action: 'Xem bản đồ',
                   onActionTap: () {},
                 ),
                 const SizedBox(height: 16),
