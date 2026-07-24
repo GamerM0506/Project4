@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../injection_container.dart';
 import '../cubit/create_listing_cubit.dart';
@@ -35,21 +36,12 @@ class _CreateListingPageState extends State<CreateListingPage> {
   bool _aiDetected = false;
   final ImagePicker _picker = ImagePicker();
 
-  final Map<String, Map<String, dynamic>> _categoryData = {
-    'clothing': {'label': 'Quần áo', 'icon': Icons.checkroom_outlined},
-    'food': {'label': 'Thực phẩm', 'icon': Icons.restaurant_outlined},
-    'furniture': {'label': 'Đồ gia dụng', 'icon': Icons.chair_outlined},
-    'electronics': {'label': 'Điện tử', 'icon': Icons.devices_outlined},
-    'others': {'label': 'Khác', 'icon': Icons.category_outlined},
-  };
-
   @override
   void initState() {
     super.initState();
+    _cubit.loadCategories();
     if (widget.groupId != null && widget.groupId!.isNotEmpty) {
       _groupIdController.text = widget.groupId!;
-    } else {
-      _groupIdController.text = 'grp_123';
     }
   }
 
@@ -62,7 +54,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
     super.dispose();
   }
 
-  void _submit() {
+  void _submit() async {
     if (_titleController.text.trim().isEmpty) {
       _showSnackBar('Vui lòng nhập tên món đồ quyên góp', isError: true);
       return;
@@ -73,6 +65,9 @@ class _CreateListingPageState extends State<CreateListingPage> {
       return;
     }
 
+    final prefs = await SharedPreferences.getInstance();
+    final createdBy = prefs.getString(AppConstants.keyUserId) ?? 'user_anonymous';
+
     _cubit.createListing(
       inventoryItemId: 'inv_${DateTime.now().millisecondsSinceEpoch}',
       groupId: _groupIdController.text.trim(),
@@ -81,7 +76,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
       categoryId: _category,
       condition: _condition,
       quantityTotal: _quantity,
-      createdBy: 'user_current',
+      createdBy: createdBy,
     );
   }
 
@@ -156,12 +151,14 @@ class _CreateListingPageState extends State<CreateListingPage> {
             _titleController.text = data['name'];
           }
 
-          if (data['categoryId'] != null) {
-            final cat = data['categoryId'].toString().toLowerCase();
-            if (_categoryData.containsKey(cat)) {
-              _category = cat;
-            } else {
-              _category = 'others';
+          if (data['categoryId'] != null && _cubit.state is CreateListingInitial) {
+            final catSlug = data['categoryId'].toString().toLowerCase();
+            final categories = (_cubit.state as CreateListingInitial).categories;
+            final matchedCat = categories.where((c) => c.slug.toLowerCase() == catSlug || c.name.toLowerCase() == catSlug).firstOrNull;
+            if (matchedCat != null) {
+              _category = matchedCat.id;
+            } else if (categories.isNotEmpty) {
+              _category = categories.first.id;
             }
           }
 
@@ -263,6 +260,11 @@ class _CreateListingPageState extends State<CreateListingPage> {
               context.pop();
             } else if (state is CreateListingError) {
               _showSnackBar(state.message, isError: true);
+            } else if (state is CreateListingInitial && state.categories.isNotEmpty && _category == 'clothing') {
+              // 'clothing' is the hardcoded default, let's override with the first real category id
+              setState(() {
+                _category = state.categories.first.id;
+              });
             }
           },
           builder: (context, state) {
@@ -353,48 +355,58 @@ class _CreateListingPageState extends State<CreateListingPage> {
                       // Category Selector Chips
                       _buildLabel('Danh mục món đồ', Icons.grid_view_rounded),
                       const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: _categoryData.entries.map((entry) {
-                          final key = entry.key;
-                          final label = entry.value['label'] as String;
-                          final icon = entry.value['icon'] as IconData;
-                          final isSelected = _category == key;
+                      if (state is CreateListingInitial && state.categories.isNotEmpty)
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: state.categories.map((category) {
+                            final isSelected = _category == category.id;
+                            
+                            // Map generic icons based on slug if needed, or use a default one
+                            IconData iconData = Icons.category_outlined;
+                            if (category.slug.contains('cloth')) iconData = Icons.checkroom_outlined;
+                            else if (category.slug.contains('food')) iconData = Icons.restaurant_outlined;
+                            else if (category.slug.contains('furniture')) iconData = Icons.chair_outlined;
+                            else if (category.slug.contains('electronic')) iconData = Icons.devices_outlined;
+                            else if (category.slug.contains('book')) iconData = Icons.menu_book_outlined;
 
-                          return ChoiceChip(
-                            avatar: Icon(
-                              icon,
-                              size: 18,
-                              color: isSelected
-                                  ? colorScheme.onPrimary
-                                  : colorScheme.onSurfaceVariant,
-                            ),
-                            label: Text(label),
-                            selected: isSelected,
-                            selectedColor: colorScheme.primary,
-                            backgroundColor: colorScheme.surfaceContainerHighest.withOpacity(0.5),
-                            labelStyle: TextStyle(
-                              color: isSelected
-                                  ? colorScheme.onPrimary
-                                  : colorScheme.onSurface,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              fontSize: 13,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              side: BorderSide(
+                            return ChoiceChip(
+                              avatar: Icon(
+                                iconData,
+                                size: 18,
                                 color: isSelected
-                                    ? colorScheme.primary
-                                    : colorScheme.outlineVariant.withOpacity(0.3),
+                                    ? colorScheme.onPrimary
+                                    : colorScheme.onSurfaceVariant,
                               ),
-                            ),
-                            onSelected: (selected) {
-                              if (selected) setState(() => _category = key);
-                            },
-                          );
-                        }).toList(),
-                      ),
+                              label: Text(category.name),
+                              selected: isSelected,
+                              selectedColor: colorScheme.primary,
+                              backgroundColor: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                              labelStyle: TextStyle(
+                                color: isSelected
+                                    ? colorScheme.onPrimary
+                                    : colorScheme.onSurface,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                fontSize: 13,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                side: BorderSide(
+                                  color: isSelected
+                                      ? colorScheme.primary
+                                      : colorScheme.outlineVariant.withOpacity(0.3),
+                                ),
+                              ),
+                              onSelected: (selected) {
+                                if (selected) setState(() => _category = category.id);
+                              },
+                            );
+                          }).toList(),
+                        )
+                      else if (state is CreateListingInitial && state.categories.isEmpty)
+                        const Text('Đang tải danh mục...')
+                      else
+                        const Text('Không tải được danh mục'),
 
                       const SizedBox(height: 24),
 

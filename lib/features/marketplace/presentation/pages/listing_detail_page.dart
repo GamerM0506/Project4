@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../injection_container.dart';
+import '../../domain/entities/listing_entity.dart';
 import '../cubit/listing_detail_cubit.dart';
 import '../cubit/listing_detail_state.dart';
 
@@ -29,7 +32,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
     super.dispose();
   }
 
-  void _requestItem() {
+  void _requestItem(ListingEntity item) {
     // In a real app, this should open a bottom sheet to enter reason & quantity.
     showModalBottomSheet(
       context: context,
@@ -87,19 +90,23 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
-                        // Normally would get the actual group_id and receiver_id
+                      onPressed: () async {
+                        final prefs = await SharedPreferences.getInstance();
+                        final receiverId = prefs.getString(AppConstants.keyUserId) ?? 'user_anonymous';
+                        
                         _cubit.requestItem(
                           widget.listingId,
-                          'dummy_group_id',
-                          'dummy_receiver_id',
+                          item.groupId,
+                          receiverId,
                           quantity,
                           reasonController.text,
                         );
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Đã gửi yêu cầu!')),
-                        );
+                        if (mounted) {
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Đã gửi yêu cầu!')),
+                          );
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -289,7 +296,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                   ],
                 ),
                 child: ElevatedButton(
-                  onPressed: _requestItem,
+                  onPressed: () => _requestItem(state.listing),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colorScheme.secondary,
                     foregroundColor: colorScheme.onSecondary,

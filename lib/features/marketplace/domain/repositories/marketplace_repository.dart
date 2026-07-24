@@ -1,8 +1,10 @@
 import 'package:dartz/dartz.dart';
 import '../../domain/entities/listing_entity.dart';
 import '../../domain/entities/request_entity.dart';
+import '../../domain/entities/category_entity.dart';
 
 abstract class MarketplaceRepository {
+  Future<Either<String, List<CategoryEntity>>> getCategories();
   Future<Either<String, List<ListingEntity>>> getCatalog({String? category, String? province, String? groupId});
   Future<Either<String, List<ListingEntity>>> getListings();
   Future<Either<String, ListingEntity>> getListingDetail(String id);
