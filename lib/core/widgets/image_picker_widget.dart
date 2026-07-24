@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../injection_container.dart';
-import '../media/media_service.dart';
+import '../network/media_service.dart';
 
 class ImagePickerWidget extends StatefulWidget {
   final String label;
@@ -43,7 +43,14 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
       });
 
       final mediaService = sl<MediaService>();
-      final publicUrl = await mediaService.uploadImage(image, refType: widget.isAvatar ? 'avatar' : 'post');
+      final bytes = await image.readAsBytes();
+      final mimeType = image.mimeType ?? MediaService.mimeFromFileName(image.name);
+      
+      final publicUrl = await mediaService.uploadImage(
+        bytes,
+        mimeType,
+        refType: widget.isAvatar ? 'avatar' : 'post'
+      );
 
       setState(() {
         _currentUrl = publicUrl;

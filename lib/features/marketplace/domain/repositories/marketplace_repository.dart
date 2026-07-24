@@ -14,4 +14,5 @@ abstract class MarketplaceRepository {
   Future<Either<String, void>> rejectRequest(String id, String reviewedBy, String reason);
   Future<Either<String, void>> scheduleRequest(String id, String reviewedBy, DateTime scheduledAt);
   Future<Either<String, void>> completeRequest(String id, String confirmedBy, String qrToken, String photoUrl);
+  Future<Either<String, Map<String, dynamic>>> getStats();
 }

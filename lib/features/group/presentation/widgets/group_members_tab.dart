@@ -39,10 +39,11 @@ class GroupMembersTab extends StatelessWidget {
               itemBuilder: (context, index) {
                 final member = members[index];
                 return ListTile(
-                  leading: const CircleAvatar(
-                    child: Icon(Icons.person),
+                  leading: CircleAvatar(
+                    backgroundImage: member.userAvatar != null ? NetworkImage(member.userAvatar!) : null,
+                    child: member.userAvatar == null ? const Icon(Icons.person) : null,
                   ),
-                  title: Text(member.userId), // Should be User Name
+                  title: Text(member.userName != null && member.userName!.isNotEmpty ? member.userName! : 'Thành viên ẩn danh'), // Display User Name or anonymous
                   subtitle: Text('Vai trò: ${member.role}'),
                   trailing: member.role != 'owner' ? PopupMenuButton<String>(
                     icon: const Icon(Icons.more_vert),

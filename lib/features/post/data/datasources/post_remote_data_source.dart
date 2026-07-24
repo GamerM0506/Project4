@@ -1,5 +1,4 @@
 import '../../../../core/network/api_client.dart';
-import '../../../../core/network/api_client.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../models/post_model.dart';
 import '../models/comment_model.dart';
@@ -9,6 +8,7 @@ abstract class PostRemoteDataSource {
   Future<List<PostModel>> getGroupPosts(String groupId, {int offset = 0, int limit = 20});
   Future<PostModel> createPost(String groupId, String content, String type, List<String> imageUrls);
   Future<void> deletePost(String postId);
+  Future<PostModel> updatePostStatus(String postId, String status);
   Future<PostModel> getPostDetail(String postId);
   Future<void> likePost(String postId);
   Future<void> unlikePost(String postId);
@@ -77,6 +77,22 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
       );
     } on DioException catch (e) {
       throw Exception(e.response?.data['detail'] ?? 'Lỗi khi xóa bài đăng');
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  @override
+  Future<PostModel> updatePostStatus(String postId, String status) async {
+    try {
+      final response = await apiClient.dio.patch(
+        '${AppConstants.communityApiBaseUrl}/posts/$postId',
+        data: {'status': status},
+      );
+      final dataEnvelope = response.data as Map<String, dynamic>;
+      return PostModel.fromJson(dataEnvelope['data']);
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['detail'] ?? 'Lỗi khi cập nhật bài đăng');
     } catch (e) {
       throw Exception(e.toString());
     }

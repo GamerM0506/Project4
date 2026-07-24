@@ -105,6 +105,16 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   }
 
   @override
+  Future<Either<String, Map<String, dynamic>>> getStats() async {
+    try {
+      final stats = await remoteDataSource.getStats();
+      return Right(stats);
+    } catch (e) {
+      return Left('Failed to get stats: $e');
+    }
+  }
+
+  @override
   Future<Either<String, void>> scheduleRequest(String id, String reviewedBy, DateTime scheduledAt) async {
     try {
       await remoteDataSource.scheduleRequest(id, reviewedBy, scheduledAt);

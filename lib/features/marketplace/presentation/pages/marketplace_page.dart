@@ -66,7 +66,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                 ),
                 child: const TextField(
                   decoration: InputDecoration(
-                    hintText: 'Search for items...',
+                    hintText: 'Tìm kiếm vật phẩm 0 đồng...',
                     prefixIcon: Icon(Icons.search),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
@@ -81,15 +81,15 @@ class _MarketplacePageState extends State<MarketplacePage> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
-                  _buildFilterChip('All', true, colorScheme),
+                  _buildFilterChip('Tất cả', true, colorScheme),
                   const SizedBox(width: 8),
-                  _buildFilterChip('Clothes', false, colorScheme),
+                  _buildFilterChip('Quần áo', false, colorScheme),
                   const SizedBox(width: 8),
-                  _buildFilterChip('Electronics', false, colorScheme),
+                  _buildFilterChip('Điện tử', false, colorScheme),
                   const SizedBox(width: 8),
-                  _buildFilterChip('Books', false, colorScheme),
+                  _buildFilterChip('Sách vở', false, colorScheme),
                   const SizedBox(width: 8),
-                  _buildFilterChip('Furniture', false, colorScheme),
+                  _buildFilterChip('Đồ gia dụng', false, colorScheme),
                 ],
               ),
             ),
@@ -127,13 +127,6 @@ class _MarketplacePageState extends State<MarketplacePage> {
               ),
             ),
           ],
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            context.push('/marketplace/create');
-          },
-          backgroundColor: colorScheme.primary,
-          child: const Icon(Icons.add, color: Colors.white),
         ),
       ),
     );
@@ -197,10 +190,10 @@ class _MarketplacePageState extends State<MarketplacePage> {
                               errorBuilder: (context, error, stackTrace) => Icon(
                                 Icons.broken_image,
                                 size: 50,
-                                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                                color: colorScheme.onSurfaceVariant.withOpacity(0.5),
                               ),
                             )
-                          : Icon(Icons.image, size: 50, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
+                          : Icon(Icons.image, size: 50, color: colorScheme.onSurfaceVariant.withOpacity(0.5)),
                     ),
                   ),
                   Positioned(
@@ -248,7 +241,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                       children: [
                         CircleAvatar(
                           radius: 8,
-                          backgroundColor: colorScheme.surfaceVariant,
+                          backgroundColor: colorScheme.surfaceContainerHighest,
                           child: Icon(Icons.person, size: 10, color: colorScheme.onSurfaceVariant),
                         ),
                         const SizedBox(width: 4),
@@ -269,7 +262,7 @@ class _MarketplacePageState extends State<MarketplacePage> {
                         const SizedBox(width: 2),
                         Expanded(
                           child: Text(
-                            'Location', // Placeholder
+                            'Địa điểm',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(fontSize: 10, color: colorScheme.onSurfaceVariant),

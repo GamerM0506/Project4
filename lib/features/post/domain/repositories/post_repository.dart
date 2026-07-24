@@ -11,6 +11,7 @@ abstract class PostRepository {
     List<String> imageUrls,
   );
   Future<Either<String, void>> deletePost(String postId);
+  Future<Either<String, PostEntity>> updatePostStatus(String postId, String status);
   Future<Either<String, PostEntity>> getPostDetail(String postId);
   Future<Either<String, void>> likePost(String postId);
   Future<Either<String, void>> unlikePost(String postId);

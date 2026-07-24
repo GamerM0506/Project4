@@ -103,7 +103,18 @@ class AuthCubit extends Cubit<AuthState> {
       phone = emailOrPhone;
     }
 
-    final result = await registerUseCase(fullName, email, phone, password);
+    String username = '';
+    if (email != null && email.contains('@')) {
+      username = email.split('@')[0].replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '');
+    } else if (phone != null) {
+      username = 'user_$phone';
+    } else {
+      username = 'user_${DateTime.now().millisecondsSinceEpoch}';
+    }
+    if (username.length < 3) username = 'usr$username';
+    if (username.length > 30) username = username.substring(0, 30);
+
+    final result = await registerUseCase(username, fullName, email, phone, password);
 
     result.fold(
       (failureMessage) => emit(AuthFailure(message: failureMessage)),

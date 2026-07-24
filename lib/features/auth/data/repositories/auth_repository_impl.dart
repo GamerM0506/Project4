@@ -33,9 +33,9 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<String, AuthEntity>> register(String fullName, String? email, String? phone, String password) async {
+  Future<Either<String, AuthEntity>> register(String username, String fullName, String? email, String? phone, String password) async {
     try {
-      final response = await remoteDataSource.register(fullName, email, phone, password);
+      final response = await remoteDataSource.register(username, fullName, email, phone, password);
       return Right(response);
     } on DioException catch (e) {
       if (e.response != null && e.response?.data != null) {
@@ -193,6 +193,28 @@ class AuthRepositoryImpl implements AuthRepository {
       return const Right(null);
     } on DioException catch (e) {
       return Left(_mapDioError(e, 'Không thể tắt 2FA. Kiểm tra mã và thử lại.'));
+    } catch (e) {
+      return Left('Đã xảy ra lỗi: $e');
+    }
+  }
+
+  @override
+  Future<Either<String, AuthEntity>> login2FA(String emailOrPhone, String code) async {
+    try {
+      final response = await remoteDataSource.login2FA(emailOrPhone, code);
+      return Right(response);
+    } on DioException catch (e) {
+      return Left(_mapDioError(e, 'Mã xác thực 2FA không chính xác.'));
+    } catch (e) {
+      return Left('Đã xảy ra lỗi: $e');
+    }
+  }
+
+  @override
+  Future<Either<String, void>> logout() async {
+    try {
+      await remoteDataSource.logout();
+      return const Right(null);
     } catch (e) {
       return Left('Đã xảy ra lỗi: $e');
     }

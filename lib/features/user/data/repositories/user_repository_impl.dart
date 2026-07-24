@@ -50,6 +50,30 @@ class UserRepositoryImpl implements UserRepository {
     }
   }
 
+  @override
+  Future<Either<String, List<dynamic>>> getMyActivities() async {
+    try {
+      final activities = await remoteDataSource.getMyActivities();
+      return Right(activities);
+    } on DioException catch (e) {
+      return Left(_mapDioError(e, 'Lỗi khi lấy lịch sử hoạt động'));
+    } catch (e) {
+      return Left('Đã xảy ra lỗi: $e');
+    }
+  }
+
+  @override
+  Future<Either<String, UserEntity>> getPublicProfile(String accountId) async {
+    try {
+      final userModel = await remoteDataSource.getPublicProfile(accountId);
+      return Right(userModel);
+    } on DioException catch (e) {
+      return Left(_mapDioError(e, 'Lỗi khi lấy thông tin người dùng'));
+    } catch (e) {
+      return Left('Đã xảy ra lỗi: $e');
+    }
+  }
+
   String _mapDioError(DioException e, String fallback) {
     final data = e.response?.data;
     if (data is Map) {

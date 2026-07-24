@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../user/presentation/cubit/user_cubit.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/router/app_routes.dart';
 import '../../../user/presentation/cubit/user_state.dart';
 
 class HomeSliverAppBar extends StatelessWidget {
@@ -91,7 +93,9 @@ class HomeSliverAppBar extends StatelessWidget {
         IconButton(
           icon: const Icon(Icons.chat_bubble_outline),
           color: colorScheme.onSurfaceVariant,
-          onPressed: () {},
+          onPressed: () {
+            context.push(AppRoutes.chatInbox);
+          },
         ),
         Stack(
           alignment: Alignment.center,
