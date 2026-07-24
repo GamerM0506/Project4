@@ -31,14 +31,18 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   void _submit(BuildContext context) {
     if (_formKey.currentState!.validate()) {
       context.read<CreateGroupCubit>().createGroup(
-            CreateGroupParams(
-              name: _nameController.text.trim(),
-              description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
-              address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
-              avatarUrl: _avatarUrl,
-              coverUrl: _coverUrl,
-            ),
-          );
+        CreateGroupParams(
+          name: _nameController.text.trim(),
+          description: _descriptionController.text.trim().isEmpty
+              ? null
+              : _descriptionController.text.trim(),
+          address: _addressController.text.trim().isEmpty
+              ? null
+              : _addressController.text.trim(),
+          avatarUrl: _avatarUrl,
+          coverUrl: _coverUrl,
+        ),
+      );
     }
   }
 
@@ -52,12 +56,18 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
         listener: (context, state) {
           if (state is CreateGroupSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: Colors.green),
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.green,
+              ),
             );
             Navigator.of(context).pop(true); // Return true to refresh list
           } else if (state is CreateGroupError) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: colorScheme.error),
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: colorScheme.error,
+              ),
             );
           }
         },
@@ -115,7 +125,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         ImagePickerWidget(
-                          label: 'Ảnh Logo (Avatar)',
+                          label: 'Ảnh biểu trưng',
                           isAvatar: true,
                           initialUrl: _avatarUrl,
                           onImageUploaded: (url) {
@@ -128,7 +138,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                     ),
                     const SizedBox(height: 24),
                     ImagePickerWidget(
-                      label: 'Ảnh Bìa (Cover)',
+                      label: 'Ảnh bìa',
                       initialUrl: _coverUrl,
                       onImageUploaded: (url) {
                         setState(() {
@@ -138,7 +148,9 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                     ),
                     const SizedBox(height: 32),
                     FilledButton(
-                      onPressed: state is CreateGroupLoading ? null : () => _submit(context),
+                      onPressed: state is CreateGroupLoading
+                          ? null
+                          : () => _submit(context),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
@@ -146,9 +158,15 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                           ? const SizedBox(
                               height: 20,
                               width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
-                          : const Text('Tạo Nhóm', style: TextStyle(fontSize: 16)),
+                          : const Text(
+                              'Tạo Nhóm',
+                              style: TextStyle(fontSize: 16),
+                            ),
                     ),
                   ],
                 ),

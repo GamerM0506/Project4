@@ -45,19 +45,23 @@ class PostCardWidget extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'User ${post.authorId.substring(0, 4)}',
-                        style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                        'Người dùng ${post.authorId.substring(0, 4)}',
+                        style: textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       Row(
                         children: [
                           Text(
-                            timeago.format(post.createdAt, locale: 'en_short'),
-                            style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+                            timeago.format(post.createdAt, locale: 'vi'),
+                            style: textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
                           ),
                           if (post.type != 'normal') ...[
                             const SizedBox(width: 8),
                             _buildPostTypeChip(post.type, colorScheme),
-                          ]
+                          ],
                         ],
                       ),
                     ],
@@ -71,7 +75,9 @@ class PostCardWidget extends StatelessWidget {
                         context: context,
                         builder: (ctx) => AlertDialog(
                           title: const Text('Xóa bài đăng?'),
-                          content: const Text('Bạn có chắc chắn muốn xóa bài đăng này không? Hành động này không thể hoàn tác.'),
+                          content: const Text(
+                            'Bạn có chắc chắn muốn xóa bài đăng này không? Hành động này không thể hoàn tác.',
+                          ),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx),
@@ -80,9 +86,13 @@ class PostCardWidget extends StatelessWidget {
                             TextButton(
                               onPressed: () {
                                 Navigator.pop(ctx);
-                                context.read<GroupFeedCubit>().deletePost(post.id);
+                                context.read<GroupFeedCubit>().deletePost(
+                                  post.id,
+                                );
                               },
-                              style: TextButton.styleFrom(foregroundColor: Colors.red),
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.red,
+                              ),
                               child: const Text('Xóa'),
                             ),
                           ],
@@ -93,20 +103,20 @@ class PostCardWidget extends StatelessWidget {
                   itemBuilder: (context) => [
                     const PopupMenuItem(
                       value: 'delete',
-                      child: Text('Xóa bài viết', style: TextStyle(color: Colors.red)),
+                      child: Text(
+                        'Xóa bài viết',
+                        style: TextStyle(color: Colors.red),
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            
+
             // Content
-            Text(
-              post.content,
-              style: textTheme.bodyLarge,
-            ),
-            
+            Text(post.content, style: textTheme.bodyLarge),
+
             // Images
             if (post.imageUrls.isNotEmpty) ...[
               const SizedBox(height: 12),
@@ -125,16 +135,27 @@ class PostCardWidget extends StatelessWidget {
                     context.read<GroupFeedCubit>().toggleLike(post.id);
                   },
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 4,
+                    ),
                     child: Row(
                       children: [
                         Icon(
                           post.isLiked ? Icons.favorite : Icons.favorite_border,
-                          size: 20, 
-                          color: post.isLiked ? Colors.red : colorScheme.onSurfaceVariant,
+                          size: 20,
+                          color: post.isLiked
+                              ? Colors.red
+                              : colorScheme.onSurfaceVariant,
                         ),
                         const SizedBox(width: 4),
-                        Text('${post.likeCount}', style: TextStyle(color: colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
+                        Text(
+                          '${post.likeCount}',
+                          style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -145,12 +166,25 @@ class PostCardWidget extends StatelessWidget {
                     CommentsBottomSheet.show(context, post.id);
                   },
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 4,
+                    ),
                     child: Row(
                       children: [
-                        Icon(Icons.chat_bubble_outline, size: 20, color: colorScheme.onSurfaceVariant),
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          size: 20,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                         const SizedBox(width: 4),
-                        Text('${post.commentCount}', style: TextStyle(color: colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
+                        Text(
+                          '${post.commentCount}',
+                          style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -195,7 +229,11 @@ class PostCardWidget extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          fontSize: 10,
+          color: color,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
@@ -243,7 +281,13 @@ class PostCardWidget extends StatelessWidget {
           children: [
             Icon(icon, size: 20, color: colorScheme.onSurfaceVariant),
             const SizedBox(width: 4),
-            Text(label, style: TextStyle(color: colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
+            Text(
+              label,
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
       ),

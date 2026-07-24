@@ -26,7 +26,9 @@ class _EditGroupPageState extends State<EditGroupPage> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.group.name);
-    _descriptionController = TextEditingController(text: widget.group.description);
+    _descriptionController = TextEditingController(
+      text: widget.group.description,
+    );
     _avatarUrl = widget.group.avatarUrl;
     _coverUrl = widget.group.coverUrl;
   }
@@ -50,12 +52,12 @@ class _EditGroupPageState extends State<EditGroupPage> {
     }
 
     context.read<UpdateGroupCubit>().updateGroup(
-          widget.group.id,
-          name: _nameController.text.trim(),
-          description: _descriptionController.text.trim(),
-          avatarUrl: _avatarUrl,
-          coverUrl: _coverUrl,
-        );
+      widget.group.id,
+      name: _nameController.text.trim(),
+      description: _descriptionController.text.trim(),
+      avatarUrl: _avatarUrl,
+      coverUrl: _coverUrl,
+    );
   }
 
   @override
@@ -71,137 +73,148 @@ class _EditGroupPageState extends State<EditGroupPage> {
           centerTitle: true,
         ),
         body: BlocConsumer<UpdateGroupCubit, UpdateGroupState>(
-        listener: (context, state) {
-          if (state is UpdateGroupSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: colorScheme.secondary,
-              ),
-            );
-            // Return updated group to previous screen
-            context.pop(state.group);
-          } else if (state is UpdateGroupError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: colorScheme.error,
-              ),
-            );
-          }
-        },
-        builder: (context, state) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Thông tin cơ bản',
-                  style: textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.primary,
-                  ),
+          listener: (context, state) {
+            if (state is UpdateGroupSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: colorScheme.secondary,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Cập nhật tên và mô tả để mọi người dễ dàng nhận ra nhóm của bạn.',
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+              );
+              // Return updated group to previous screen
+              context.pop(state.group);
+            } else if (state is UpdateGroupError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: colorScheme.error,
                 ),
-                const SizedBox(height: 24),
-                
-                // Name Field
-                _buildModernTextField(
-                  controller: _nameController,
-                  label: 'Tên nhóm',
-                  icon: Icons.groups_outlined,
-                  colorScheme: colorScheme,
-                  textTheme: textTheme,
-                ),
-                const SizedBox(height: 16),
-                
-                // Description Field
-                _buildModernTextField(
-                  controller: _descriptionController,
-                  label: 'Mô tả chi tiết',
-                  icon: Icons.description_outlined,
-                  maxLines: 4,
-                  colorScheme: colorScheme,
-                  textTheme: textTheme,
-                ),
-                const SizedBox(height: 32),
-
-                Text(
-                  'Hình ảnh hiển thị',
-                  style: textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                
-                // Avatar Picker
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ImagePickerWidget(
-                      label: 'Ảnh Logo (Avatar)',
-                      isAvatar: true,
-                      initialUrl: _avatarUrl,
-                      onImageUploaded: (url) {
-                        setState(() {
-                          _avatarUrl = url;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                
-                // Cover Picker
-                ImagePickerWidget(
-                  label: 'Ảnh Bìa (Cover)',
-                  initialUrl: _coverUrl,
-                  onImageUploaded: (url) {
-                    setState(() {
-                      _coverUrl = url;
-                    });
-                  },
-                ),
-                const SizedBox(height: 48),
-
-                // Save Button
-                ElevatedButton(
-                  onPressed: state is UpdateGroupLoading ? null : () => _submit(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colorScheme.primary,
-                    foregroundColor: colorScheme.onPrimary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    elevation: 2,
-                    shadowColor: colorScheme.primary.withValues(alpha: 0.4),
-                  ),
-                  child: state is UpdateGroupLoading
-                      ? SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: colorScheme.onPrimary,
-                            strokeWidth: 2.5,
+              );
+            }
+          },
+          builder: (context, state) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children:
+                    [
+                          Text(
+                            'Thông tin cơ bản',
+                            style: textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.primary,
+                            ),
                           ),
-                        )
-                      : const Text(
-                          'Lưu Thay Đổi',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                ),
-              ].animate(interval: 50.ms).fade(duration: 400.ms).slideY(begin: 0.1, curve: Curves.easeOutQuart),
-            ),
-          );
-        },
-      ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Cập nhật tên và mô tả để mọi người dễ dàng nhận ra nhóm của bạn.',
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+
+                          // Name Field
+                          _buildModernTextField(
+                            controller: _nameController,
+                            label: 'Tên nhóm',
+                            icon: Icons.groups_outlined,
+                            colorScheme: colorScheme,
+                            textTheme: textTheme,
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Description Field
+                          _buildModernTextField(
+                            controller: _descriptionController,
+                            label: 'Mô tả chi tiết',
+                            icon: Icons.description_outlined,
+                            maxLines: 4,
+                            colorScheme: colorScheme,
+                            textTheme: textTheme,
+                          ),
+                          const SizedBox(height: 32),
+
+                          Text(
+                            'Hình ảnh hiển thị',
+                            style: textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Avatar Picker
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ImagePickerWidget(
+                                label: 'Ảnh biểu trưng',
+                                isAvatar: true,
+                                initialUrl: _avatarUrl,
+                                onImageUploaded: (url) {
+                                  setState(() {
+                                    _avatarUrl = url;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+
+                          // Cover Picker
+                          ImagePickerWidget(
+                            label: 'Ảnh bìa',
+                            initialUrl: _coverUrl,
+                            onImageUploaded: (url) {
+                              setState(() {
+                                _coverUrl = url;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 48),
+
+                          // Save Button
+                          ElevatedButton(
+                            onPressed: state is UpdateGroupLoading
+                                ? null
+                                : () => _submit(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: colorScheme.primary,
+                              foregroundColor: colorScheme.onPrimary,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              elevation: 2,
+                              shadowColor: colorScheme.primary.withValues(
+                                alpha: 0.4,
+                              ),
+                            ),
+                            child: state is UpdateGroupLoading
+                                ? SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      color: colorScheme.onPrimary,
+                                      strokeWidth: 2.5,
+                                    ),
+                                  )
+                                : const Text(
+                                    'Lưu Thay Đổi',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                          ),
+                        ]
+                        .animate(interval: 50.ms)
+                        .fade(duration: 400.ms)
+                        .slideY(begin: 0.1, curve: Curves.easeOutQuart),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -232,14 +245,27 @@ class _EditGroupPageState extends State<EditGroupPage> {
             color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
           ),
           prefixIcon: maxLines == 1
-              ? Icon(icon, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7), size: 22)
+              ? Icon(
+                  icon,
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                  size: 22,
+                )
               : Padding(
-                  padding: const EdgeInsets.only(bottom: 60), // Align top for multiline
-                  child: Icon(icon, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7), size: 22),
+                  padding: const EdgeInsets.only(
+                    bottom: 60,
+                  ), // Align top for multiline
+                  child: Icon(
+                    icon,
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                    size: 22,
+                  ),
                 ),
           filled: true,
           fillColor: Colors.transparent,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 18,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,

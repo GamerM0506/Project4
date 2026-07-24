@@ -11,9 +11,17 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   MarketplaceRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Future<Either<String, List<CategoryEntity>>> getCategories() async {
+  Future<Either<String, List<ListingEntity>>> getCatalog({
+    String? category,
+    String? province,
+    String? groupId,
+  }) async {
     try {
-      final items = await remoteDataSource.getCategories();
+      final items = await remoteDataSource.getCatalog(
+        category: category,
+        province: province,
+        groupId: groupId,
+      );
       return Right(items);
     } catch (e) {
       return Left(e.toString());
@@ -21,10 +29,9 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   }
 
   @override
-  Future<Either<String, List<ListingEntity>>> getCatalog({String? category, String? province, String? groupId}) async {
+  Future<Either<String, List<CategoryEntity>>> getCategories() async {
     try {
-      final items = await remoteDataSource.getCatalog(category: category, province: province, groupId: groupId);
-      return Right(items);
+      return Right(await remoteDataSource.getCategories());
     } catch (e) {
       return Left(e.toString());
     }
@@ -51,21 +58,44 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   }
 
   @override
-  Future<Either<String, void>> createListing(String inventoryItemId, String groupId, String title, String description, String categoryId, String condition, int quantityTotal, String createdBy) async {
+  Future<Either<String, void>> createListing(
+    String inventoryItemId,
+    String groupId,
+    String title,
+    String description,
+    String categoryId,
+    String condition,
+    int quantityTotal,
+    String createdBy,
+    List<String> imageUrls,
+  ) async {
     try {
-      await remoteDataSource.createListing({
+      final payload = <String, dynamic>{
         'inventory_item_id': inventoryItemId,
         'group_id': groupId,
-        'title': title,
-        'description': description,
-        'category_id': categoryId,
-        'condition': condition,
         'quantity_total': quantityTotal,
-        'created_by': createdBy,
-      });
+      };
+      if (title.isNotEmpty) payload['title'] = title;
+      if (description.isNotEmpty) payload['description'] = description;
+      if (categoryId.isNotEmpty) payload['category_id'] = categoryId;
+      if (condition.isNotEmpty) payload['condition'] = condition;
+      // created_by optional: marketplace lấy từ JWT nếu thiếu
+      if (createdBy.isNotEmpty && createdBy != 'user_current') {
+        payload['created_by'] = createdBy;
+      }
+      if (imageUrls.isNotEmpty) {
+        payload['images'] = imageUrls
+            .where((url) => url.isNotEmpty)
+            .map((url) => {'image_url': url})
+            .toList();
+      }
+
+      await remoteDataSource.createListing(payload);
       return const Right(null);
     } catch (e) {
-      return Left(e.toString());
+      final s = e.toString();
+      if (s.startsWith('Exception: ')) return Left(s.substring(11));
+      return Left(s);
     }
   }
 
@@ -80,23 +110,31 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   }
 
   @override
-  Future<Either<String, void>> createRequest(String listingId, String groupId, String receiverId, int quantity, String reason) async {
+  Future<Either<String, void>> createRequest(
+    String listingId,
+    int quantity,
+    String reason,
+  ) async {
     try {
       await remoteDataSource.createRequest({
         'listing_id': listingId,
-        'group_id': groupId,
-        'receiver_id': receiverId,
         'quantity': quantity,
-        'reason': reason,
+        if (reason.trim().isNotEmpty) 'reason': reason.trim(),
       });
       return const Right(null);
     } catch (e) {
-      return Left(e.toString());
+      final message = e.toString();
+      return Left(
+        message.startsWith('Exception: ') ? message.substring(11) : message,
+      );
     }
   }
 
   @override
-  Future<Either<String, void>> approveRequest(String id, String reviewedBy) async {
+  Future<Either<String, void>> approveRequest(
+    String id,
+    String reviewedBy,
+  ) async {
     try {
       await remoteDataSource.approveRequest(id, reviewedBy);
       return const Right(null);
@@ -106,7 +144,11 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   }
 
   @override
-  Future<Either<String, void>> rejectRequest(String id, String reviewedBy, String reason) async {
+  Future<Either<String, void>> rejectRequest(
+    String id,
+    String reviewedBy,
+    String reason,
+  ) async {
     try {
       await remoteDataSource.rejectRequest(id, reviewedBy, reason);
       return const Right(null);
@@ -126,7 +168,11 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   }
 
   @override
-  Future<Either<String, void>> scheduleRequest(String id, String reviewedBy, DateTime scheduledAt) async {
+  Future<Either<String, void>> scheduleRequest(
+    String id,
+    String reviewedBy,
+    DateTime scheduledAt,
+  ) async {
     try {
       await remoteDataSource.scheduleRequest(id, reviewedBy, scheduledAt);
       return const Right(null);
@@ -136,9 +182,19 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   }
 
   @override
-  Future<Either<String, void>> completeRequest(String id, String confirmedBy, String qrToken, String photoUrl) async {
+  Future<Either<String, void>> completeRequest(
+    String id,
+    String confirmedBy,
+    String qrToken,
+    String photoUrl,
+  ) async {
     try {
-      await remoteDataSource.completeRequest(id, confirmedBy, qrToken, photoUrl);
+      await remoteDataSource.completeRequest(
+        id,
+        confirmedBy,
+        qrToken,
+        photoUrl,
+      );
       return const Right(null);
     } catch (e) {
       return Left(e.toString());

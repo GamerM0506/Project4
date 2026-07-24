@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:timeago/timeago.dart' as timeago;
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'core/network/auth_interceptor.dart';
@@ -14,6 +14,7 @@ import 'core/theme/theme_cubit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  timeago.setLocaleMessages('vi', timeago.ViMessages());
   await initDependencies();
   runApp(const MyApp());
 }
@@ -34,17 +35,7 @@ class MyApp extends StatelessWidget {
             return authCubit;
           },
         ),
-        BlocProvider(
-          create: (_) {
-            final cubit = sl<UserCubit>();
-            final token = sl<SharedPreferences>()
-                .getString(AppConstants.keyAccessToken);
-            if (token != null && token.isNotEmpty) {
-              cubit.fetchProfile();
-            }
-            return cubit;
-          },
-        ),
+        BlocProvider(create: (_) => sl<UserCubit>()),
         BlocProvider(create: (_) => sl<ThemeCubit>()),
       ],
       child: BlocListener<AuthCubit, AuthState>(

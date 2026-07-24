@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../../../marketplace/domain/entities/listing_entity.dart';
+import '../../../donation/data/models/donation_model.dart';
 
 abstract class GroupInventoryState extends Equatable {
   const GroupInventoryState();
@@ -13,12 +13,18 @@ class GroupInventoryInitial extends GroupInventoryState {}
 class GroupInventoryLoading extends GroupInventoryState {}
 
 class GroupInventoryLoaded extends GroupInventoryState {
-  final List<ListingEntity> items;
+  final List<DonationModel> donations;
+  final List<InventoryItemModel> items;
+  final bool isProcessing;
 
-  const GroupInventoryLoaded(this.items);
+  const GroupInventoryLoaded({
+    required this.donations,
+    required this.items,
+    this.isProcessing = false,
+  });
 
   @override
-  List<Object?> get props => [items];
+  List<Object?> get props => [donations, items, isProcessing];
 }
 
 class GroupInventoryError extends GroupInventoryState {

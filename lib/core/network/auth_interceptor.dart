@@ -41,7 +41,8 @@ class AuthInterceptor extends Interceptor {
     final path = err.requestOptions.path;
     final uri = err.requestOptions.uri.toString();
 
-    final isAuthEndpoint = path.contains('/auth/login') ||
+    final isAuthEndpoint =
+        path.contains('/auth/login') ||
         path.contains('/auth/refresh') ||
         path.contains('/auth/register') ||
         uri.contains('/auth/login') ||
@@ -144,6 +145,8 @@ class AuthInterceptor extends Interceptor {
   Future<void> _forceLogout() async {
     await prefs.remove(AppConstants.keyAccessToken);
     await prefs.remove(AppConstants.keyRefreshToken);
+    await prefs.remove(AppConstants.keyUserId);
+    await prefs.remove(AppConstants.keyTwoFactorEnabled);
     onSessionExpired?.call();
   }
 }

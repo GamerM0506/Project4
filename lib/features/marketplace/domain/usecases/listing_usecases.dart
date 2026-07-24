@@ -16,8 +16,16 @@ class GetCatalogUseCase {
   final MarketplaceRepository repository;
   GetCatalogUseCase(this.repository);
 
-  Future<Either<String, List<ListingEntity>>> call({String? category, String? province, String? groupId}) {
-    return repository.getCatalog(category: category, province: province, groupId: groupId);
+  Future<Either<String, List<ListingEntity>>> call({
+    String? category,
+    String? province,
+    String? groupId,
+  }) {
+    return repository.getCatalog(
+      category: category,
+      province: province,
+      groupId: groupId,
+    );
   }
 }
 
@@ -34,7 +42,27 @@ class CreateListingUseCase {
   final MarketplaceRepository repository;
   CreateListingUseCase(this.repository);
 
-  Future<Either<String, void>> call(String inventoryItemId, String groupId, String title, String description, String categoryId, String condition, int quantityTotal, String createdBy) {
-    return repository.createListing(inventoryItemId, groupId, title, description, categoryId, condition, quantityTotal, createdBy);
+  Future<Either<String, void>> call(
+    String inventoryItemId,
+    String groupId,
+    String title,
+    String description,
+    String categoryId,
+    String condition,
+    int quantityTotal,
+    String createdBy, {
+    List<String> imageUrls = const [],
+  }) {
+    return repository.createListing(
+      inventoryItemId,
+      groupId,
+      title,
+      description,
+      categoryId,
+      condition,
+      quantityTotal,
+      createdBy,
+      imageUrls,
+    );
   }
 }

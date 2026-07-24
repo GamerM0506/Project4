@@ -17,59 +17,55 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => sl<HomeCubit>()..fetchHomeData(),
+      create: (_) => sl<HomeCubit>()..fetchHomeData(),
       child: Scaffold(
         body: BlocBuilder<HomeCubit, HomeState>(
           builder: (context, state) {
             return CustomScrollView(
               slivers: [
-                // 1. Sticky Header
                 const HomeSliverAppBar(),
-
-                // 2. Body Content
                 SliverPadding(
                   padding: const EdgeInsets.all(20),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      // Hero Banner
                       const HomeHeroBanner(),
                       const SizedBox(height: 32),
-                      
-                      // Quick Actions
                       const HomeQuickActions(),
                       const SizedBox(height: 32),
-                      
                       if (state is HomeLoading)
                         const Center(child: CircularProgressIndicator())
                       else if (state is HomeLoaded) ...[
-                        // Featured Charity Groups
                         HomeSectionTitle(
-                          title: 'Featured Groups',
-                          action: 'See all',
+                          title: 'Hội nhóm nổi bật',
+                          action: 'Xem tất cả',
                           onActionTap: () {},
                         ),
                         const SizedBox(height: 16),
                         HomeFeaturedGroups(groups: state.groups),
                         const SizedBox(height: 32),
-                        
-                        // Recent Free Items
                         HomeSectionTitle(
-                          title: 'Recent Free Items',
-                          action: 'View map',
+                          title: 'Vật phẩm miễn phí gần đây',
+                          action: 'Xem bản đồ',
                           onActionTap: () {},
                         ),
                         const SizedBox(height: 16),
                         HomeRecentItems(items: state.listings),
-                      ] else if (state is HomeError) ...[
-                        Center(child: Text(state.message, style: const TextStyle(color: Colors.red))),
-                      ],
-                      const SizedBox(height: 80), // Padding for Bottom Navigation
+                      ] else if (state is HomeError)
+                        Center(
+                          child: Text(
+                            state.message,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 80),
                     ]),
                   ),
                 ),
               ],
             );
-          }
+          },
         ),
       ),
     );

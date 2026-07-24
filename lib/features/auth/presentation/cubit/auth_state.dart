@@ -5,7 +5,10 @@ class AuthInitial extends AuthState {}
 class AuthLoading extends AuthState {}
 
 class AuthSuccess extends AuthState {}
+
 class AuthUnauthenticated extends AuthState {}
+
+class AuthTwoFactorRequired extends AuthState {}
 
 class RegisterSuccess extends AuthState {
   final String emailOrPhone;

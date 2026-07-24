@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
-import '../../domain/entities/category_entity.dart';
+import '../../../donation/data/models/donation_model.dart';
+import '../../../group/data/models/group_model.dart';
 
 abstract class CreateListingState extends Equatable {
   const CreateListingState();
@@ -8,15 +9,24 @@ abstract class CreateListingState extends Equatable {
   List<Object?> get props => [];
 }
 
-class CreateListingInitial extends CreateListingState {
-  final List<CategoryEntity> categories;
-  const CreateListingInitial({this.categories = const []});
-
-  @override
-  List<Object?> get props => [categories];
-}
+class CreateListingInitial extends CreateListingState {}
 
 class CreateListingLoading extends CreateListingState {}
+
+class CreateListingFormReady extends CreateListingState {
+  final List<GroupModel> groups;
+  final List<DonationCategoryModel> categories;
+  final String? selectedGroupId;
+
+  const CreateListingFormReady({
+    required this.groups,
+    required this.categories,
+    this.selectedGroupId,
+  });
+
+  @override
+  List<Object?> get props => [groups, categories, selectedGroupId];
+}
 
 class CreateListingSuccess extends CreateListingState {}
 

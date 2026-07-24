@@ -55,7 +55,10 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Bình luận', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Bình luận',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   IconButton(
                     icon: const Icon(Icons.close),
                     onPressed: () => Navigator.pop(context),
@@ -76,7 +79,12 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                   } else if (state is PostCommentsLoaded) {
                     final comments = state.comments;
                     if (comments.isEmpty) {
-                      return const Center(child: Text('Chưa có bình luận nào.\nHãy là người đầu tiên bình luận!', textAlign: TextAlign.center));
+                      return const Center(
+                        child: Text(
+                          'Chưa có bình luận nào.\nHãy là người đầu tiên bình luận!',
+                          textAlign: TextAlign.center,
+                        ),
+                      );
                     }
                     return ListView.separated(
                       padding: const EdgeInsets.all(16),
@@ -90,8 +98,15 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                             CircleAvatar(
                               backgroundColor: colorScheme.primaryContainer,
                               child: Text(
-                                comment.authorName != null ? comment.authorName![0].toUpperCase() : comment.authorId.substring(0, 2).toUpperCase(),
-                                style: TextStyle(color: colorScheme.onPrimaryContainer, fontSize: 12),
+                                comment.authorName != null
+                                    ? comment.authorName![0].toUpperCase()
+                                    : comment.authorId
+                                          .substring(0, 2)
+                                          .toUpperCase(),
+                                style: TextStyle(
+                                  color: colorScheme.onPrimaryContainer,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -102,15 +117,21 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                                   Container(
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                                      color: colorScheme.surfaceContainerHighest
+                                          .withValues(alpha: 0.3),
                                       borderRadius: BorderRadius.circular(16),
                                     ),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          comment.authorName ?? 'User ${comment.authorId.substring(0, 4)}',
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                          comment.authorName ??
+                                              'Người dùng ${comment.authorId.substring(0, 4)}',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
                                         ),
                                         const SizedBox(height: 4),
                                         Text(comment.content),
@@ -121,8 +142,14 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                                   Padding(
                                     padding: const EdgeInsets.only(left: 12),
                                     child: Text(
-                                      timeago.format(comment.createdAt, locale: 'en_short'),
-                                      style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+                                      timeago.format(
+                                        comment.createdAt,
+                                        locale: 'vi',
+                                      ),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -143,7 +170,11 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: colorScheme.surface,
-                border: Border(top: BorderSide(color: colorScheme.outline.withValues(alpha: 0.1))),
+                border: Border(
+                  top: BorderSide(
+                    color: colorScheme.outline.withValues(alpha: 0.1),
+                  ),
+                ),
               ),
               child: Builder(
                 builder: (ctx) {
@@ -159,8 +190,12 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                               borderSide: BorderSide.none,
                             ),
                             filled: true,
-                            fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            fillColor: colorScheme.surfaceContainerHighest
+                                .withValues(alpha: 0.3),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
                           ),
                         ),
                       ),
@@ -170,14 +205,17 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                         onPressed: () {
                           final text = _commentController.text.trim();
                           if (text.isNotEmpty) {
-                            ctx.read<PostCommentsCubit>().addComment(widget.postId, text);
+                            ctx.read<PostCommentsCubit>().addComment(
+                              widget.postId,
+                              text,
+                            );
                             _commentController.clear();
                           }
                         },
                       ),
                     ],
                   );
-                }
+                },
               ),
             ),
           ],

@@ -15,8 +15,12 @@ class CreateRequestUseCase {
   final MarketplaceRepository repository;
   CreateRequestUseCase(this.repository);
 
-  Future<Either<String, void>> call(String listingId, String groupId, String receiverId, int quantity, String reason) {
-    return repository.createRequest(listingId, groupId, receiverId, quantity, reason);
+  Future<Either<String, void>> call(
+    String listingId,
+    int quantity,
+    String reason,
+  ) {
+    return repository.createRequest(listingId, quantity, reason);
   }
 }
 
@@ -33,7 +37,11 @@ class RejectRequestUseCase {
   final MarketplaceRepository repository;
   RejectRequestUseCase(this.repository);
 
-  Future<Either<String, void>> call(String id, String reviewedBy, String reason) {
+  Future<Either<String, void>> call(
+    String id,
+    String reviewedBy,
+    String reason,
+  ) {
     return repository.rejectRequest(id, reviewedBy, reason);
   }
 }
@@ -42,7 +50,11 @@ class ScheduleRequestUseCase {
   final MarketplaceRepository repository;
   ScheduleRequestUseCase(this.repository);
 
-  Future<Either<String, void>> call(String id, String reviewedBy, DateTime scheduledAt) {
+  Future<Either<String, void>> call(
+    String id,
+    String reviewedBy,
+    DateTime scheduledAt,
+  ) {
     return repository.scheduleRequest(id, reviewedBy, scheduledAt);
   }
 }
@@ -51,7 +63,12 @@ class CompleteRequestUseCase {
   final MarketplaceRepository repository;
   CompleteRequestUseCase(this.repository);
 
-  Future<Either<String, void>> call(String id, String confirmedBy, String qrToken, String photoUrl) {
+  Future<Either<String, void>> call(
+    String id,
+    String confirmedBy,
+    String qrToken,
+    String photoUrl,
+  ) {
     return repository.completeRequest(id, confirmedBy, qrToken, photoUrl);
   }
 }

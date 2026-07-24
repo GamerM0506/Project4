@@ -19,6 +19,13 @@ class ListingModel extends ListingEntity {
   });
 
   factory ListingModel.fromJson(Map<String, dynamic> json) {
+    final rawImages = json['images'];
+    final firstImage = rawImages is List && rawImages.isNotEmpty
+        ? rawImages.first
+        : null;
+    final imageUrl = firstImage is Map
+        ? firstImage['image_url']?.toString()
+        : firstImage?.toString();
     return ListingModel(
       id: json['id'] ?? '',
       inventoryItemId: json['inventory_item_id'] ?? '',
@@ -31,9 +38,13 @@ class ListingModel extends ListingEntity {
       quantityAvailable: json['quantity_available'] ?? 0,
       status: json['status'] ?? '',
       createdBy: json['created_by'] ?? '',
-      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
-      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
-      imageUrl: json['image_url'], // Optional field
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : null,
+      imageUrl: json['image_url']?.toString() ?? imageUrl,
     );
   }
 

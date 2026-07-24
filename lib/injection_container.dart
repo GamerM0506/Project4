@@ -9,6 +9,8 @@ import 'features/home/presentation/cubit/home_cubit.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/domain/usecases/login_usecase.dart';
+import 'features/auth/domain/usecases/login_two_factor_usecase.dart';
+import 'features/auth/domain/usecases/logout_usecase.dart';
 import 'features/auth/domain/usecases/register_usecase.dart';
 import 'features/auth/domain/usecases/verify_usecase.dart';
 import 'features/auth/domain/usecases/resend_verification_usecase.dart';
@@ -19,6 +21,7 @@ import 'features/auth/domain/usecases/change_password_usecase.dart';
 import 'features/auth/domain/usecases/setup_two_factor_usecase.dart';
 import 'features/auth/domain/usecases/enable_two_factor_usecase.dart';
 import 'features/auth/domain/usecases/disable_two_factor_usecase.dart';
+import 'features/auth/domain/usecases/get_two_factor_status_usecase.dart';
 import 'features/auth/presentation/cubit/auth_cubit.dart';
 import 'features/auth/presentation/cubit/change_password_cubit.dart';
 import 'features/auth/presentation/cubit/two_factor_cubit.dart';
@@ -53,6 +56,11 @@ import 'features/marketplace/domain/usecases/request_usecases.dart';
 import 'features/marketplace/presentation/cubit/marketplace_cubit.dart';
 import 'features/marketplace/presentation/cubit/create_listing_cubit.dart';
 import 'features/marketplace/presentation/cubit/listing_detail_cubit.dart';
+
+import 'features/donation/data/datasources/donation_remote_data_source.dart';
+import 'features/donation/data/repositories/donation_repository_impl.dart';
+import 'features/donation/domain/repositories/donation_repository.dart';
+import 'features/donation/domain/usecases/donation_usecases.dart';
 import 'features/group/presentation/cubit/group_cubit.dart';
 import 'features/group/presentation/cubit/group_detail_cubit.dart';
 import 'features/group/presentation/cubit/create_group_cubit.dart';
@@ -117,6 +125,9 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<MarketplaceRemoteDataSource>(
     () => MarketplaceRemoteDataSourceImpl(sl()),
   );
+  sl.registerLazySingleton<DonationRemoteDataSource>(
+    () => DonationRemoteDataSourceImpl(apiClient: sl()),
+  );
   sl.registerLazySingleton<ChatRemoteDataSource>(
     () => ChatRemoteDataSourceImpl(apiClient: sl()),
   );
@@ -130,14 +141,15 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<UserRepository>(
     () => UserRepositoryImpl(remoteDataSource: sl()),
   );
-  sl.registerLazySingleton<GroupRepository>(
-    () => GroupRepositoryImpl(sl()),
-  );
+  sl.registerLazySingleton<GroupRepository>(() => GroupRepositoryImpl(sl()));
   sl.registerLazySingleton<PostRepository>(
     () => PostRepositoryImpl(remoteDataSource: sl()),
   );
   sl.registerLazySingleton<MarketplaceRepository>(
     () => MarketplaceRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton<DonationRepository>(
+    () => DonationRepositoryImpl(remoteDataSource: sl()),
   );
   sl.registerLazySingleton<ChatRepository>(
     () => ChatRepositoryImpl(remoteDataSource: sl()),
@@ -147,6 +159,8 @@ Future<void> initDependencies() async {
   );
 
   sl.registerLazySingleton(() => LoginUseCase(sl()));
+  sl.registerLazySingleton(() => LoginTwoFactorUseCase(sl()));
+  sl.registerLazySingleton(() => LogoutUseCase(sl()));
   sl.registerLazySingleton(() => RegisterUseCase(sl()));
   sl.registerLazySingleton(() => VerifyUseCase(sl()));
   sl.registerLazySingleton(() => ResendVerificationUseCase(sl()));
@@ -157,6 +171,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => SetupTwoFactorUseCase(sl()));
   sl.registerLazySingleton(() => EnableTwoFactorUseCase(sl()));
   sl.registerLazySingleton(() => DisableTwoFactorUseCase(sl()));
+  sl.registerLazySingleton(() => GetTwoFactorStatusUseCase(sl()));
   sl.registerLazySingleton(() => GetProfileUseCase(sl()));
   sl.registerLazySingleton(() => UpdateProfileUseCase(sl()));
 
@@ -194,38 +209,52 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => ScheduleRequestUseCase(sl()));
   sl.registerLazySingleton(() => CompleteRequestUseCase(sl()));
 
+  sl.registerLazySingleton(() => CreateDonationUseCase(sl()));
+  sl.registerLazySingleton(() => GetDonationCategoriesUseCase(sl()));
+  sl.registerLazySingleton(() => GetDonationsUseCase(sl()));
+  sl.registerLazySingleton(() => ReviewDonationUseCase(sl()));
+  sl.registerLazySingleton(() => CheckDonationItemUseCase(sl()));
+  sl.registerLazySingleton(() => AcceptDonationUseCase(sl()));
+  sl.registerLazySingleton(() => GetInventoryUseCase(sl()));
+
   sl.registerLazySingleton(() => GetConversationsUseCase(sl()));
   sl.registerLazySingleton(() => GetMessagesUseCase(sl()));
   sl.registerLazySingleton(() => SendMessageUseCase(sl()));
   sl.registerLazySingleton(() => MarkAsReadUseCase(sl()));
 
-  sl.registerLazySingleton(() => AuthCubit(
-        loginUseCase: sl(),
-        registerUseCase: sl(),
-        verifyUseCase: sl(),
-        resendVerificationUseCase: sl(),
-        forgotPasswordUseCase: sl(),
-        verifyResetCodeUseCase: sl(),
-        resetPasswordUseCase: sl(),
-        sharedPreferences: sl(),
-      ));
-  sl.registerFactory(
-    () => ChangePasswordCubit(
-      changePasswordUseCase: sl(),
+  sl.registerLazySingleton(() => HomeRepository(apiClient: sl()));
+
+  sl.registerLazySingleton(
+    () => AuthCubit(
+      loginUseCase: sl(),
+      loginTwoFactorUseCase: sl(),
+      logoutUseCase: sl(),
+      registerUseCase: sl(),
+      verifyUseCase: sl(),
+      resendVerificationUseCase: sl(),
+      forgotPasswordUseCase: sl(),
+      verifyResetCodeUseCase: sl(),
+      resetPasswordUseCase: sl(),
+      sharedPreferences: sl(),
     ),
   );
-  sl.registerFactory(
-    () => MarketplaceCubit(
-      getCatalogUseCase: sl(),
-      getCategoriesUseCase: sl(),
-    ),
-  );
+  sl.registerFactory(() => ChangePasswordCubit(changePasswordUseCase: sl()));
   sl.registerFactory(
     () => CreateListingCubit(
       createListingUseCase: sl(),
-      getCategoriesUseCase: sl(),
+      createDonationUseCase: sl(),
+      getInventoryUseCase: sl(),
+      acceptDonationUseCase: sl(),
+      getDonationCategoriesUseCase: sl(),
+      getMyGroupsUseCase: sl(),
+      mediaService: sl(),
+      prefs: sl(),
     ),
   );
+  sl.registerFactory(
+    () => MarketplaceCubit(getCatalogUseCase: sl(), getCategoriesUseCase: sl()),
+  );
+  sl.registerFactory(() => HomeCubit(repository: sl()));
   sl.registerFactory(
     () => ListingDetailCubit(
       getListingDetailUseCase: sl(),
@@ -235,48 +264,54 @@ Future<void> initDependencies() async {
   sl.registerFactory(
     () => TwoFactorCubit(
       setupTwoFactorUseCase: sl(),
+      getTwoFactorStatusUseCase: sl(),
       enableTwoFactorUseCase: sl(),
       disableTwoFactorUseCase: sl(),
       sharedPreferences: sl(),
     ),
   );
-  sl.registerFactory(() => UserCubit(
-        getProfileUseCase: sl(),
-        updateProfileUseCase: sl(),
-      ));
+  sl.registerFactory(
+    () => UserCubit(getProfileUseCase: sl(), updateProfileUseCase: sl()),
+  );
 
-  sl.registerFactory(() => GroupCubit(
-        getGroupsUseCase: sl(),
-        getMyGroupsUseCase: sl(),
-      ));
-  sl.registerFactory(() => GroupDetailCubit(
-        getGroupDetailUseCase: sl(),
-        joinGroupUseCase: sl(),
-      ));
-  sl.registerFactory(() => CreateGroupCubit(
-        createGroupUseCase: sl(),
-      ));
-  sl.registerFactory(() => GroupJoinRequestsCubit(
-        getJoinRequestsUseCase: sl(),
-        approveJoinUseCase: sl(),
-        rejectJoinUseCase: sl(),
-      ));
-  sl.registerFactory(() => GroupMembersCubit(
-        getMembersUseCase: sl(),
-        updateMemberRoleUseCase: sl(),
-        updateMemberStatusUseCase: sl(),
-      ));
-  sl.registerFactory(() => UpdateGroupCubit(
-        updateGroupUseCase: sl(),
-      ));
-  sl.registerFactory(() => GroupDashboardPostsCubit(
-        getPostsUseCase: sl(),
-        updatePostStatusUseCase: sl(),
-        deletePostUseCase: sl(),
-      ));
-  sl.registerFactory(() => GroupInventoryCubit(
-        getCatalogUseCase: sl(),
-      ));
+  sl.registerFactory(
+    () => GroupCubit(getGroupsUseCase: sl(), getMyGroupsUseCase: sl()),
+  );
+  sl.registerFactory(
+    () => GroupDetailCubit(getGroupDetailUseCase: sl(), joinGroupUseCase: sl()),
+  );
+  sl.registerFactory(() => CreateGroupCubit(createGroupUseCase: sl()));
+  sl.registerFactory(
+    () => GroupJoinRequestsCubit(
+      getJoinRequestsUseCase: sl(),
+      approveJoinUseCase: sl(),
+      rejectJoinUseCase: sl(),
+    ),
+  );
+  sl.registerFactory(
+    () => GroupMembersCubit(
+      getMembersUseCase: sl(),
+      updateMemberRoleUseCase: sl(),
+      updateMemberStatusUseCase: sl(),
+    ),
+  );
+  sl.registerFactory(() => UpdateGroupCubit(updateGroupUseCase: sl()));
+  sl.registerFactory(
+    () => GroupDashboardPostsCubit(
+      getPostsUseCase: sl(),
+      updatePostStatusUseCase: sl(),
+      deletePostUseCase: sl(),
+    ),
+  );
+  sl.registerFactory(
+    () => GroupInventoryCubit(
+      getDonationsUseCase: sl(),
+      getInventoryUseCase: sl(),
+      reviewDonationUseCase: sl(),
+      checkDonationItemUseCase: sl(),
+      createListingUseCase: sl(),
+    ),
+  );
   sl.registerFactory(
     () => GroupFeedCubit(
       getPostsUseCase: sl(),
@@ -287,17 +322,19 @@ Future<void> initDependencies() async {
     ),
   );
   sl.registerFactory(
-    () => PostCommentsCubit(
-      getCommentsUseCase: sl(),
-      addCommentUseCase: sl(),
-    ),
+    () => PostCommentsCubit(getCommentsUseCase: sl(), addCommentUseCase: sl()),
   );
 
   sl.registerFactory(() => ChatInboxCubit(getConversationsUseCase: sl()));
-  sl.registerFactory(() => ChatCubit(
-    getMessagesUseCase: sl(),
-    sendMessageUseCase: sl(),
-  ));
+  sl.registerFactory(
+    () => ChatCubit(
+      getMessagesUseCase: sl(),
+      sendMessageUseCase: sl(),
+      createDonationUseCase: sl(),
+      acceptDonationUseCase: sl(),
+      apiClient: sl(),
+    ),
+  );
 
   sl.registerFactory(() => NotificationCubit(repository: sl()));
 

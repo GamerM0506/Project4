@@ -16,10 +16,13 @@ class GroupModel {
   factory GroupModel.fromJson(Map<String, dynamic> json) {
     return GroupModel(
       id: json['id'] ?? '',
-      name: json['name'] ?? 'Unknown Group',
-      location: json['address'] ?? json['province_code'] ?? 'Unknown Location',
+      name: json['name'] ?? 'Hội nhóm chưa đặt tên',
+      location: json['address'] ?? json['province_code'] ?? 'Chưa có địa điểm',
       memberCount: json['member_count'] ?? 0,
-      imageUrl: json['avatar_url'] ?? json['cover_url'] ?? 'https://via.placeholder.com/150',
+      imageUrl:
+          json['avatar_url'] ??
+          json['cover_url'] ??
+          'https://via.placeholder.com/150',
     );
   }
 }
