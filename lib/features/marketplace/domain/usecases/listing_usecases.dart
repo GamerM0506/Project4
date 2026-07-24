@@ -11,6 +11,18 @@ class GetCatalogUseCase {
   }
 }
 
+class GetListingsUseCase {
+  final MarketplaceRepository repository;
+  GetListingsUseCase(this.repository);
+
+  Future<Either<String, List<ListingEntity>>> call({
+    String? groupId,
+    String? status,
+  }) {
+    return repository.getListings(groupId: groupId, status: status);
+  }
+}
+
 class GetListingDetailUseCase {
   final MarketplaceRepository repository;
   GetListingDetailUseCase(this.repository);

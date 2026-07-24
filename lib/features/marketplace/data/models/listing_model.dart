@@ -19,22 +19,46 @@ class ListingModel extends ListingEntity {
   });
 
   factory ListingModel.fromJson(Map<String, dynamic> json) {
+    String? imageUrl = json['image_url']?.toString();
+    if ((imageUrl == null || imageUrl.isEmpty) && json['images'] is List) {
+      final images = json['images'] as List;
+      if (images.isNotEmpty) {
+        final first = images.first;
+        if (first is Map) {
+          imageUrl = (first['url'] ?? first['image_url'] ?? first['public_url'])
+              ?.toString();
+        } else if (first is String) {
+          imageUrl = first;
+        }
+      }
+    }
+
     return ListingModel(
-      id: json['id'] ?? '',
-      inventoryItemId: json['inventory_item_id'] ?? '',
-      groupId: json['group_id'] ?? '',
-      title: json['title'] ?? '',
-      description: json['description'] ?? '',
-      categoryId: json['category_id'] ?? '',
-      condition: json['condition'] ?? '',
-      quantityTotal: json['quantity_total'] ?? 0,
-      quantityAvailable: json['quantity_available'] ?? 0,
-      status: json['status'] ?? '',
-      createdBy: json['created_by'] ?? '',
-      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
-      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
-      imageUrl: json['image_url'], // Optional field
+      id: json['id']?.toString() ?? '',
+      inventoryItemId: json['inventory_item_id']?.toString() ?? '',
+      groupId: json['group_id']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      categoryId: json['category_id']?.toString() ?? '',
+      condition: json['condition']?.toString() ?? '',
+      quantityTotal: _toInt(json['quantity_total']),
+      quantityAvailable: _toInt(json['quantity_available']),
+      status: json['status']?.toString() ?? '',
+      createdBy: json['created_by']?.toString() ?? '',
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'].toString())
+          : null,
+      imageUrl: imageUrl,
     );
+  }
+
+  static int _toInt(dynamic v) {
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v?.toString() ?? '') ?? 0;
   }
 
   Map<String, dynamic> toJson() {

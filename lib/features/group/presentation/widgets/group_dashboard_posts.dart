@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import '../../../../core/widgets/app_network_image.dart';
 import '../../../../injection_container.dart';
 import '../../data/models/group_model.dart';
 import '../../../post/domain/entities/post_entity.dart';
@@ -145,23 +146,12 @@ class _GroupDashboardPostsView extends StatelessWidget {
           const SizedBox(height: 12),
           Text(post.content),
           if (post.imageUrls.isNotEmpty) ...[
-             const SizedBox(height: 12),
-             SizedBox(
-               height: 100,
-               child: ListView.separated(
-                 scrollDirection: Axis.horizontal,
-                 itemCount: post.imageUrls.length,
-                 separatorBuilder: (context, index) => const SizedBox(width: 8),
-                 itemBuilder: (context, index) {
-                   return ClipRRect(
-                     borderRadius: BorderRadius.circular(8),
-                     child: Image.network(post.imageUrls[index], width: 100, height: 100, fit: BoxFit.cover,
-                       errorBuilder: (context, error, stackTrace) => Container(width: 100, height: 100, color: Colors.grey[200], child: const Icon(Icons.image)),
-                     ),
-                   );
-                 },
-               )
-             )
+            const SizedBox(height: 12),
+            AppImageGallery(
+              urls: post.imageUrls,
+              maxHeight: 180,
+              borderRadius: BorderRadius.circular(10),
+            ),
           ],
           const SizedBox(height: 16),
           if (isPending)

@@ -10,6 +10,8 @@ import '../widgets/group_dashboard_inventory.dart';
 import '../widgets/group_dashboard_posts.dart';
 import '../widgets/group_dashboard_members.dart';
 import '../widgets/group_dashboard_settings.dart';
+import '../widgets/group_dashboard_requests.dart';
+import '../widgets/group_dashboard_donations.dart';
 
 class GroupDashboardPage extends StatefulWidget {
   final String groupId;
@@ -24,6 +26,8 @@ class _GroupDashboardPageState extends State<GroupDashboardPage> {
   final List<_DashboardTab> _tabs = [
     _DashboardTab(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: 'Tổng quan'),
     _DashboardTab(icon: Icons.inventory_2_outlined, activeIcon: Icons.inventory_2, label: 'Kho đồ'),
+    _DashboardTab(icon: Icons.handshake_outlined, activeIcon: Icons.handshake, label: 'Nhận đồ'),
+    _DashboardTab(icon: Icons.volunteer_activism_outlined, activeIcon: Icons.volunteer_activism, label: 'Quyên góp'),
     _DashboardTab(icon: Icons.article_outlined, activeIcon: Icons.article, label: 'Bài đăng'),
     _DashboardTab(icon: Icons.people_outline, activeIcon: Icons.people, label: 'Thành viên'),
     _DashboardTab(icon: Icons.settings_outlined, activeIcon: Icons.settings, label: 'Cài đặt'),
@@ -73,6 +77,8 @@ class _GroupDashboardPageState extends State<GroupDashboardPage> {
                 children: [
                   _buildOverviewTab(context, currentGroup),
                   _buildInventoryTab(context, currentGroup),
+                  GroupDashboardRequests(group: currentGroup),
+                  GroupDashboardDonations(group: currentGroup),
                   _buildPostsTab(context, currentGroup),
                   _buildMembersTab(context, currentGroup),
                   _buildSettingsTab(context, currentGroup),
@@ -145,6 +151,20 @@ class _GroupDashboardPageState extends State<GroupDashboardPage> {
               ActionChip(
                 avatar: const Icon(Icons.person_add),
                 label: const Text('Duyệt thành viên'),
+                onPressed: () {
+                  DefaultTabController.of(context).animateTo(5);
+                },
+              ),
+              ActionChip(
+                avatar: const Icon(Icons.handshake),
+                label: const Text('Duyệt nhận đồ'),
+                onPressed: () {
+                  DefaultTabController.of(context).animateTo(2);
+                },
+              ),
+              ActionChip(
+                avatar: const Icon(Icons.volunteer_activism),
+                label: const Text('Duyệt quyên góp'),
                 onPressed: () {
                   DefaultTabController.of(context).animateTo(3);
                 },

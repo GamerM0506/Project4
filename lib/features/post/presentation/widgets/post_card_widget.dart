@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:timeago/timeago.dart' as timeago;
+import '../../../../core/widgets/app_network_image.dart';
 import '../../domain/entities/post_entity.dart';
 import '../cubit/group_feed_cubit.dart';
 import 'comments_bottom_sheet.dart';
-import 'package:timeago/timeago.dart' as timeago;
 
 class PostCardWidget extends StatelessWidget {
   final PostEntity post;
@@ -201,37 +202,11 @@ class PostCardWidget extends StatelessWidget {
   }
 
   Widget _buildImageGallery(List<String> imageUrls) {
-    if (imageUrls.length == 1) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.network(
-          imageUrls[0],
-          width: double.infinity,
-          height: 200,
-          fit: BoxFit.cover,
-        ),
-      );
-    } else {
-      return SizedBox(
-        height: 200,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: imageUrls.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
-          itemBuilder: (context, index) {
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                imageUrls[index],
-                width: 150,
-                height: 200,
-                fit: BoxFit.cover,
-              ),
-            );
-          },
-        ),
-      );
-    }
+    return AppImageGallery(
+      urls: imageUrls,
+      maxHeight: 260,
+      borderRadius: BorderRadius.circular(12),
+    );
   }
 
   Widget _buildActionBtn(IconData icon, String label, ColorScheme colorScheme) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_routes.dart';
+import '../../../../core/widgets/app_network_image.dart';
 import '../../../../injection_container.dart';
 import '../cubit/group_detail_cubit.dart';
 import '../../data/models/group_model.dart';
@@ -28,13 +29,14 @@ class GroupDetailPage extends StatelessWidget {
           create: (_) => sl<GroupFeedCubit>()..fetchPosts(groupId),
         ),
       ],
-      child: const GroupDetailView(),
+      child: GroupDetailView(groupId: groupId),
     );
   }
 }
 
 class GroupDetailView extends StatefulWidget {
-  const GroupDetailView({super.key});
+  final String groupId;
+  const GroupDetailView({super.key, required this.groupId});
 
   @override
   State<GroupDetailView> createState() => _GroupDetailViewState();
@@ -61,7 +63,20 @@ class _GroupDetailViewState extends State<GroupDetailView> with SingleTickerProv
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      body: BlocBuilder<GroupDetailCubit, GroupDetailState>(
+      body: BlocConsumer<GroupDetailCubit, GroupDetailState>(
+        listener: (context, state) {
+          if (state is GroupDetailLoaded && state.flashMessage != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.flashMessage!),
+                backgroundColor: state.flashIsError
+                    ? Theme.of(context).colorScheme.error
+                    : null,
+              ),
+            );
+            context.read<GroupDetailCubit>().clearFlash();
+          }
+        },
         builder: (context, state) {
           if (state is GroupDetailLoading) {
             return const Scaffold(
@@ -70,7 +85,24 @@ class _GroupDetailViewState extends State<GroupDetailView> with SingleTickerProv
           } else if (state is GroupDetailError) {
             return Scaffold(
               appBar: AppBar(title: const Text('Lỗi')),
-              body: Center(child: Text(state.message)),
+              body: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(state.message, textAlign: TextAlign.center),
+                      const SizedBox(height: 12),
+                      FilledButton(
+                        onPressed: () => context
+                            .read<GroupDetailCubit>()
+                            .fetchGroupDetail(widget.groupId),
+                        child: const Text('Thử lại'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             );
           } else if (state is GroupDetailLoaded) {
             final group = state.group;
@@ -80,8 +112,13 @@ class _GroupDetailViewState extends State<GroupDetailView> with SingleTickerProv
             if (userState is UserLoaded) {
               currentUserId = userState.user.id;
             }
-            final isMember = group.myRole != null || (currentUserId != null && currentUserId == group.ownerId);
-            final isPending = group.myStatus == 'pending';
+            final isOwner = currentUserId != null &&
+                currentUserId.isNotEmpty &&
+                currentUserId == group.ownerId;
+            // Chỉ coi là thành viên khi đã approved (hoặc owner/mod)
+            final isApprovedMember =
+                isOwner || group.isApprovedMember;
+            final isPending = group.isJoinPending;
             return NestedScrollView(
               headerSliverBuilder: (context, innerBoxIsScrolled) {
                 return [
@@ -114,12 +151,10 @@ class _GroupDetailViewState extends State<GroupDetailView> with SingleTickerProv
                       const SizedBox(width: 8),
                     ],
                     flexibleSpace: FlexibleSpaceBar(
-                      background: Image.network(
-                        group.coverUrl ?? 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=600&auto=format&fit=crop',
+                      background: AppNetworkImage(
+                        url: group.coverUrl,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(color: Colors.grey[300], child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)));
-                        },
+                        placeholderIcon: Icons.groups_outlined,
                       ),
                     ),
                   ),
@@ -140,12 +175,10 @@ class _GroupDetailViewState extends State<GroupDetailView> with SingleTickerProv
                                 border: Border.all(color: colorScheme.surface, width: 4),
                               ),
                               child: ClipOval(
-                                child: Image.network(
-                                  group.avatarUrl ?? 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(group.name)}&background=random',
+                                child: AppNetworkImage(
+                                  url: group.avatarUrl,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(color: Colors.grey[300], child: const Icon(Icons.group, color: Colors.grey));
-                                  },
+                                  placeholderIcon: Icons.groups,
                                 ),
                               ),
                             ),
@@ -178,7 +211,9 @@ class _GroupDetailViewState extends State<GroupDetailView> with SingleTickerProv
                                 const SizedBox(height: 16),
                                 Row(
                                   children: [
-                                    if (currentUserId == group.ownerId || group.myRole == 'owner' || group.myRole == 'moderator')
+                                    if (isOwner ||
+                                        group.myRole == 'owner' ||
+                                        group.myRole == 'moderator')
                                       Expanded(
                                         child: FilledButton.icon(
                                           onPressed: () async {
@@ -195,22 +230,44 @@ class _GroupDetailViewState extends State<GroupDetailView> with SingleTickerProv
                                           ),
                                         ),
                                       )
-                                    else if (!isMember)
+                                    else if (isPending)
                                       Expanded(
                                         child: FilledButton.icon(
-                                          onPressed: isPending || isJoining ? null : () {
-                                            context.read<GroupDetailCubit>().joinGroup(group.id);
-                                          },
-                                          icon: isJoining 
-                                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                                            : Icon(isPending ? Icons.access_time : Icons.group_add),
-                                          label: Text(isPending ? 'Đang chờ duyệt' : 'Tham gia nhóm'),
+                                          onPressed: null,
+                                          icon: const Icon(Icons.access_time),
+                                          label: const Text('Đang chờ duyệt'),
                                           style: FilledButton.styleFrom(
-                                            backgroundColor: isPending ? Colors.grey : const Color(0xFFB73A41),
+                                            backgroundColor: Colors.grey,
                                           ),
                                         ),
-                                      ),
-                                    if (isMember && currentUserId != group.ownerId && group.myRole != 'owner' && group.myRole != 'moderator')
+                                      )
+                                    else if (!isApprovedMember)
+                                      Expanded(
+                                        child: FilledButton.icon(
+                                          onPressed: isJoining
+                                              ? null
+                                              : () {
+                                                  context
+                                                      .read<GroupDetailCubit>()
+                                                      .joinGroup(group.id);
+                                                },
+                                          icon: isJoining
+                                              ? const SizedBox(
+                                                  width: 16,
+                                                  height: 16,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                          strokeWidth: 2),
+                                                )
+                                              : const Icon(Icons.group_add),
+                                          label: const Text('Tham gia nhóm'),
+                                          style: FilledButton.styleFrom(
+                                            backgroundColor:
+                                                const Color(0xFFB73A41),
+                                          ),
+                                        ),
+                                      )
+                                    else
                                       Expanded(
                                         child: OutlinedButton.icon(
                                           onPressed: () {},
@@ -218,27 +275,41 @@ class _GroupDetailViewState extends State<GroupDetailView> with SingleTickerProv
                                           label: const Text('Đã tham gia'),
                                         ),
                                       ),
-                                     const SizedBox(width: 8),
-                                     FilledButton.icon(
-                                       onPressed: () {
-                                         context.push(AppRoutes.chatRoom, extra: {
-                                           'conversationId': group.id,
-                                           'name': group.name,
-                                         });
-                                       },
-                                       icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                                       label: const Text('Nhắn tin & Quyên góp'),
-                                       style: FilledButton.styleFrom(
-                                         backgroundColor: colorScheme.primaryContainer,
-                                         foregroundColor: colorScheme.onPrimaryContainer,
-                                       ),
-                                     ),
+                                    const SizedBox(width: 8),
+                                    FilledButton.icon(
+                                      onPressed: () {
+                                        context.push(AppRoutes.chatRoom, extra: {
+                                          'conversationId': group.id,
+                                          'name': group.name,
+                                        });
+                                      },
+                                      icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                                      label: const Text('Nhắn tin'),
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: colorScheme.primaryContainer,
+                                        foregroundColor: colorScheme.onPrimaryContainer,
+                                      ),
+                                    ),
                                     const SizedBox(width: 12),
                                     IconButton.filledTonal(
                                       onPressed: () {},
                                       icon: const Icon(Icons.share),
                                     ),
                                   ],
+                                ),
+                                // Donor không bắt buộc là member — entry quyên góp đặt phụ, không cạnh CTA chính
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: TextButton.icon(
+                                    onPressed: () {
+                                      context.push(AppRoutes.createDonation, extra: {
+                                        'groupId': group.id,
+                                        'groupName': group.name,
+                                      });
+                                    },
+                                    icon: const Icon(Icons.volunteer_activism_outlined, size: 18),
+                                    label: const Text('Quyên góp đồ cho nhóm'),
+                                  ),
                                 ),
                               ],
                             ),
@@ -290,7 +361,10 @@ class _GroupDetailViewState extends State<GroupDetailView> with SingleTickerProv
       currentUserId = userState.user.id;
     }
     
-    final isMember = group.myRole != null || (currentUserId != null && currentUserId == group.ownerId);
+    final isOwner = currentUserId != null &&
+        currentUserId.isNotEmpty &&
+        currentUserId == group.ownerId;
+    final isMember = isOwner || group.isApprovedMember;
 
     return BlocBuilder<GroupFeedCubit, GroupFeedState>(
       builder: (context, state) {

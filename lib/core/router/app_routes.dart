@@ -7,6 +7,7 @@ class AppRoutes {
   static const String support = '/support';
   static const String changePassword = '/change-password';
   static const String twoFactor = '/two-factor';
+  static const String login2FA = '/login-2fa';
   static const String forgotPassword = '/forgot-password';
   static const String forgotPasswordVerification = '/forgot-password-verification';
   static const String resetPassword = '/reset-password';
@@ -18,6 +19,9 @@ class AppRoutes {
   static const String editProfile = '/profile/edit';
   static const String myItems = '/profile/my-items';
   static const String myRequests = '/profile/my-requests';
+  static const String myDonations = '/profile/my-donations';
+  static const String createDonation = '/donations/create';
+  static const String donationDetail = '/donations';
   static const String savedGroups = '/profile/saved-groups';
   static const String productDetail = '/product-detail';
   static const String chatRoom = '/chat-room';

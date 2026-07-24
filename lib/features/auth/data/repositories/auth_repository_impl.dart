@@ -199,9 +199,9 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<String, AuthEntity>> login2FA(String emailOrPhone, String code) async {
+  Future<Either<String, AuthEntity>> login2FA(String challengeToken, String code) async {
     try {
-      final response = await remoteDataSource.login2FA(emailOrPhone, code);
+      final response = await remoteDataSource.login2FA(challengeToken, code);
       return Right(response);
     } on DioException catch (e) {
       return Left(_mapDioError(e, 'Mã xác thực 2FA không chính xác.'));
@@ -211,12 +211,13 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<String, void>> logout() async {
+  Future<Either<String, void>> logout({String? refreshToken}) async {
     try {
-      await remoteDataSource.logout();
+      await remoteDataSource.logout(refreshToken: refreshToken);
       return const Right(null);
-    } catch (e) {
-      return Left('Đã xảy ra lỗi: $e');
+    } catch (_) {
+      // Local logout still succeeds even if API fails
+      return const Right(null);
     }
   }
 

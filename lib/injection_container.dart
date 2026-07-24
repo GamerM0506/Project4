@@ -7,6 +7,8 @@ import 'features/auth/data/datasources/auth_remote_data_source.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/domain/usecases/login_usecase.dart';
+import 'features/auth/domain/usecases/login_2fa_usecase.dart';
+import 'features/auth/domain/usecases/logout_usecase.dart';
 import 'features/auth/domain/usecases/register_usecase.dart';
 import 'features/auth/domain/usecases/verify_usecase.dart';
 import 'features/auth/domain/usecases/resend_verification_usecase.dart';
@@ -51,6 +53,10 @@ import 'features/marketplace/domain/usecases/request_usecases.dart';
 import 'features/marketplace/presentation/cubit/marketplace_cubit.dart';
 import 'features/marketplace/presentation/cubit/create_listing_cubit.dart';
 import 'features/marketplace/presentation/cubit/listing_detail_cubit.dart';
+import 'features/donation/data/datasources/donation_remote_data_source.dart';
+import 'features/donation/data/repositories/donation_repository_impl.dart';
+import 'features/donation/domain/repositories/donation_repository.dart';
+import 'features/donation/domain/usecases/donation_usecases.dart';
 import 'features/group/presentation/cubit/group_cubit.dart';
 import 'features/group/presentation/cubit/group_detail_cubit.dart';
 import 'features/group/presentation/cubit/create_group_cubit.dart';
@@ -115,6 +121,9 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<MarketplaceRemoteDataSource>(
     () => MarketplaceRemoteDataSourceImpl(sl()),
   );
+  sl.registerLazySingleton<DonationRemoteDataSource>(
+    () => DonationRemoteDataSourceImpl(sl()),
+  );
   sl.registerLazySingleton<ChatRemoteDataSource>(
     () => ChatRemoteDataSourceImpl(apiClient: sl()),
   );
@@ -137,6 +146,9 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<MarketplaceRepository>(
     () => MarketplaceRepositoryImpl(remoteDataSource: sl()),
   );
+  sl.registerLazySingleton<DonationRepository>(
+    () => DonationRepositoryImpl(sl()),
+  );
   sl.registerLazySingleton<ChatRepository>(
     () => ChatRepositoryImpl(remoteDataSource: sl()),
   );
@@ -145,6 +157,8 @@ Future<void> initDependencies() async {
   );
 
   sl.registerLazySingleton(() => LoginUseCase(sl()));
+  sl.registerLazySingleton(() => Login2FAUseCase(sl()));
+  sl.registerLazySingleton(() => LogoutUseCase(sl()));
   sl.registerLazySingleton(() => RegisterUseCase(sl()));
   sl.registerLazySingleton(() => VerifyUseCase(sl()));
   sl.registerLazySingleton(() => ResendVerificationUseCase(sl()));
@@ -182,6 +196,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => AddCommentUseCase(sl()));
 
   sl.registerLazySingleton(() => GetCatalogUseCase(sl()));
+  sl.registerLazySingleton(() => GetListingsUseCase(sl()));
   sl.registerLazySingleton(() => GetListingDetailUseCase(sl()));
   sl.registerLazySingleton(() => CreateListingUseCase(sl()));
   sl.registerLazySingleton(() => GetRequestsUseCase(sl()));
@@ -191,6 +206,13 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => ScheduleRequestUseCase(sl()));
   sl.registerLazySingleton(() => CompleteRequestUseCase(sl()));
 
+  sl.registerLazySingleton(() => GetDonationsUseCase(sl()));
+  sl.registerLazySingleton(() => GetDonationDetailUseCase(sl()));
+  sl.registerLazySingleton(() => CreateDonationUseCase(sl()));
+  sl.registerLazySingleton(() => ReviewDonationUseCase(sl()));
+  sl.registerLazySingleton(() => CheckDonationItemUseCase(sl()));
+  sl.registerLazySingleton(() => GetDonationTimelineUseCase(sl()));
+
   sl.registerLazySingleton(() => GetConversationsUseCase(sl()));
   sl.registerLazySingleton(() => GetMessagesUseCase(sl()));
   sl.registerLazySingleton(() => SendMessageUseCase(sl()));
@@ -198,6 +220,8 @@ Future<void> initDependencies() async {
 
   sl.registerLazySingleton(() => AuthCubit(
         loginUseCase: sl(),
+        login2FAUseCase: sl(),
+        logoutUseCase: sl(),
         registerUseCase: sl(),
         verifyUseCase: sl(),
         resendVerificationUseCase: sl(),
@@ -238,6 +262,7 @@ Future<void> initDependencies() async {
   sl.registerFactory(() => UserCubit(
         getProfileUseCase: sl(),
         updateProfileUseCase: sl(),
+        sharedPreferences: sl(),
       ));
 
   sl.registerFactory(() => GroupCubit(
@@ -247,6 +272,7 @@ Future<void> initDependencies() async {
   sl.registerFactory(() => GroupDetailCubit(
         getGroupDetailUseCase: sl(),
         joinGroupUseCase: sl(),
+        getMyGroupsUseCase: sl(),
       ));
   sl.registerFactory(() => CreateGroupCubit(
         createGroupUseCase: sl(),

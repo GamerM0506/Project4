@@ -1,9 +1,10 @@
 import 'package:dio/dio.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/api_error_mapper.dart';
 import '../models/group_model.dart';
 import '../models/join_request_model.dart';
 import '../models/member_model.dart';
-import '../../../../core/constants/app_constants.dart';
 
 abstract class GroupRemoteDataSource {
   Future<List<GroupModel>> getGroups({int limit = 20, int offset = 0, String? query, String? provinceCode});
@@ -167,12 +168,21 @@ class GroupRemoteDataSourceImpl implements GroupRemoteDataSource {
     try {
       final response = await apiClient.dio.post(
         '${AppConstants.communityApiBaseUrl}/groups/$groupId/join',
-        data: message != null ? {'message': message} : {},
+        data: {
+          if (message != null && message.isNotEmpty) 'message': message,
+        },
       );
-      final dataEnvelope = response.data as Map<String, dynamic>;
-      return JoinRequestModel.fromJson(dataEnvelope['data']);
+      final body = response.data;
+      final data = body is Map && body['data'] is Map
+          ? Map<String, dynamic>.from(body['data'] as Map)
+          : (body is Map
+              ? Map<String, dynamic>.from(body)
+              : <String, dynamic>{});
+      return JoinRequestModel.fromJson(data);
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['detail'] ?? 'Lỗi khi xin tham gia nhóm');
+      throw Exception(
+        ApiErrorMapper.fromDio(e, fallback: 'Không gửi được yêu cầu tham gia nhóm.'),
+      );
     }
   }
 

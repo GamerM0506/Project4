@@ -6,8 +6,16 @@ class GetRequestsUseCase {
   final MarketplaceRepository repository;
   GetRequestsUseCase(this.repository);
 
-  Future<Either<String, List<RequestEntity>>> call() {
-    return repository.getRequests();
+  Future<Either<String, List<RequestEntity>>> call({
+    String? receiverId,
+    String? groupId,
+    String? status,
+  }) {
+    return repository.getRequests(
+      receiverId: receiverId,
+      groupId: groupId,
+      status: status,
+    );
   }
 }
 

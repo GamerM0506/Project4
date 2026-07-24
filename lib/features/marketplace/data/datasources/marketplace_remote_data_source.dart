@@ -1,16 +1,21 @@
 import 'package:dio/dio.dart';
-import '../../../../core/network/api_client.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../../core/network/api_error_mapper.dart';
 import '../models/listing_model.dart';
 import '../models/request_model.dart';
 
 abstract class MarketplaceRemoteDataSource {
   Future<List<ListingModel>> getCatalog({String? category, String? province, String? groupId});
-  Future<List<ListingModel>> getListings();
+  Future<List<ListingModel>> getListings({String? groupId, String? status});
   Future<ListingModel> getListingDetail(String id);
   Future<void> createListing(Map<String, dynamic> data);
   
-  Future<List<RequestModel>> getRequests();
+  Future<List<RequestModel>> getRequests({
+    String? receiverId,
+    String? groupId,
+    String? status,
+  });
   Future<void> createRequest(Map<String, dynamic> data);
   Future<void> approveRequest(String id, String reviewedBy);
   Future<void> rejectRequest(String id, String reviewedBy, String reason);
@@ -45,11 +50,24 @@ class MarketplaceRemoteDataSourceImpl implements MarketplaceRemoteDataSource {
   }
 
   @override
-  Future<List<ListingModel>> getListings() async {
+  Future<List<ListingModel>> getListings({String? groupId, String? status}) async {
     try {
-      final response = await apiClient.dio.get('$_baseUrl/listings');
-      final List<dynamic> data = response.data is List ? response.data : (response.data['data'] ?? []);
-      return data.map((json) => ListingModel.fromJson(json)).toList();
+      final query = <String, dynamic>{};
+      if (groupId != null && groupId.isNotEmpty) query['group_id'] = groupId;
+      if (status != null && status.isNotEmpty) query['status'] = status;
+
+      final response = await apiClient.dio.get(
+        '$_baseUrl/listings',
+        queryParameters: query.isEmpty ? null : query,
+      );
+      final List<dynamic> data = response.data is List
+          ? response.data
+          : (response.data['data'] ?? []);
+      return data
+          .map((json) => ListingModel.fromJson(
+                Map<String, dynamic>.from(json as Map),
+              ))
+          .toList();
     } catch (e) {
       throw Exception('Failed to get listings: $e');
     }
@@ -103,11 +121,31 @@ class MarketplaceRemoteDataSourceImpl implements MarketplaceRemoteDataSource {
   }
 
   @override
-  Future<List<RequestModel>> getRequests() async {
+  Future<List<RequestModel>> getRequests({
+    String? receiverId,
+    String? groupId,
+    String? status,
+  }) async {
     try {
-      final response = await apiClient.dio.get('$_baseUrl/requests');
-      final List<dynamic> data = response.data is List ? response.data : (response.data['data'] ?? []);
-      return data.map((json) => RequestModel.fromJson(json)).toList();
+      final query = <String, dynamic>{};
+      if (receiverId != null && receiverId.isNotEmpty) {
+        query['receiver_id'] = receiverId;
+      }
+      if (groupId != null && groupId.isNotEmpty) query['group_id'] = groupId;
+      if (status != null && status.isNotEmpty) query['status'] = status;
+
+      final response = await apiClient.dio.get(
+        '$_baseUrl/requests',
+        queryParameters: query.isEmpty ? null : query,
+      );
+      final List<dynamic> data = response.data is List
+          ? response.data
+          : (response.data['data'] ?? []);
+      return data
+          .map((json) => RequestModel.fromJson(
+                Map<String, dynamic>.from(json as Map),
+              ))
+          .toList();
     } catch (e) {
       throw Exception('Failed to get requests: $e');
     }
@@ -116,9 +154,17 @@ class MarketplaceRemoteDataSourceImpl implements MarketplaceRemoteDataSource {
   @override
   Future<void> createRequest(Map<String, dynamic> data) async {
     try {
+      // receiver_id do JWT xác định; vẫn gửi nếu client có
       await apiClient.dio.post('$_baseUrl/requests', data: data);
+    } on DioException catch (e) {
+      throw Exception(
+        ApiErrorMapper.fromDio(
+          e,
+          fallback: 'Không gửi được yêu cầu nhận đồ.',
+        ),
+      );
     } catch (e) {
-      throw Exception('Failed to create request: $e');
+      throw Exception(ApiErrorMapper.message(e));
     }
   }
 

@@ -43,27 +43,66 @@ class GroupModel {
 
   factory GroupModel.fromJson(Map<String, dynamic> json) {
     return GroupModel(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      slug: json['slug'] as String,
-      description: json['description'] as String?,
-      avatarUrl: json['avatar_url'] as String?,
-      coverUrl: json['cover_url'] as String?,
-      address: json['address'] as String?,
-      provinceCode: json['province_code'] as String?,
-      districtCode: json['district_code'] as String?,
-      ownerId: json['owner_id'] as String,
-      status: json['status'] as String,
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      slug: json['slug']?.toString() ?? '',
+      description: json['description']?.toString(),
+      avatarUrl: json['avatar_url']?.toString(),
+      coverUrl: json['cover_url']?.toString(),
+      address: json['address']?.toString(),
+      provinceCode: json['province_code']?.toString(),
+      districtCode: json['district_code']?.toString(),
+      ownerId: json['owner_id']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'active',
       allowMemberPost: json['allow_member_post'] as bool? ?? true,
       requirePostReview: json['require_post_review'] as bool? ?? false,
-      memberCount: json['member_count'] as int? ?? 0,
-      reputationScore: json['reputation_score'] as int? ?? 0,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
-      myRole: json['my_role'] as String?,
-      myStatus: json['my_status'] as String?,
+      memberCount: json['member_count'] is int
+          ? json['member_count'] as int
+          : int.tryParse(json['member_count']?.toString() ?? '') ?? 0,
+      reputationScore: json['reputation_score'] is int
+          ? json['reputation_score'] as int
+          : int.tryParse(json['reputation_score']?.toString() ?? '') ?? 0,
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+          DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? '') ??
+          DateTime.now(),
+      myRole: json['my_role']?.toString(),
+      myStatus: json['my_status']?.toString(),
     );
   }
+
+  GroupModel copyWith({
+    String? myRole,
+    String? myStatus,
+    int? memberCount,
+  }) {
+    return GroupModel(
+      id: id,
+      name: name,
+      slug: slug,
+      description: description,
+      avatarUrl: avatarUrl,
+      coverUrl: coverUrl,
+      address: address,
+      provinceCode: provinceCode,
+      districtCode: districtCode,
+      ownerId: ownerId,
+      status: status,
+      allowMemberPost: allowMemberPost,
+      requirePostReview: requirePostReview,
+      memberCount: memberCount ?? this.memberCount,
+      reputationScore: reputationScore,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      myRole: myRole ?? this.myRole,
+      myStatus: myStatus ?? this.myStatus,
+    );
+  }
+
+  bool get isApprovedMember =>
+      myStatus == 'approved' || myRole == 'owner' || myRole == 'moderator';
+
+  bool get isJoinPending => myStatus == 'pending';
 
   Map<String, dynamic> toJson() {
     return {

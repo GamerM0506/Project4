@@ -15,8 +15,8 @@ abstract class AuthRemoteDataSource {
   Future<TwoFactorSetupModel> setupTwoFactor();
   Future<void> enableTwoFactor(String code);
   Future<void> disableTwoFactor(String code);
-  Future<AuthModel> login2FA(String emailOrPhone, String code);
-  Future<void> logout();
+  Future<AuthModel> login2FA(String challengeToken, String code);
+  Future<void> logout({String? refreshToken});
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -38,24 +38,24 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<AuthModel> login2FA(String emailOrPhone, String code) async {
-    final body = <String, dynamic>{'code': code};
-    if (emailOrPhone.contains('@')) {
-      body['email'] = emailOrPhone;
-    } else {
-      body['phone'] = emailOrPhone;
-    }
-
+  Future<AuthModel> login2FA(String challengeToken, String code) async {
     final response = await apiClient.dio.post(
       '${AppConstants.authApiBaseUrl}/auth/login/2fa',
-      data: body,
+      data: {
+        'challenge_token': challengeToken,
+        'code': code,
+      },
     );
     return AuthModel.fromJson(response.data);
   }
 
   @override
-  Future<void> logout() async {
-    await apiClient.dio.post('${AppConstants.authApiBaseUrl}/auth/logout');
+  Future<void> logout({String? refreshToken}) async {
+    if (refreshToken == null || refreshToken.isEmpty) return;
+    await apiClient.dio.post(
+      '${AppConstants.authApiBaseUrl}/auth/logout',
+      data: {'refresh_token': refreshToken},
+    );
   }
 
   @override

@@ -19,19 +19,25 @@ class RequestModel extends RequestEntity {
 
   factory RequestModel.fromJson(Map<String, dynamic> json) {
     return RequestModel(
-      id: json['id'] ?? '',
-      listingId: json['listing_id'] ?? '',
-      groupId: json['group_id'] ?? '',
-      receiverId: json['receiver_id'] ?? '',
-      quantity: json['quantity'] ?? 1,
-      reason: json['reason'] ?? '',
-      status: json['status'] ?? 'pending',
-      reviewedBy: json['reviewed_by'],
-      scheduledAt: json['scheduled_at'] != null ? DateTime.parse(json['scheduled_at']) : null,
-      confirmedBy: json['confirmed_by'],
-      qrToken: json['qr_token'],
-      photoUrl: json['photo_url'],
-      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
+      id: json['id']?.toString() ?? '',
+      listingId: json['listing_id']?.toString() ?? '',
+      groupId: json['group_id']?.toString() ?? '',
+      receiverId: json['receiver_id']?.toString() ?? '',
+      quantity: json['quantity'] is int
+          ? json['quantity'] as int
+          : int.tryParse(json['quantity']?.toString() ?? '') ?? 1,
+      reason: json['reason']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'pending',
+      reviewedBy: json['reviewed_by']?.toString(),
+      scheduledAt: json['scheduled_at'] != null
+          ? DateTime.tryParse(json['scheduled_at'].toString())
+          : null,
+      confirmedBy: json['confirmed_by']?.toString(),
+      qrToken: json['qr_token']?.toString(),
+      photoUrl: json['photo_url']?.toString(),
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
+          : DateTime.now(),
     );
   }
 

@@ -46,6 +46,8 @@ class _LoginPageState extends State<LoginPage> {
           if (state is AuthSuccess) {
             context.read<UserCubit>().fetchProfile();
             context.go(AppRoutes.home);
+          } else if (state is AuthTwoFactorRequired) {
+            context.push(AppRoutes.login2FA, extra: state.challengeToken);
           } else if (state is AuthFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(

@@ -31,6 +31,10 @@ class ProfileMenu extends StatelessWidget {
             context.push(AppRoutes.myRequests);
           }),
           Divider(height: 1, thickness: 1, color: colorScheme.surfaceContainerHighest),
+          _buildMenuItem(context, Icons.card_giftcard_outlined, 'Quyên góp của tôi', onTap: () {
+            context.push(AppRoutes.myDonations);
+          }),
+          Divider(height: 1, thickness: 1, color: colorScheme.surfaceContainerHighest),
           _buildMenuItem(context, Icons.bookmark_border_outlined, 'Nhóm đã lưu', onTap: () {
             context.push(AppRoutes.savedGroups);
           }),

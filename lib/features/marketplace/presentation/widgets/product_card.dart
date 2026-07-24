@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/widgets/app_network_image.dart';
 
 class ProductCard extends StatelessWidget {
   final String title;
@@ -47,12 +48,11 @@ class ProductCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                ClipRRect(
+                AppNetworkImage(
+                  url: imageUrl,
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                  child: Image.network(
-                    imageUrl,
-                    fit: BoxFit.cover,
-                  ),
+                  fit: BoxFit.cover,
+                  placeholderIcon: Icons.inventory_2_outlined,
                 ),
                 Positioned(
                   top: 8,
@@ -102,8 +102,15 @@ class ProductCard extends StatelessWidget {
                     children: [
                       CircleAvatar(
                         radius: 8,
-                        backgroundImage: NetworkImage(providerLogo),
                         backgroundColor: colorScheme.surfaceContainerHighest,
+                        child: ClipOval(
+                          child: AppNetworkImage(
+                            url: providerLogo,
+                            width: 16,
+                            height: 16,
+                            placeholderIcon: Icons.groups_outlined,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 6),
                       Expanded(

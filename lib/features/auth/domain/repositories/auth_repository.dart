@@ -14,6 +14,6 @@ abstract class AuthRepository {
   Future<Either<String, TwoFactorSetupEntity>> setupTwoFactor();
   Future<Either<String, void>> enableTwoFactor(String code);
   Future<Either<String, void>> disableTwoFactor(String code);
-  Future<Either<String, AuthEntity>> login2FA(String emailOrPhone, String code);
-  Future<Either<String, void>> logout();
+  Future<Either<String, AuthEntity>> login2FA(String challengeToken, String code);
+  Future<Either<String, void>> logout({String? refreshToken});
 }

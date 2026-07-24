@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/router/app_routes.dart';
+import '../../../../core/widgets/app_network_image.dart';
 import '../../../../injection_container.dart';
+import '../../../user/presentation/cubit/user_cubit.dart';
 import '../cubit/listing_detail_cubit.dart';
 import '../cubit/listing_detail_state.dart';
 
@@ -29,8 +34,33 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
     super.dispose();
   }
 
-  void _requestItem() {
-    // In a real app, this should open a bottom sheet to enter reason & quantity.
+  void _requestItem(String groupId) {
+    final prefs = sl<SharedPreferences>();
+    var receiverId = prefs.getString(AppConstants.keyUserId) ?? '';
+    // fallback: profile đã load
+    if (receiverId.isEmpty) {
+      try {
+        final user = context.read<UserCubit>().state.userOrNull;
+        if (user != null && user.id.isNotEmpty) {
+          receiverId = user.id;
+          prefs.setString(AppConstants.keyUserId, user.id);
+        }
+      } catch (_) {}
+    }
+    if (receiverId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Vui lòng đăng nhập lại để gửi yêu cầu.')),
+      );
+      return;
+    }
+    if (groupId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Thiếu thông tin nhóm của món đồ.')),
+      );
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -40,6 +70,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
       builder: (ctx) {
         final reasonController = TextEditingController();
         int quantity = 1;
+        var submitting = false;
         return StatefulBuilder(
           builder: (context, setStateSB) {
             return Padding(
@@ -53,7 +84,10 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Gửi yêu cầu nhận món đồ này', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Gửi yêu cầu nhận món đồ này',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
@@ -61,16 +95,24 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                       const Spacer(),
                       IconButton(
                         icon: const Icon(Icons.remove),
-                        onPressed: () {
-                          if (quantity > 1) setStateSB(() => quantity--);
-                        },
+                        onPressed: submitting
+                            ? null
+                            : () {
+                                if (quantity > 1) {
+                                  setStateSB(() => quantity--);
+                                }
+                              },
                       ),
-                      Text('$quantity', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text(
+                        '$quantity',
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
                       IconButton(
                         icon: const Icon(Icons.add),
-                        onPressed: () {
-                          setStateSB(() => quantity++);
-                        },
+                        onPressed: submitting
+                            ? null
+                            : () => setStateSB(() => quantity++),
                       ),
                     ],
                   ),
@@ -78,6 +120,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                   TextField(
                     controller: reasonController,
                     maxLines: 3,
+                    enabled: !submitting,
                     decoration: const InputDecoration(
                       labelText: 'Lý do nhận đồ',
                       border: OutlineInputBorder(),
@@ -87,25 +130,64 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
-                        // Normally would get the actual group_id and receiver_id
-                        _cubit.requestItem(
-                          widget.listingId,
-                          'dummy_group_id',
-                          'dummy_receiver_id',
-                          quantity,
-                          reasonController.text,
-                        );
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Đã gửi yêu cầu!')),
-                        );
-                      },
+                      onPressed: submitting
+                          ? null
+                          : () async {
+                              setStateSB(() => submitting = true);
+                              final error = await _cubit.requestItem(
+                                listingId: widget.listingId,
+                                groupId: groupId,
+                                receiverId: receiverId,
+                                quantity: quantity,
+                                reason: reasonController.text.trim(),
+                              );
+                              if (!ctx.mounted) return;
+                              Navigator.pop(ctx);
+                              if (!mounted) return;
+                              final messenger =
+                                  ScaffoldMessenger.of(this.context);
+                              if (error == null) {
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Đã gửi yêu cầu nhận đồ!'),
+                                  ),
+                                );
+                              } else {
+                                final needJoin = error.toLowerCase().contains(
+                                        'tham gia nhóm') ||
+                                    error.toLowerCase().contains('duyệt') ||
+                                    error.contains('403');
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text(error),
+                                    backgroundColor:
+                                        Theme.of(this.context).colorScheme.error,
+                                    action: needJoin && groupId.isNotEmpty
+                                        ? SnackBarAction(
+                                            label: 'Tới nhóm',
+                                            textColor: Colors.white,
+                                            onPressed: () {
+                                              this.context.push(
+                                                  '${AppRoutes.groups}/detail/$groupId');
+                                            },
+                                          )
+                                        : null,
+                                  ),
+                                );
+                              }
+                            },
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text('Gửi yêu cầu'),
+                      child: submitting
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Gửi yêu cầu'),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -152,24 +234,14 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Image
-                  Container(
+                  SizedBox(
                     width: double.infinity,
-                    height: 300,
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest,
+                    height: 320,
+                    child: AppNetworkImage(
+                      url: item.imageUrl,
+                      fit: BoxFit.cover,
+                      placeholderIcon: Icons.inventory_2_outlined,
                     ),
-                    child: item.imageUrl != null
-                        ? Image.network(
-                            item.imageUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => Icon(
-                              Icons.broken_image,
-                              size: 80,
-                              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-                            ),
-                          )
-                        : Icon(Icons.image, size: 80, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
                   ),
                   Expanded(
                     child: SingleChildScrollView(
@@ -289,7 +361,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                   ],
                 ),
                 child: ElevatedButton(
-                  onPressed: _requestItem,
+                  onPressed: () => _requestItem(state.listing.groupId),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colorScheme.secondary,
                     foregroundColor: colorScheme.onSecondary,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/widgets/app_network_image.dart';
 import '../../../../injection_container.dart';
 import '../../domain/entities/listing_entity.dart';
 import '../cubit/marketplace_cubit.dart';
@@ -175,26 +176,12 @@ class _MarketplacePageState extends State<MarketplacePage> {
               flex: 4,
               child: Stack(
                 children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest,
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                    ),
-                    width: double.infinity,
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                      child: item.imageUrl != null
-                          ? Image.network(
-                              item.imageUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Icon(
-                                Icons.broken_image,
-                                size: 50,
-                                color: colorScheme.onSurfaceVariant.withOpacity(0.5),
-                              ),
-                            )
-                          : Icon(Icons.image, size: 50, color: colorScheme.onSurfaceVariant.withOpacity(0.5)),
-                    ),
+                  AppNetworkImage(
+                    url: item.imageUrl,
+                    borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16)),
+                    fit: BoxFit.cover,
+                    placeholderIcon: Icons.inventory_2_outlined,
                   ),
                   Positioned(
                     top: 8,

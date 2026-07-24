@@ -103,7 +103,9 @@ class HomeSliverAppBar extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.notifications_none),
               color: colorScheme.onSurfaceVariant,
-              onPressed: () {},
+              onPressed: () {
+                context.push(AppRoutes.notifications);
+              },
             ),
             Positioned(
               top: 12,

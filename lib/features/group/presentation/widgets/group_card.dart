@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/widgets/app_network_image.dart';
 
 class GroupCard extends StatelessWidget {
   final String name;
@@ -53,17 +54,19 @@ class GroupCard extends StatelessWidget {
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                // Cover Image
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                  child: Image.network(
-                    coverUrl,
-                    width: double.infinity,
-                    height: 130,
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 130,
+                  child: AppNetworkImage(
+                    url: coverUrl,
+                    borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(24)),
                     fit: BoxFit.cover,
+                    placeholderIcon: Icons.groups_outlined,
                   ),
                 ),
-                // Logo
                 Positioned(
                   left: 16,
                   bottom: 0,
@@ -76,7 +79,14 @@ class GroupCard extends StatelessWidget {
                     child: CircleAvatar(
                       radius: 36,
                       backgroundColor: colorScheme.surfaceContainerHighest,
-                      backgroundImage: NetworkImage(logoUrl),
+                      child: ClipOval(
+                        child: AppNetworkImage(
+                          url: logoUrl,
+                          width: 72,
+                          height: 72,
+                          placeholderIcon: Icons.groups,
+                        ),
+                      ),
                     ),
                   ),
                 ),

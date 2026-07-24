@@ -5,7 +5,15 @@ class AuthInitial extends AuthState {}
 class AuthLoading extends AuthState {}
 
 class AuthSuccess extends AuthState {}
+
 class AuthUnauthenticated extends AuthState {}
+
+class AuthAuthenticated extends AuthState {}
+
+class AuthTwoFactorRequired extends AuthState {
+  final String challengeToken;
+  AuthTwoFactorRequired({required this.challengeToken});
+}
 
 class RegisterSuccess extends AuthState {
   final String emailOrPhone;
@@ -27,7 +35,6 @@ class AuthFailure extends AuthState {
   AuthFailure({required this.message});
 }
 
-// Forgot Password States
 class ForgotPasswordLoading extends AuthState {}
 
 class ForgotPasswordSuccess extends AuthState {

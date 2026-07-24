@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/widgets/app_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class HomeRecentItems extends StatelessWidget {
@@ -47,11 +48,12 @@ class HomeRecentItems extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  item['image']!,
+                child: AppNetworkImage(
+                  url: item['image'],
                   width: 80,
                   height: 80,
                   fit: BoxFit.cover,
+                  placeholderIcon: Icons.inventory_2_outlined,
                 ),
               ),
               const SizedBox(width: 16),

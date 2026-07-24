@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
+import '../../../../core/network/api_error_mapper.dart';
 import '../../domain/repositories/group_repository.dart';
 import '../../domain/entities/join_request_entity.dart';
 import '../../domain/entities/member_entity.dart';
@@ -109,8 +110,12 @@ class GroupRepositoryImpl implements GroupRepository {
     try {
       final request = await remoteDataSource.joinGroup(groupId, message: message);
       return Right(request);
+    } on DioException catch (e) {
+      return Left(ApiErrorMapper.fromDio(e,
+          fallback: 'Không gửi được yêu cầu tham gia nhóm.'));
     } catch (e) {
-      return Left(e.toString().replaceAll('Exception: ', ''));
+      return Left(ApiErrorMapper.message(e,
+          fallback: 'Không gửi được yêu cầu tham gia nhóm.'));
     }
   }
 

@@ -20,9 +20,13 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   }
 
   @override
-  Future<Either<String, List<ListingEntity>>> getListings() async {
+  Future<Either<String, List<ListingEntity>>> getListings({
+    String? groupId,
+    String? status,
+  }) async {
     try {
-      final items = await remoteDataSource.getListings();
+      final items =
+          await remoteDataSource.getListings(groupId: groupId, status: status);
       return Right(items);
     } catch (e) {
       return Left(e.toString());
@@ -59,9 +63,17 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   }
 
   @override
-  Future<Either<String, List<RequestEntity>>> getRequests() async {
+  Future<Either<String, List<RequestEntity>>> getRequests({
+    String? receiverId,
+    String? groupId,
+    String? status,
+  }) async {
     try {
-      final items = await remoteDataSource.getRequests();
+      final items = await remoteDataSource.getRequests(
+        receiverId: receiverId,
+        groupId: groupId,
+        status: status,
+      );
       return Right(items);
     } catch (e) {
       return Left(e.toString());
@@ -71,16 +83,17 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   @override
   Future<Either<String, void>> createRequest(String listingId, String groupId, String receiverId, int quantity, String reason) async {
     try {
-      await remoteDataSource.createRequest({
+      final body = <String, dynamic>{
         'listing_id': listingId,
-        'group_id': groupId,
-        'receiver_id': receiverId,
-        'quantity': quantity,
-        'reason': reason,
-      });
+        'quantity': quantity < 1 ? 1 : quantity,
+        if (groupId.isNotEmpty) 'group_id': groupId,
+        if (receiverId.isNotEmpty) 'receiver_id': receiverId,
+        if (reason.trim().isNotEmpty) 'reason': reason.trim(),
+      };
+      await remoteDataSource.createRequest(body);
       return const Right(null);
     } catch (e) {
-      return Left(e.toString());
+      return Left(e.toString().replaceFirst(RegExp(r'^Exception:\s*'), ''));
     }
   }
 

@@ -14,14 +14,17 @@ class JoinRequestModel extends JoinRequestEntity {
 
   factory JoinRequestModel.fromJson(Map<String, dynamic> json) {
     return JoinRequestModel(
-      id: json['id'] as String,
-      groupId: json['group_id'] as String,
-      userId: json['user_id'] as String,
-      message: json['message'] as String?,
-      status: json['status'] as String,
-      reviewedBy: json['reviewed_by'] as String?,
-      reviewedAt: json['reviewed_at'] != null ? DateTime.parse(json['reviewed_at'] as String) : null,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      id: json['id']?.toString() ?? '',
+      groupId: json['group_id']?.toString() ?? '',
+      userId: json['user_id']?.toString() ?? '',
+      message: json['message']?.toString(),
+      status: json['status']?.toString() ?? 'pending',
+      reviewedBy: json['reviewed_by']?.toString(),
+      reviewedAt: json['reviewed_at'] != null
+          ? DateTime.tryParse(json['reviewed_at'].toString())
+          : null,
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+          DateTime.now(),
     );
   }
 }

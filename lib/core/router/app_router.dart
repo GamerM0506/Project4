@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_routes.dart';
 import '../layout/main_layout.dart';
+import '../constants/app_constants.dart';
+import '../../injection_container.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/auth/presentation/pages/login_2fa_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/auth/presentation/pages/verification_page.dart';
 import '../../features/auth/presentation/pages/forgot_password_page.dart';
@@ -31,6 +35,10 @@ import '../../features/user/presentation/pages/support_page.dart';
 import '../../features/user/presentation/pages/my_items_page.dart';
 import '../../features/user/presentation/pages/my_requests_page.dart';
 import '../../features/user/presentation/pages/saved_groups_page.dart';
+import '../../features/notification/presentation/pages/notifications_page.dart';
+import '../../features/donation/presentation/pages/create_donation_page.dart';
+import '../../features/donation/presentation/pages/my_donations_page.dart';
+import '../../features/donation/presentation/pages/donation_detail_page.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final GlobalKey<NavigatorState> _shellHomeKey = GlobalKey<NavigatorState>(debugLabel: 'shellHome');
@@ -69,9 +77,42 @@ CustomTransitionPage _buildPageWithAnimation(Widget page, {bool slideUp = false}
   );
 }
 
+bool _hasSession() {
+  final prefs = sl<SharedPreferences>();
+  final access = prefs.getString(AppConstants.keyAccessToken);
+  final refresh = prefs.getString(AppConstants.keyRefreshToken);
+  return (access != null && access.isNotEmpty) ||
+      (refresh != null && refresh.isNotEmpty);
+}
+
+const _publicPaths = {
+  AppRoutes.splash,
+  AppRoutes.login,
+  AppRoutes.login2FA,
+  AppRoutes.register,
+  AppRoutes.verify,
+  AppRoutes.forgotPassword,
+  AppRoutes.forgotPasswordVerification,
+  AppRoutes.resetPassword,
+};
+
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: AppRoutes.splash,
+  redirect: (context, state) {
+    final path = state.uri.path;
+    final loggedIn = _hasSession();
+    final isPublic = _publicPaths.contains(path);
+
+    if (!loggedIn && !isPublic) {
+      return AppRoutes.login;
+    }
+    if (loggedIn &&
+        (path == AppRoutes.login || path == AppRoutes.register)) {
+      return AppRoutes.home;
+    }
+    return null;
+  },
   routes: [
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
@@ -182,6 +223,11 @@ final GoRouter appRouter = GoRouter(
               pageBuilder: (context, state) => _buildPageWithAnimation(const MyRequestsPage(), slideUp: false),
             ),
             GoRoute(
+              path: AppRoutes.myDonations,
+              pageBuilder: (context, state) =>
+                  _buildPageWithAnimation(const MyDonationsPage(), slideUp: false),
+            ),
+            GoRoute(
               path: AppRoutes.savedGroups,
               pageBuilder: (context, state) => _buildPageWithAnimation(const SavedGroupsPage(), slideUp: false),
             ),
@@ -200,6 +246,18 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.login,
       parentNavigatorKey: _rootNavigatorKey,
       pageBuilder: (context, state) => _buildPageWithAnimation(const LoginPage()),
+    ),
+    GoRoute(
+      path: AppRoutes.login2FA,
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) {
+        final challengeToken = state.extra as String? ??
+            state.uri.queryParameters['token'] ??
+            '';
+        return _buildPageWithAnimation(
+          Login2FAPage(challengeToken: challengeToken),
+        );
+      },
     ),
     GoRoute(
       path: AppRoutes.register,
@@ -274,8 +332,26 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.notifications,
       parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const NotificationsPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.createDonation,
+      parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) {
-        return const Scaffold(body: Center(child: Text('Notification Page')));
+        final extra = state.extra as Map<String, dynamic>?;
+        return CreateDonationPage(
+          groupId: extra?['groupId'] as String? ??
+              state.uri.queryParameters['groupId'],
+          groupName: extra?['groupName'] as String?,
+        );
+      },
+    ),
+    GoRoute(
+      path: '${AppRoutes.donationDetail}/:id',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final id = state.pathParameters['id']!;
+        return DonationDetailPage(donationId: id);
       },
     ),
   ],

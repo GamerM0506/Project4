@@ -23,19 +23,27 @@ class ListingDetailCubit extends Cubit<ListingDetailState> {
     );
   }
 
-  Future<void> requestItem(String listingId, String groupId, String receiverId, int quantity, String reason) async {
+  Future<String?> requestItem({
+    required String listingId,
+    required String groupId,
+    required String receiverId,
+    required int quantity,
+    required String reason,
+  }) async {
     final currentState = state;
-    if (currentState is ListingDetailLoaded) {
-      // Show loading somehow or just fire and forget (or emit new state)
-      // For simplicity, we just fire the request.
-      final result = await createRequestUseCase(listingId, groupId, receiverId, quantity, reason);
-      result.fold(
-        (error) => emit(ListingDetailError(message: error)), // could revert back if needed
-        (_) {
-          // Success
-          emit(ListingDetailLoaded(listing: currentState.listing)); // trigger rebuild
-        }
-      );
-    }
+    if (currentState is! ListingDetailLoaded) return 'Chưa tải được chi tiết món đồ.';
+
+    final result = await createRequestUseCase(
+      listingId,
+      groupId,
+      receiverId,
+      quantity,
+      reason,
+    );
+
+    return result.fold(
+      (error) => error,
+      (_) => null,
+    );
   }
 }
