@@ -6,8 +6,17 @@ import '../models/member_model.dart';
 import '../../../../core/constants/app_constants.dart';
 
 abstract class GroupRemoteDataSource {
-  Future<List<GroupModel>> getGroups({int limit = 20, int offset = 0, String? query, String? provinceCode});
-  Future<List<GroupModel>> getMyGroups({int limit = 20, int offset = 0, String? memberStatus});
+  Future<List<GroupModel>> getGroups({
+    int limit = 20,
+    int offset = 0,
+    String? query,
+    String? provinceCode,
+  });
+  Future<List<GroupModel>> getMyGroups({
+    int limit = 20,
+    int offset = 0,
+    String? memberStatus,
+  });
   Future<GroupModel> getGroupDetail(String groupId);
   Future<GroupModel> updateGroup(
     String groupId, {
@@ -15,6 +24,11 @@ abstract class GroupRemoteDataSource {
     String? description,
     String? avatarUrl,
     String? coverUrl,
+    String? address,
+    String? provinceCode,
+    String? districtCode,
+    bool? allowMemberPost,
+    bool? requirePostReview,
   });
   Future<GroupModel> createGroup({
     required String name,
@@ -26,12 +40,23 @@ abstract class GroupRemoteDataSource {
     String? districtCode,
   });
   Future<JoinRequestModel> joinGroup(String groupId, {String? message});
-  Future<List<JoinRequestModel>> getJoinRequests(String groupId, {String? status, int limit = 20, int offset = 0});
+  Future<List<JoinRequestModel>> getJoinRequests(
+    String groupId, {
+    String? status,
+    int limit = 20,
+    int offset = 0,
+  });
   Future<JoinRequestModel> approveJoinRequest(String groupId, String requestId);
   Future<JoinRequestModel> rejectJoinRequest(String groupId, String requestId);
-  Future<List<MemberModel>> getGroupMembers(String groupId, {String? status, int limit = 20, int offset = 0});
+  Future<List<MemberModel>> getGroupMembers(
+    String groupId, {
+    String? status,
+    int limit = 20,
+    int offset = 0,
+  });
   Future<void> updateMemberRole(String groupId, String userId, String role);
   Future<void> updateMemberStatus(String groupId, String userId, String status);
+  Future<void> approveGroup(String groupId);
   Future<void> suspendGroup(String groupId);
 }
 
@@ -41,13 +66,20 @@ class GroupRemoteDataSourceImpl implements GroupRemoteDataSource {
   GroupRemoteDataSourceImpl(this.apiClient);
 
   @override
-  Future<List<GroupModel>> getGroups({int limit = 20, int offset = 0, String? query, String? provinceCode}) async {
+  Future<List<GroupModel>> getGroups({
+    int limit = 20,
+    int offset = 0,
+    String? query,
+    String? provinceCode,
+  }) async {
     final Map<String, dynamic> queryParameters = {
       'limit': limit,
       'offset': offset,
     };
     if (query != null && query.isNotEmpty) queryParameters['q'] = query;
-    if (provinceCode != null && provinceCode.isNotEmpty) queryParameters['province_code'] = provinceCode;
+    if (provinceCode != null && provinceCode.isNotEmpty) {
+      queryParameters['province_code'] = provinceCode;
+    }
 
     final response = await apiClient.dio.get(
       '${AppConstants.communityApiBaseUrl}/groups',
@@ -76,12 +108,18 @@ class GroupRemoteDataSourceImpl implements GroupRemoteDataSource {
   }
 
   @override
-  Future<List<GroupModel>> getMyGroups({int limit = 20, int offset = 0, String? memberStatus}) async {
+  Future<List<GroupModel>> getMyGroups({
+    int limit = 20,
+    int offset = 0,
+    String? memberStatus,
+  }) async {
     final Map<String, dynamic> queryParameters = {
       'limit': limit,
       'offset': offset,
     };
-    if (memberStatus != null && memberStatus.isNotEmpty) queryParameters['member_status'] = memberStatus;
+    if (memberStatus != null && memberStatus.isNotEmpty) {
+      queryParameters['member_status'] = memberStatus;
+    }
 
     final response = await apiClient.dio.get(
       '${AppConstants.communityApiBaseUrl}/groups/me',
@@ -103,6 +141,11 @@ class GroupRemoteDataSourceImpl implements GroupRemoteDataSource {
     String? description,
     String? avatarUrl,
     String? coverUrl,
+    String? address,
+    String? provinceCode,
+    String? districtCode,
+    bool? allowMemberPost,
+    bool? requirePostReview,
   }) async {
     try {
       final response = await apiClient.dio.patch(
@@ -112,6 +155,12 @@ class GroupRemoteDataSourceImpl implements GroupRemoteDataSource {
           if (description != null) 'description': description,
           if (avatarUrl != null) 'avatar_url': avatarUrl,
           if (coverUrl != null) 'cover_url': coverUrl,
+          if (address != null) 'address': address,
+          if (provinceCode != null) 'province_code': provinceCode,
+          if (districtCode != null) 'district_code': districtCode,
+          if (allowMemberPost != null) 'allow_member_post': allowMemberPost,
+          if (requirePostReview != null)
+            'require_post_review': requirePostReview,
         },
       );
       if (response.statusCode == 200) {
@@ -120,7 +169,7 @@ class GroupRemoteDataSourceImpl implements GroupRemoteDataSource {
         throw Exception('Failed to update group');
       }
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['detail'] ?? 'Lỗi khi cập nhật nhóm');
+      throw Exception(_communityError(e, 'Lỗi khi cập nhật nhóm'));
     } catch (e) {
       throw Exception(e.toString());
     }
@@ -156,7 +205,7 @@ class GroupRemoteDataSourceImpl implements GroupRemoteDataSource {
         throw Exception('Failed to create group');
       }
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['detail'] ?? 'Lỗi khi tạo nhóm');
+      throw Exception(_communityError(e, 'Lỗi khi tạo nhóm'));
     } catch (e) {
       throw Exception(e.toString());
     }
@@ -172,12 +221,17 @@ class GroupRemoteDataSourceImpl implements GroupRemoteDataSource {
       final dataEnvelope = response.data as Map<String, dynamic>;
       return JoinRequestModel.fromJson(dataEnvelope['data']);
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['detail'] ?? 'Lỗi khi xin tham gia nhóm');
+      throw Exception(_communityError(e, 'Lỗi khi xin tham gia nhóm'));
     }
   }
 
   @override
-  Future<List<JoinRequestModel>> getJoinRequests(String groupId, {String? status, int limit = 20, int offset = 0}) async {
+  Future<List<JoinRequestModel>> getJoinRequests(
+    String groupId, {
+    String? status,
+    int limit = 20,
+    int offset = 0,
+  }) async {
     try {
       final response = await apiClient.dio.get(
         '${AppConstants.communityApiBaseUrl}/groups/$groupId/join-requests',
@@ -190,36 +244,47 @@ class GroupRemoteDataSourceImpl implements GroupRemoteDataSource {
       final data = response.data['data']['items'] as List<dynamic>;
       return data.map((e) => JoinRequestModel.fromJson(e)).toList();
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['detail'] ?? 'Lỗi tải danh sách yêu cầu');
+      throw Exception(_communityError(e, 'Lỗi tải danh sách yêu cầu'));
     }
   }
 
   @override
-  Future<JoinRequestModel> approveJoinRequest(String groupId, String requestId) async {
+  Future<JoinRequestModel> approveJoinRequest(
+    String groupId,
+    String requestId,
+  ) async {
     try {
       final response = await apiClient.dio.post(
         '${AppConstants.communityApiBaseUrl}/groups/$groupId/join-requests/$requestId/approve',
       );
       return JoinRequestModel.fromJson(response.data['data']);
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['detail'] ?? 'Lỗi khi duyệt yêu cầu');
+      throw Exception(_communityError(e, 'Lỗi khi duyệt yêu cầu'));
     }
   }
 
   @override
-  Future<JoinRequestModel> rejectJoinRequest(String groupId, String requestId) async {
+  Future<JoinRequestModel> rejectJoinRequest(
+    String groupId,
+    String requestId,
+  ) async {
     try {
       final response = await apiClient.dio.post(
         '${AppConstants.communityApiBaseUrl}/groups/$groupId/join-requests/$requestId/reject',
       );
       return JoinRequestModel.fromJson(response.data['data']);
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['detail'] ?? 'Lỗi khi từ chối yêu cầu');
+      throw Exception(_communityError(e, 'Lỗi khi từ chối yêu cầu'));
     }
   }
 
   @override
-  Future<List<MemberModel>> getGroupMembers(String groupId, {String? status, int limit = 20, int offset = 0}) async {
+  Future<List<MemberModel>> getGroupMembers(
+    String groupId, {
+    String? status,
+    int limit = 20,
+    int offset = 0,
+  }) async {
     try {
       final response = await apiClient.dio.get(
         '${AppConstants.communityApiBaseUrl}/groups/$groupId/members',
@@ -232,42 +297,81 @@ class GroupRemoteDataSourceImpl implements GroupRemoteDataSource {
       final data = response.data['data']['items'] as List<dynamic>;
       return data.map((e) => MemberModel.fromJson(e)).toList();
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['detail'] ?? 'Lỗi tải danh sách thành viên');
+      throw Exception(_communityError(e, 'Lỗi tải danh sách thành viên'));
     }
   }
 
   @override
-  Future<void> updateMemberRole(String groupId, String userId, String role) async {
+  Future<void> updateMemberRole(
+    String groupId,
+    String userId,
+    String role,
+  ) async {
     try {
       await apiClient.dio.put(
         '${AppConstants.communityApiBaseUrl}/groups/$groupId/members/$userId/role',
         data: {'role': role},
       );
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['detail'] ?? 'Lỗi cập nhật quyền thành viên');
+      throw Exception(_communityError(e, 'Lỗi cập nhật quyền thành viên'));
     }
   }
 
   @override
-  Future<void> updateMemberStatus(String groupId, String userId, String status) async {
+  Future<void> updateMemberStatus(
+    String groupId,
+    String userId,
+    String status,
+  ) async {
     try {
       await apiClient.dio.put(
         '${AppConstants.communityApiBaseUrl}/groups/$groupId/members/$userId/status',
         data: {'status': status},
       );
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['detail'] ?? 'Lỗi cập nhật trạng thái thành viên');
+      throw Exception(_communityError(e, 'Lỗi cập nhật trạng thái thành viên'));
+    }
+  }
+
+  @override
+  Future<void> approveGroup(String groupId) async {
+    try {
+      await apiClient.dio.post(
+        '${AppConstants.communityApiBaseUrl}/admin/groups/$groupId/approve',
+      );
+    } on DioException catch (e) {
+      throw Exception(_communityError(e, 'Lỗi khi duyệt nhóm'));
     }
   }
 
   @override
   Future<void> suspendGroup(String groupId) async {
     try {
-      await apiClient.dio.post('${AppConstants.communityApiBaseUrl}/admin/groups/$groupId/suspend');
+      await apiClient.dio.post(
+        '${AppConstants.communityApiBaseUrl}/admin/groups/$groupId/suspend',
+      );
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['detail'] ?? 'Lỗi khi khóa nhóm');
+      throw Exception(_communityError(e, 'Lỗi khi khóa nhóm'));
     } catch (e) {
       throw Exception(e.toString());
     }
   }
+}
+
+String _communityError(DioException exception, String fallback) {
+  final data = exception.response?.data;
+  if (data is! Map) return fallback;
+  final error = data['error'];
+  if (error is String && error.isNotEmpty) return error;
+  if (error is Map) {
+    final message = error['message'];
+    if (message is String && message.isNotEmpty) return message;
+    final details = error['details'];
+    if (details is List && details.isNotEmpty) {
+      final first = details.first;
+      if (first is Map && first['msg'] is String) return first['msg'] as String;
+      return details.join(', ');
+    }
+  }
+  return fallback;
 }

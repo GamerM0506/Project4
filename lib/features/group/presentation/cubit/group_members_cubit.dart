@@ -18,7 +18,7 @@ class GroupMembersCubit extends Cubit<GroupMembersState> {
   Future<void> fetchMembers(String groupId, {String? status}) async {
     emit(GroupMembersLoading());
     final result = await getMembersUseCase(groupId, status: status);
-    
+
     result.fold(
       (failure) => emit(GroupMembersError(failure)),
       (members) => emit(GroupMembersLoaded(members)),
@@ -27,23 +27,17 @@ class GroupMembersCubit extends Cubit<GroupMembersState> {
 
   Future<void> updateRole(String groupId, String userId, String role) async {
     final result = await updateMemberRoleUseCase(groupId, userId, role);
-    result.fold(
-      (error) {}, // Could emit error or show toast
-      (_) {
-        // Re-fetch members to reflect changes
-        fetchMembers(groupId);
-      },
-    );
+    result.fold((error) => emit(GroupMembersError(error)), (_) {
+      // Re-fetch members to reflect changes
+      fetchMembers(groupId);
+    });
   }
 
   Future<void> kickMember(String groupId, String userId) async {
     // Set status to banned or left
     final result = await updateMemberStatusUseCase(groupId, userId, 'banned');
-    result.fold(
-      (error) {},
-      (_) {
-        fetchMembers(groupId);
-      },
-    );
+    result.fold((error) => emit(GroupMembersError(error)), (_) {
+      fetchMembers(groupId);
+    });
   }
 }

@@ -8,8 +8,13 @@ import '../cubit/group_members_state.dart';
 
 class GroupMembersTab extends StatelessWidget {
   final String groupId;
+  final String? currentUserRole;
 
-  const GroupMembersTab({Key? key, required this.groupId}) : super(key: key);
+  const GroupMembersTab({
+    super.key,
+    required this.groupId,
+    required this.currentUserRole,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +44,12 @@ class GroupMembersTab extends StatelessWidget {
               separatorBuilder: (context, index) => const Divider(),
               itemBuilder: (context, index) {
                 final member = members[index];
+                final canChangeRole = currentUserRole == 'owner';
+                final canKick =
+                    member.role != 'owner' &&
+                    (currentUserRole == 'owner' ||
+                        (currentUserRole == 'moderator' &&
+                            member.role == 'member'));
                 return ListTile(
                   leading: CircleAvatar(
                     backgroundImage: member.userAvatar != null
@@ -54,7 +65,7 @@ class GroupMembersTab extends StatelessWidget {
                         : 'Thành viên ẩn danh',
                   ), // Display User Name or anonymous
                   subtitle: Text('Vai trò: ${_roleText(member.role)}'),
-                  trailing: member.role != 'owner'
+                  trailing: canChangeRole || canKick
                       ? PopupMenuButton<String>(
                           icon: const Icon(Icons.more_vert),
                           onSelected: (value) {
@@ -101,32 +112,35 @@ class GroupMembersTab extends StatelessWidget {
                             }
                           },
                           itemBuilder: (context) => [
-                            if (member.role != 'moderator')
+                            if (canChangeRole && member.role == 'member')
                               const PopupMenuItem(
                                 value: 'promote',
                                 child: Text('Cấp quyền kiểm duyệt viên'),
                               ),
-                            if (member.role == 'moderator')
+                            if (canChangeRole && member.role == 'moderator')
                               const PopupMenuItem(
                                 value: 'demote',
                                 child: Text('Gỡ quyền Kiểm duyệt'),
                               ),
-                            const PopupMenuItem(
-                              value: 'kick',
-                              child: Text(
-                                'Kích khỏi nhóm',
-                                style: TextStyle(color: Colors.red),
+                            if (canKick)
+                              const PopupMenuItem(
+                                value: 'kick',
+                                child: Text(
+                                  'Kích khỏi nhóm',
+                                  style: TextStyle(color: Colors.red),
+                                ),
                               ),
-                            ),
                           ],
                         )
-                      : const Text(
+                      : member.role == 'owner'
+                      ? const Text(
                           'Chủ nhóm',
                           style: TextStyle(
                             color: Colors.grey,
                             fontWeight: FontWeight.bold,
                           ),
-                        ),
+                        )
+                      : null,
                 );
               },
             );

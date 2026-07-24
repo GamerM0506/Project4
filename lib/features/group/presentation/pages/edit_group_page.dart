@@ -19,8 +19,13 @@ class EditGroupPage extends StatefulWidget {
 class _EditGroupPageState extends State<EditGroupPage> {
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
+  late TextEditingController _addressController;
+  late TextEditingController _provinceCodeController;
+  late TextEditingController _districtCodeController;
   String? _avatarUrl;
   String? _coverUrl;
+  late bool _allowMemberPost;
+  late bool _requirePostReview;
 
   @override
   void initState() {
@@ -29,14 +34,26 @@ class _EditGroupPageState extends State<EditGroupPage> {
     _descriptionController = TextEditingController(
       text: widget.group.description,
     );
+    _addressController = TextEditingController(text: widget.group.address);
+    _provinceCodeController = TextEditingController(
+      text: widget.group.provinceCode,
+    );
+    _districtCodeController = TextEditingController(
+      text: widget.group.districtCode,
+    );
     _avatarUrl = widget.group.avatarUrl;
     _coverUrl = widget.group.coverUrl;
+    _allowMemberPost = widget.group.allowMemberPost;
+    _requirePostReview = widget.group.requirePostReview;
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
+    _addressController.dispose();
+    _provinceCodeController.dispose();
+    _districtCodeController.dispose();
     super.dispose();
   }
 
@@ -57,6 +74,11 @@ class _EditGroupPageState extends State<EditGroupPage> {
       description: _descriptionController.text.trim(),
       avatarUrl: _avatarUrl,
       coverUrl: _coverUrl,
+      address: _addressController.text.trim(),
+      provinceCode: _provinceCodeController.text.trim(),
+      districtCode: _districtCodeController.text.trim(),
+      allowMemberPost: _allowMemberPost,
+      requirePostReview: _requirePostReview,
     );
   }
 
@@ -134,6 +156,53 @@ class _EditGroupPageState extends State<EditGroupPage> {
                             maxLines: 4,
                             colorScheme: colorScheme,
                             textTheme: textTheme,
+                          ),
+                          const SizedBox(height: 16),
+                          _buildModernTextField(
+                            controller: _addressController,
+                            label: 'Địa chỉ',
+                            icon: Icons.location_on_outlined,
+                            colorScheme: colorScheme,
+                            textTheme: textTheme,
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildModernTextField(
+                                  controller: _provinceCodeController,
+                                  label: 'Mã tỉnh/thành',
+                                  icon: Icons.map_outlined,
+                                  colorScheme: colorScheme,
+                                  textTheme: textTheme,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildModernTextField(
+                                  controller: _districtCodeController,
+                                  label: 'Mã quận/huyện',
+                                  icon: Icons.location_city_outlined,
+                                  colorScheme: colorScheme,
+                                  textTheme: textTheme,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Cho phép thành viên đăng bài'),
+                            value: _allowMemberPost,
+                            onChanged: (value) =>
+                                setState(() => _allowMemberPost = value),
+                          ),
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Yêu cầu duyệt bài đăng'),
+                            value: _requirePostReview,
+                            onChanged: (value) =>
+                                setState(() => _requirePostReview = value),
                           ),
                           const SizedBox(height: 32),
 

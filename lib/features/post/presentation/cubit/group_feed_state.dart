@@ -12,10 +12,7 @@ class GroupFeedLoaded extends GroupFeedState {
 
   GroupFeedLoaded({required this.posts, this.hasReachedMax = false});
 
-  GroupFeedLoaded copyWith({
-    List<PostEntity>? posts,
-    bool? hasReachedMax,
-  }) {
+  GroupFeedLoaded copyWith({List<PostEntity>? posts, bool? hasReachedMax}) {
     return GroupFeedLoaded(
       posts: posts ?? this.posts,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
@@ -38,4 +35,11 @@ class GroupFeedCreateSuccess extends GroupFeedState {
 class GroupFeedCreateError extends GroupFeedState {
   final String message;
   GroupFeedCreateError({required this.message});
+}
+
+class GroupFeedDeleteError extends GroupFeedState {
+  final String message;
+  final GroupFeedLoaded previousState;
+
+  GroupFeedDeleteError({required this.message, required this.previousState});
 }

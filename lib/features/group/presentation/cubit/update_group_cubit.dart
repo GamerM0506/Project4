@@ -24,7 +24,8 @@ class UpdateGroupError extends UpdateGroupState {
 class UpdateGroupCubit extends Cubit<UpdateGroupState> {
   final UpdateGroupUseCase updateGroupUseCase;
 
-  UpdateGroupCubit({required this.updateGroupUseCase}) : super(UpdateGroupInitial());
+  UpdateGroupCubit({required this.updateGroupUseCase})
+    : super(UpdateGroupInitial());
 
   Future<void> updateGroup(
     String groupId, {
@@ -32,6 +33,11 @@ class UpdateGroupCubit extends Cubit<UpdateGroupState> {
     String? description,
     String? avatarUrl,
     String? coverUrl,
+    String? address,
+    String? provinceCode,
+    String? districtCode,
+    bool? allowMemberPost,
+    bool? requirePostReview,
   }) async {
     emit(UpdateGroupLoading());
     final result = await updateGroupUseCase(
@@ -40,8 +46,13 @@ class UpdateGroupCubit extends Cubit<UpdateGroupState> {
       description: description,
       avatarUrl: avatarUrl,
       coverUrl: coverUrl,
+      address: address,
+      provinceCode: provinceCode,
+      districtCode: districtCode,
+      allowMemberPost: allowMemberPost,
+      requirePostReview: requirePostReview,
     );
-    
+
     result.fold(
       (error) => emit(UpdateGroupError(error)),
       (group) => emit(UpdateGroupSuccess(group, 'Cập nhật nhóm thành công!')),

@@ -329,9 +329,14 @@ final GoRouter appRouter = GoRouter(
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) {
         final extraArgs = state.extra as Map<String, dynamic>?;
-        final conversationId = extraArgs?['conversationId'] as String? ?? '1';
+        final conversationId = extraArgs?['conversationId'] as String?;
+        final groupId = extraArgs?['groupId'] as String?;
         final name = extraArgs?['name'] as String? ?? 'Hội nhóm';
-        return ChatRoomPage(conversationId: conversationId, name: name);
+        return ChatRoomPage(
+          conversationId: conversationId,
+          groupId: groupId,
+          name: name,
+        );
       },
     ),
     GoRoute(

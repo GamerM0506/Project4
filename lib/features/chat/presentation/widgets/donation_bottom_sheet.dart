@@ -25,7 +25,7 @@ class _DonationBottomSheetState extends State<DonationBottomSheet> {
 
   void _submit() {
     if (_titleController.text.trim().isEmpty) return;
-    
+
     final qty = int.tryParse(_qtyController.text) ?? 1;
     widget.onSubmit(
       _titleController.text.trim(),
@@ -38,7 +38,7 @@ class _DonationBottomSheetState extends State<DonationBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
-    
+
     return Padding(
       padding: EdgeInsets.only(
         left: 20,

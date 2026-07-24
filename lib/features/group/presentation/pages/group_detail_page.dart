@@ -60,7 +60,14 @@ class _GroupDetailViewState extends State<GroupDetailView>
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      body: BlocBuilder<GroupDetailCubit, GroupDetailState>(
+      body: BlocConsumer<GroupDetailCubit, GroupDetailState>(
+        listener: (context, state) {
+          if (state is GroupDetailError) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(state.message)));
+          }
+        },
         builder: (context, state) {
           if (state is GroupDetailLoading) {
             return const Scaffold(
@@ -304,7 +311,7 @@ class _GroupDetailViewState extends State<GroupDetailView>
                                         context.push(
                                           AppRoutes.chatRoom,
                                           extra: {
-                                            'conversationId': group.id,
+                                            'groupId': group.id,
                                             'name': group.name,
                                           },
                                         );
@@ -386,7 +393,16 @@ class _GroupDetailViewState extends State<GroupDetailView>
         group.myRole != null ||
         (currentUserId != null && currentUserId == group.ownerId);
 
-    return BlocBuilder<GroupFeedCubit, GroupFeedState>(
+    final canModerate = group.myRole == 'owner' || group.myRole == 'moderator';
+
+    return BlocConsumer<GroupFeedCubit, GroupFeedState>(
+      listener: (context, state) {
+        if (state is GroupFeedDeleteError) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(state.message)));
+        }
+      },
       builder: (context, state) {
         if (state is GroupFeedLoading) {
           return const Center(child: CircularProgressIndicator());
@@ -416,7 +432,7 @@ class _GroupDetailViewState extends State<GroupDetailView>
                 }
 
                 final post = state.posts[index - 1];
-                return PostCardWidget(post: post);
+                return PostCardWidget(post: post, canModerate: canModerate);
               },
             ),
           );

@@ -338,6 +338,4 @@ Future<void> initDependencies() async {
 
   sl.registerFactory(() => NotificationCubit(repository: sl()));
 
-  sl.registerLazySingleton(() => HomeRepository(apiClient: sl()));
-  sl.registerFactory(() => HomeCubit(repository: sl()));
 }

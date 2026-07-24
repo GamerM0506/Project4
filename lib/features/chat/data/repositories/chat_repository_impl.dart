@@ -11,9 +11,13 @@ class ChatRepositoryImpl implements ChatRepository {
   ChatRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Future<Either<String, List<ConversationEntity>>> getConversations() async {
+  Future<Either<String, List<ConversationEntity>>> getConversations({
+    String? groupId,
+  }) async {
     try {
-      final conversations = await remoteDataSource.getConversations();
+      final conversations = await remoteDataSource.getConversations(
+        groupId: groupId,
+      );
       return Right(conversations);
     } on DioException catch (e) {
       return Left(_mapDioError(e, 'Lỗi khi tải danh sách tin nhắn'));
@@ -23,7 +27,9 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
-  Future<Either<String, List<ChatMessage>>> getMessages(String conversationId) async {
+  Future<Either<String, List<ChatMessage>>> getMessages(
+    String conversationId,
+  ) async {
     try {
       final messages = await remoteDataSource.getMessages(conversationId);
       return Right(messages);
@@ -35,12 +41,24 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
-  Future<Either<String, ChatMessage>> sendMessage(String conversationId, String content, {String type = 'text', Map<String, dynamic>? metadata}) async {
+  Future<Either<String, ChatMessage>> sendMessage(
+    String conversationId,
+    String content, {
+    String type = 'text',
+    Map<String, dynamic>? metadata,
+  }) async {
     try {
-      final msg = await remoteDataSource.sendMessage(conversationId, content, type: type, metadata: metadata);
+      final msg = await remoteDataSource.sendMessage(
+        conversationId,
+        content,
+        type: type,
+        metadata: metadata,
+      );
       return Right(msg);
-    } catch (e) {
-      return Left(e.toString());
+    } on DioException catch (e) {
+      return Left(_mapDioError(e, 'Không thể gửi tin nhắn'));
+    } catch (_) {
+      return const Left('Không thể gửi tin nhắn');
     }
   }
 
@@ -57,6 +75,16 @@ class ChatRepositoryImpl implements ChatRepository {
   String _mapDioError(DioException e, String fallback) {
     if (e.response?.statusCode == 401) {
       return 'Phiên đăng nhập hết hạn.';
+    }
+    if (e.response?.statusCode == 404) {
+      return 'Cuộc trò chuyện không tồn tại.';
+    }
+    if (e.response?.statusCode == 403) {
+      return 'Bạn không có quyền truy cập cuộc trò chuyện này.';
+    }
+    final body = e.response?.data;
+    if (body is Map && body['error'] is String) {
+      return body['error'] as String;
     }
     return fallback;
   }
