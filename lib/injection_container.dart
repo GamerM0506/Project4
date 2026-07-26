@@ -31,7 +31,9 @@ import 'features/user/data/repositories/user_repository_impl.dart';
 import 'features/user/domain/repositories/user_repository.dart';
 import 'features/user/domain/usecases/get_profile_usecase.dart';
 import 'features/user/domain/usecases/update_profile_usecase.dart';
+import 'features/user/domain/usecases/get_activities_usecase.dart';
 import 'features/user/presentation/cubit/user_cubit.dart';
+import 'features/user/presentation/cubit/activity_cubit.dart';
 
 import 'features/group/data/datasources/group_remote_data_source.dart';
 import 'features/group/data/repositories/group_repository_impl.dart';
@@ -56,16 +58,19 @@ import 'features/marketplace/domain/usecases/request_usecases.dart';
 import 'features/marketplace/presentation/cubit/marketplace_cubit.dart';
 import 'features/marketplace/presentation/cubit/create_listing_cubit.dart';
 import 'features/marketplace/presentation/cubit/listing_detail_cubit.dart';
+import 'features/marketplace/presentation/cubit/my_requests_cubit.dart';
 
 import 'features/donation/data/datasources/donation_remote_data_source.dart';
 import 'features/donation/data/repositories/donation_repository_impl.dart';
 import 'features/donation/domain/repositories/donation_repository.dart';
 import 'features/donation/domain/usecases/donation_usecases.dart';
+import 'features/ai/data/ai_service.dart';
 import 'features/group/presentation/cubit/group_cubit.dart';
 import 'features/group/presentation/cubit/group_detail_cubit.dart';
 import 'features/group/presentation/cubit/create_group_cubit.dart';
 import 'features/group/presentation/cubit/group_join_requests_cubit.dart';
 import 'features/group/presentation/cubit/group_members_cubit.dart';
+import 'features/group/presentation/cubit/group_requests_cubit.dart';
 import 'features/group/presentation/cubit/group_dashboard_posts_cubit.dart';
 import 'features/group/presentation/cubit/group_inventory_cubit.dart';
 import 'features/group/presentation/cubit/update_group_cubit.dart';
@@ -101,11 +106,13 @@ import 'core/theme/theme_cubit.dart';
 
 final sl = GetIt.instance;
 
-Future<void> initDependencies() async {
-  final sharedPreferences = await SharedPreferences.getInstance();
+Future<void> initDependencies({SharedPreferences? preferences}) async {
+  final sharedPreferences =
+      preferences ?? await SharedPreferences.getInstance();
   sl.registerLazySingleton(() => sharedPreferences);
   sl.registerLazySingleton(() => Dio());
   sl.registerLazySingleton(() => ApiClient(dio: sl(), sharedPreferences: sl()));
+  sl.registerLazySingleton(() => AiService(apiClient: sl()));
   sl.registerLazySingleton(() => MediaService(prefs: sl()));
 
   sl.registerFactory(() => ThemeCubit(prefs: sl()));
@@ -174,6 +181,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetTwoFactorStatusUseCase(sl()));
   sl.registerLazySingleton(() => GetProfileUseCase(sl()));
   sl.registerLazySingleton(() => UpdateProfileUseCase(sl()));
+  sl.registerLazySingleton(() => GetActivitiesUseCase(sl()));
 
   sl.registerLazySingleton(() => GetGroupsUseCase(sl()));
   sl.registerLazySingleton(() => GetMyGroupsUseCase(sl()));
@@ -208,14 +216,24 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => RejectRequestUseCase(sl()));
   sl.registerLazySingleton(() => ScheduleRequestUseCase(sl()));
   sl.registerLazySingleton(() => CompleteRequestUseCase(sl()));
+  sl.registerLazySingleton(() => CancelRequestUseCase(sl()));
+  sl.registerLazySingleton(() => NoShowRequestUseCase(sl()));
+  sl.registerLazySingleton(() => GetDeliveryConfirmationUseCase(sl()));
+  sl.registerLazySingleton(() => CloseListingUseCase(sl()));
 
   sl.registerLazySingleton(() => CreateDonationUseCase(sl()));
   sl.registerLazySingleton(() => GetDonationCategoriesUseCase(sl()));
+  sl.registerLazySingleton(() => GetDonationUseCase(sl()));
+  sl.registerLazySingleton(() => ScheduleDonationUseCase(sl()));
+  sl.registerLazySingleton(() => CancelDonationUseCase(sl()));
+  sl.registerLazySingleton(() => GetDonationTimelineUseCase(sl()));
   sl.registerLazySingleton(() => GetDonationsUseCase(sl()));
   sl.registerLazySingleton(() => ReviewDonationUseCase(sl()));
   sl.registerLazySingleton(() => CheckDonationItemUseCase(sl()));
   sl.registerLazySingleton(() => AcceptDonationUseCase(sl()));
   sl.registerLazySingleton(() => GetInventoryUseCase(sl()));
+  sl.registerLazySingleton(() => GetInventoryItemUseCase(sl()));
+  sl.registerLazySingleton(() => GetInventoryHistoryUseCase(sl()));
 
   sl.registerLazySingleton(() => GetConversationsUseCase(sl()));
   sl.registerLazySingleton(() => GetMessagesUseCase(sl()));
@@ -259,6 +277,16 @@ Future<void> initDependencies() async {
     () => ListingDetailCubit(
       getListingDetailUseCase: sl(),
       createRequestUseCase: sl(),
+      getRequestsUseCase: sl(),
+      prefs: sl(),
+    ),
+  );
+  sl.registerFactory(
+    () => MyRequestsCubit(
+      getRequestsUseCase: sl(),
+      cancelRequestUseCase: sl(),
+      getListingDetailUseCase: sl(),
+      prefs: sl(),
     ),
   );
   sl.registerFactory(
@@ -273,6 +301,7 @@ Future<void> initDependencies() async {
   sl.registerFactory(
     () => UserCubit(getProfileUseCase: sl(), updateProfileUseCase: sl()),
   );
+  sl.registerFactory(() => ActivityCubit(getActivitiesUseCase: sl()));
 
   sl.registerFactory(
     () => GroupCubit(getGroupsUseCase: sl(), getMyGroupsUseCase: sl()),
@@ -295,6 +324,19 @@ Future<void> initDependencies() async {
       updateMemberStatusUseCase: sl(),
     ),
   );
+  sl.registerFactory(
+    () => GroupRequestsCubit(
+      getRequestsUseCase: sl(),
+      approveRequestUseCase: sl(),
+      rejectRequestUseCase: sl(),
+      scheduleRequestUseCase: sl(),
+      completeRequestUseCase: sl(),
+      noShowRequestUseCase: sl(),
+      getDeliveryConfirmationUseCase: sl(),
+      getListingDetailUseCase: sl(),
+      getMembersUseCase: sl(),
+    ),
+  );
   sl.registerFactory(() => UpdateGroupCubit(updateGroupUseCase: sl()));
   sl.registerFactory(
     () => GroupDashboardPostsCubit(
@@ -309,7 +351,9 @@ Future<void> initDependencies() async {
       getInventoryUseCase: sl(),
       reviewDonationUseCase: sl(),
       checkDonationItemUseCase: sl(),
+      scheduleDonationUseCase: sl(),
       createListingUseCase: sl(),
+      getCategoriesUseCase: sl(),
     ),
   );
   sl.registerFactory(
@@ -319,6 +363,7 @@ Future<void> initDependencies() async {
       deletePostUseCase: sl(),
       likePostUseCase: sl(),
       unlikePostUseCase: sl(),
+      mediaService: sl(),
     ),
   );
   sl.registerFactory(
@@ -330,12 +375,11 @@ Future<void> initDependencies() async {
     () => ChatCubit(
       getMessagesUseCase: sl(),
       sendMessageUseCase: sl(),
+      markAsReadUseCase: sl(),
       createDonationUseCase: sl(),
       acceptDonationUseCase: sl(),
-      apiClient: sl(),
     ),
   );
 
   sl.registerFactory(() => NotificationCubit(repository: sl()));
-
 }

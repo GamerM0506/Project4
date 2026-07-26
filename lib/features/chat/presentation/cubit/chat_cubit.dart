@@ -1,54 +1,51 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:dio/dio.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import 'chat_state.dart';
 import '../../../../core/constants/app_constants.dart';
-import '../../../../core/network/api_client.dart';
 import '../../domain/usecases/chat_usecases.dart';
 import '../../../donation/domain/usecases/donation_usecases.dart';
 
 class ChatCubit extends Cubit<ChatState> {
   final GetMessagesUseCase? getMessagesUseCase;
   final SendMessageUseCase? sendMessageUseCase;
+  final MarkAsReadUseCase? markAsReadUseCase;
   final CreateDonationUseCase? createDonationUseCase;
   final AcceptDonationUseCase? acceptDonationUseCase;
-  final ApiClient? apiClient;
 
-  IO.Socket? _socket;
+  io.Socket? _socket;
   String? _currentUserId;
-  final String baseUrl = 'http://${AppConstants.apiHost}:8000';
+  static const _pageSize = 50;
+  bool _markReadInFlight = false;
+  int _historyOffset = 0;
 
   ChatCubit({
     this.getMessagesUseCase,
     this.sendMessageUseCase,
+    this.markAsReadUseCase,
     this.createDonationUseCase,
     this.acceptDonationUseCase,
-    this.apiClient,
   }) : super(const ChatState());
 
   Future<void> connect(String conversationId) async {
-    emit(state.copyWith(activeConversationId: conversationId));
-
-    if (getMessagesUseCase != null) {
-      final result = await getMessagesUseCase!(conversationId);
-      result.fold((failure) => emit(state.copyWith(error: failure)), (
-        messages,
-      ) {
-        emit(state.copyWith(messages: messages));
-      });
-    }
+    emit(
+      state.copyWith(
+        activeConversationId: conversationId,
+        isLoadingHistory: true,
+      ),
+    );
+    await _loadFirstPage(conversationId, replace: true);
 
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(AppConstants.keyAccessToken) ?? '';
     _currentUserId = prefs.getString(AppConstants.keyUserId);
 
-    _socket = IO.io(
-      baseUrl,
-      IO.OptionBuilder()
-          .setTransports(['websocket'])
+    _socket = io.io(
+      AppConstants.socketBaseUrl,
+      io.OptionBuilder()
+          .setTransports(['websocket', 'polling'])
           .disableAutoConnect()
           .setPath('/api/communication/socket.io')
           .setAuth({'token': token})
@@ -57,37 +54,39 @@ class ChatCubit extends Cubit<ChatState> {
     );
 
     _socket?.onConnect((_) {
-      print('Socket Connected');
-      emit(
-        state.copyWith(isConnected: true, activeConversationId: conversationId),
+      emit(state.copyWith(isConnected: false));
+      _socket?.emitWithAck(
+        'join_conversation',
+        {'conversationId': conversationId},
+        ack: (response) async {
+          final payload = response is Map
+              ? Map<String, dynamic>.from(response)
+              : const <String, dynamic>{};
+          if (payload['ok'] != true) {
+            emit(
+              state.copyWith(
+                isConnected: false,
+                error:
+                    payload['error']?.toString() ??
+                    'Không thể tham gia cuộc trò chuyện.',
+              ),
+            );
+            return;
+          }
+          emit(state.copyWith(isConnected: true));
+          await _loadFirstPage(conversationId);
+          _markRead();
+        },
       );
-      _socket?.emit('join_conversation', {'conversationId': conversationId});
     });
 
     _socket?.onDisconnect((_) {
-      print('Socket Disconnected');
       emit(state.copyWith(isConnected: false));
     });
 
     _socket?.on('new_message', (data) {
-      print('New message received: $data');
       if (data is Map) {
         final payload = Map<String, dynamic>.from(data);
-        if (payload['metadata_updated'] == true) {
-          final msgId = payload['id']?.toString();
-          final metadata = payload['metadata'] != null
-              ? Map<String, dynamic>.from(payload['metadata'])
-              : null;
-          final newMessages = state.messages.map((m) {
-            if (m.id == msgId) {
-              return m.copyWith(metadata: metadata);
-            }
-            return m;
-          }).toList();
-          emit(state.copyWith(messages: newMessages));
-          return;
-        }
-
         final newMessage = ChatMessage(
           id: payload['id']?.toString() ?? const Uuid().v4(),
           content: payload['content']?.toString() ?? '',
@@ -105,21 +104,102 @@ class ChatCubit extends Cubit<ChatState> {
         );
 
         if (!state.messages.any((message) => message.id == newMessage.id)) {
-          emit(
-            state.copyWith(
-              messages: List.from(state.messages)..add(newMessage),
-            ),
-          );
+          final messages = List<ChatMessage>.from(state.messages)
+            ..add(newMessage)
+            ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+          emit(state.copyWith(messages: messages));
+          if (!newMessage.isMine) _markRead();
         }
       }
     });
 
     _socket?.onConnectError((err) {
-      print('Socket Connect Error: $err');
       emit(state.copyWith(isConnected: false, error: 'Connection Error: $err'));
     });
 
     _socket?.connect();
+  }
+
+  Future<void> loadOlderMessages() async {
+    final conversationId = state.activeConversationId;
+    if (conversationId == null ||
+        state.isLoadingOlder ||
+        state.isLoadingHistory ||
+        !state.hasMore ||
+        getMessagesUseCase == null) {
+      return;
+    }
+    emit(state.copyWith(isLoadingOlder: true));
+    final result = await getMessagesUseCase!(
+      conversationId,
+      limit: _pageSize,
+      offset: _historyOffset,
+    );
+    result.fold(
+      (failure) => emit(state.copyWith(isLoadingOlder: false, error: failure)),
+      (messages) {
+        _historyOffset += messages.length;
+        emit(
+          state.copyWith(
+            messages: _mergeMessages(state.messages, messages),
+            isLoadingOlder: false,
+            hasMore: messages.length == _pageSize,
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _loadFirstPage(
+    String conversationId, {
+    bool replace = false,
+  }) async {
+    if (getMessagesUseCase == null) {
+      emit(state.copyWith(isLoadingHistory: false));
+      return;
+    }
+    final result = await getMessagesUseCase!(conversationId, limit: _pageSize);
+    result.fold(
+      (failure) =>
+          emit(state.copyWith(isLoadingHistory: false, error: failure)),
+      (messages) {
+        if (replace) _historyOffset = messages.length;
+        emit(
+          state.copyWith(
+            messages: replace
+                ? _mergeMessages(const [], messages)
+                : _mergeMessages(state.messages, messages),
+            isLoadingHistory: false,
+            hasMore: messages.length == _pageSize,
+          ),
+        );
+        _markRead();
+      },
+    );
+  }
+
+  List<ChatMessage> _mergeMessages(
+    List<ChatMessage> current,
+    List<ChatMessage> incoming,
+  ) {
+    final byId = {for (final message in current) message.id: message};
+    for (final message in incoming) {
+      byId[message.id] = message;
+    }
+    return byId.values.toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+  }
+
+  Future<void> _markRead() async {
+    final conversationId = state.activeConversationId;
+    if (conversationId == null ||
+        markAsReadUseCase == null ||
+        _markReadInFlight) {
+      return;
+    }
+    _markReadInFlight = true;
+    await markAsReadUseCase!(conversationId);
+    _markReadInFlight = false;
   }
 
   Future<void> sendMessage(
@@ -234,91 +314,6 @@ class ChatCubit extends Cubit<ChatState> {
         await sendMessage('Tôi muốn quyên góp: $title (Mã: ${donation.code})');
       },
     );
-  }
-
-  /// Moderator: review + check items → inventory, then update chat metadata.
-  Future<void> approveDonation(ChatMessage message) async {
-    final meta = message.metadata;
-    if (meta == null) return;
-
-    final donationId = meta['donation_id']?.toString();
-    if (donationId == null || donationId.isEmpty) {
-      emit(
-        state.copyWith(
-          error: 'Thiếu donation_id. Hãy tạo thẻ quyên góp mới (API đúng).',
-        ),
-      );
-      return;
-    }
-
-    if (acceptDonationUseCase == null) {
-      emit(state.copyWith(error: 'Donation service chưa được cấu hình'));
-      return;
-    }
-
-    final condition = _mapCondition(meta['condition']?.toString() ?? 'used');
-
-    final result = await acceptDonationUseCase!(
-      donationId: donationId,
-      defaultCondition: condition,
-    );
-
-    await result.fold(
-      (err) async {
-        emit(state.copyWith(error: err));
-      },
-      (donation) async {
-        final newMeta = Map<String, dynamic>.from(meta);
-        newMeta['status'] = donation.status;
-        newMeta['donation_status'] = donation.status;
-
-        final updatedMessages = state.messages.map((m) {
-          if (m.id == message.id) {
-            return m.copyWith(metadata: newMeta);
-          }
-          return m;
-        }).toList();
-        emit(state.copyWith(messages: updatedMessages, error: null));
-
-        await _patchMessageMetadata(message.id, newMeta);
-      },
-    );
-  }
-
-  Future<void> _patchMessageMetadata(
-    String messageId,
-    Map<String, dynamic> metadata,
-  ) async {
-    final convId = state.activeConversationId;
-    if (convId == null) return;
-
-    try {
-      final dio =
-          apiClient?.dio ??
-          Dio(
-            BaseOptions(
-              baseUrl: baseUrl,
-              headers: {'Content-Type': 'application/json'},
-            ),
-          );
-
-      if (apiClient == null) {
-        final prefs = await SharedPreferences.getInstance();
-        final token = prefs.getString(AppConstants.keyAccessToken) ?? '';
-        await dio.patch(
-          '$baseUrl/api/communication/conversations/$convId/messages/$messageId/metadata',
-          options: Options(headers: {'Authorization': 'Bearer $token'}),
-          data: metadata,
-        );
-      } else {
-        await dio.patch(
-          '${AppConstants.chatApiBaseUrl}/conversations/$convId/messages/$messageId/metadata',
-          data: metadata,
-        );
-      }
-    } catch (e) {
-      print('Update message metadata error: $e');
-    }
   }
 
   String _mapCondition(String raw) {

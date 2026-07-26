@@ -14,39 +14,53 @@ class ListingDetailLoading extends ListingDetailState {}
 
 class ListingDetailLoaded extends ListingDetailState {
   final ListingEntity listing;
+  final bool hasRequested;
 
-  const ListingDetailLoaded({required this.listing});
+  const ListingDetailLoaded({required this.listing, this.hasRequested = false});
 
   @override
-  List<Object?> get props => [listing];
+  List<Object?> get props => [listing, hasRequested];
 }
 
 class ListingRequestSubmitting extends ListingDetailState {
   final ListingEntity listing;
+  final bool hasRequested;
 
-  const ListingRequestSubmitting({required this.listing});
+  const ListingRequestSubmitting({
+    required this.listing,
+    this.hasRequested = false,
+  });
 
   @override
-  List<Object?> get props => [listing];
+  List<Object?> get props => [listing, hasRequested];
 }
 
 class ListingRequestSuccess extends ListingDetailState {
   final ListingEntity listing;
+  final bool hasRequested;
 
-  const ListingRequestSuccess({required this.listing});
+  const ListingRequestSuccess({
+    required this.listing,
+    this.hasRequested = true,
+  });
 
   @override
-  List<Object?> get props => [listing];
+  List<Object?> get props => [listing, hasRequested];
 }
 
 class ListingRequestFailure extends ListingDetailState {
   final ListingEntity listing;
   final String message;
+  final bool hasRequested;
 
-  const ListingRequestFailure({required this.listing, required this.message});
+  const ListingRequestFailure({
+    required this.listing,
+    required this.message,
+    this.hasRequested = false,
+  });
 
   @override
-  List<Object?> get props => [listing, message];
+  List<Object?> get props => [listing, message, hasRequested];
 }
 
 class ListingDetailError extends ListingDetailState {

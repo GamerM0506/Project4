@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'core/network/auth_interceptor.dart';
+import 'core/network/session_bootstrap.dart';
 import 'core/router/app_router.dart';
 import 'core/router/app_routes.dart';
 import 'injection_container.dart';
@@ -15,7 +17,9 @@ import 'core/theme/theme_cubit.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   timeago.setLocaleMessages('vi', timeago.ViMessages());
-  await initDependencies();
+  final preferences = await SharedPreferences.getInstance();
+  await SessionBootstrap.clearNonPersistentSession(preferences);
+  await initDependencies(preferences: preferences);
   runApp(const MyApp());
 }
 

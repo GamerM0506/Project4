@@ -1,9 +1,11 @@
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
 import '../../domain/entities/user_entity.dart';
+import '../../domain/entities/activity_entity.dart';
 import '../../domain/repositories/user_repository.dart';
 import '../models/user_model.dart';
 import '../datasources/user_remote_data_source.dart';
+import '../../../../core/network/api_error_parser.dart';
 
 class UserRepositoryImpl implements UserRepository {
   final UserRemoteDataSource remoteDataSource;
@@ -51,9 +53,15 @@ class UserRepositoryImpl implements UserRepository {
   }
 
   @override
-  Future<Either<String, List<dynamic>>> getMyActivities() async {
+  Future<Either<String, ActivityPageEntity>> getMyActivities({
+    int page = 1,
+    int limit = 20,
+  }) async {
     try {
-      final activities = await remoteDataSource.getMyActivities();
+      final activities = await remoteDataSource.getMyActivities(
+        page: page,
+        limit: limit,
+      );
       return Right(activities);
     } on DioException catch (e) {
       return Left(_mapDioError(e, 'Lỗi khi lấy lịch sử hoạt động'));
@@ -75,23 +83,6 @@ class UserRepositoryImpl implements UserRepository {
   }
 
   String _mapDioError(DioException e, String fallback) {
-    final data = e.response?.data;
-    if (data is Map) {
-      final error = data['error'] ?? data['detail'] ?? data['message'];
-      if (error is String && error.isNotEmpty) return error;
-      if (error is Map && error['message'] != null) {
-        return error['message'].toString();
-      }
-    }
-
-    if (e.response?.statusCode == 401) {
-      return 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.';
-    }
-    if (e.type == DioExceptionType.connectionTimeout ||
-        e.type == DioExceptionType.receiveTimeout ||
-        e.type == DioExceptionType.connectionError) {
-      return 'Không kết nối được máy chủ. Kiểm tra mạng và thử lại.';
-    }
-    return fallback;
+    return parseApiError(e, fallback);
   }
 }

@@ -2,14 +2,22 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/app_constants.dart';
 import 'auth_interceptor.dart';
 
+class MediaUploadResult {
+  const MediaUploadResult({required this.mediaId, required this.publicUrl});
+
+  final String mediaId;
+  final String publicUrl;
+}
+
 class MediaService {
   MediaService({Dio? dio, required SharedPreferences prefs})
-      : _dio = dio ?? Dio() {
+    : _dio = dio ?? Dio() {
     _dio.options.baseUrl = AppConstants.mediaApiBaseUrl;
     _dio.options.connectTimeout = const Duration(seconds: 30);
     _dio.options.receiveTimeout = const Duration(seconds: 60);
@@ -33,22 +41,18 @@ class MediaService {
 
   static const int maxFileSizeBytes = 5 * 1024 * 1024;
 
-  Future<String> uploadImage(
+  Future<MediaUploadResult> uploadImageResult(
     Uint8List fileBytes,
     String mimeType, {
     String refType = 'avatar',
   }) async {
-    if (fileBytes.isEmpty) {
-      throw Exception('File ảnh trống.');
-    }
+    final normalizedMime = normalizeMimeType(mimeType, fileBytes);
+    if (fileBytes.isEmpty) throw Exception('File ảnh trống.');
     if (fileBytes.length > maxFileSizeBytes) {
       throw Exception(
         'Ảnh vượt quá 5MB. Hãy chọn ảnh nhỏ hơn hoặc giảm chất lượng.',
       );
     }
-
-    final normalizedMime = normalizeMimeType(mimeType, fileBytes);
-
     try {
       if (kIsWeb) {
         try {
@@ -58,15 +62,9 @@ class MediaService {
             refType: refType,
           );
         } on DioException catch (e) {
-          final code = e.response?.statusCode;
-          if (code == 404 || code == 405) {
-            return await _uploadViaPresign(
-              fileBytes: fileBytes,
-              mimeType: normalizedMime,
-              refType: refType,
-            );
+          if (e.response?.statusCode != 404 && e.response?.statusCode != 405) {
+            rethrow;
           }
-          rethrow;
         }
       }
       return await _uploadViaPresign(
@@ -76,12 +74,22 @@ class MediaService {
       );
     } on DioException catch (e) {
       throw Exception(_mapDioError(e));
-    } on Exception {
-      rethrow;
     }
   }
 
-  Future<String> _uploadViaProxy({
+  Future<String> uploadImage(
+    Uint8List fileBytes,
+    String mimeType, {
+    String refType = 'avatar',
+  }) async {
+    return (await uploadImageResult(
+      fileBytes,
+      mimeType,
+      refType: refType,
+    )).publicUrl;
+  }
+
+  Future<MediaUploadResult> _uploadViaProxy({
     required Uint8List fileBytes,
     required String mimeType,
     required String refType,
@@ -97,6 +105,7 @@ class MediaService {
       'file': MultipartFile.fromBytes(
         fileBytes,
         filename: 'avatar.$ext',
+        contentType: MediaType.parse(mimeType),
       ),
     });
 
@@ -107,13 +116,17 @@ class MediaService {
 
     final data = _unwrapData(res.data);
     final publicUrl = data['public_url']?.toString();
-    if (publicUrl == null || publicUrl.isEmpty) {
-      throw Exception('Upload thành công nhưng thiếu public_url.');
+    final mediaId = data['id']?.toString();
+    if (publicUrl == null ||
+        publicUrl.isEmpty ||
+        mediaId == null ||
+        mediaId.isEmpty) {
+      throw Exception('Upload thành công nhưng thiếu id/public_url.');
     }
-    return publicUrl;
+    return MediaUploadResult(mediaId: mediaId, publicUrl: publicUrl);
   }
 
-  Future<String> _uploadViaPresign({
+  Future<MediaUploadResult> _uploadViaPresign({
     required Uint8List fileBytes,
     required String mimeType,
     required String refType,
@@ -136,7 +149,7 @@ class MediaService {
       throw Exception('Presign không trả về upload_url/media_id.');
     }
 
-    await _putToR2(
+    await _putToStorage(
       uploadUrl: uploadUrl,
       bytes: fileBytes,
       mimeType: mimeType,
@@ -153,10 +166,30 @@ class MediaService {
     if (publicUrl == null || publicUrl.isEmpty) {
       throw Exception('Confirm thành công nhưng thiếu public_url.');
     }
-    return publicUrl;
+    return MediaUploadResult(mediaId: mediaId, publicUrl: publicUrl);
   }
 
-  Future<void> _putToR2({
+  Future<void> linkMedia(
+    List<String> mediaIds,
+    String refType,
+    String refId,
+  ) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/link',
+      data: {'media_ids': mediaIds, 'ref_type': refType, 'ref_id': refId},
+    );
+    _unwrapData(response.data);
+  }
+
+  Future<void> unlinkMedia(List<String> mediaIds) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/unlink',
+      data: {'media_ids': mediaIds},
+    );
+    _unwrapData(response.data);
+  }
+
+  Future<void> _putToStorage({
     required String uploadUrl,
     required Uint8List bytes,
     required String mimeType,
@@ -191,10 +224,10 @@ class MediaService {
       final body = res.data?.toString() ?? '';
       if (code == 403) {
         throw Exception(
-          'R2 từ chối upload (403). Content-Type phải khớp chữ ký ($mimeType). $body',
+          'Storage từ chối upload (403). Content-Type phải khớp chữ ký ($mimeType). $body',
         );
       }
-      throw Exception('Upload R2 thất bại (HTTP $code). $body');
+      throw Exception('Upload storage thất bại (HTTP $code). $body');
     } on DioException catch (e) {
       final status = e.response?.statusCode;
       final msg = (e.message ?? '').toLowerCase();
@@ -203,18 +236,18 @@ class MediaService {
           (e.type == DioExceptionType.connectionError ||
               msg.contains('xmlhttprequest'))) {
         throw Exception(
-          'Upload bị chặn mạng/CORS tới R2. Thử lại hoặc dùng proxy /upload. '
+          'Upload bị chặn mạng/CORS tới storage. Thử lại hoặc dùng proxy /files/upload. '
           '${e.message ?? e.type.name}',
         );
       }
       if (status == 403) {
         throw Exception(
-          'R2 từ chối upload (403). Mime: $mimeType. '
+          'Storage từ chối upload (403). Mime: $mimeType. '
           '${e.response?.data ?? e.message ?? ''}',
         );
       }
       throw Exception(
-        'Lỗi upload R2: ${e.message ?? e.type.name}'
+        'Lỗi upload storage: ${e.message ?? e.type.name}'
         '${status != null ? ' (HTTP $status)' : ''}',
       );
     } finally {
@@ -239,7 +272,7 @@ class MediaService {
         (e.type == DioExceptionType.connectionError ||
             msg.contains('xmlhttprequest'))) {
       return 'Lỗi mạng Web (CORS/XMLHttpRequest). '
-          'Đảm bảo media-service đã deploy endpoint /upload và Kong CORS mở. '
+          'Đảm bảo media-service đã deploy endpoint /files/upload và Kong CORS mở. '
           'Chi tiết: ${e.message ?? e.type.name}';
     }
 

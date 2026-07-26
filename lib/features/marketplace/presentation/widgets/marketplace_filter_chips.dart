@@ -30,7 +30,7 @@ class _MarketplaceFilterChipsState extends State<MarketplaceFilterChips> {
         separatorBuilder: (context, index) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final isSelected = _selectedIndex == index;
-          
+
           return ChoiceChip(
             label: Text(widget.filters[index]),
             selected: isSelected,
@@ -41,16 +41,21 @@ class _MarketplaceFilterChipsState extends State<MarketplaceFilterChips> {
               }
             },
             showCheckmark: false,
-            backgroundColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            backgroundColor: colorScheme.surfaceContainerHighest.withValues(
+              alpha: 0.5,
+            ),
             selectedColor: colorScheme.primary,
             labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: isSelected ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
+              color: isSelected
+                  ? colorScheme.onPrimary
+                  : colorScheme.onSurfaceVariant,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
-              side: BorderSide.none, // Mockup doesn't show borders, just filled colors
+              side: BorderSide
+                  .none, // Mockup doesn't show borders, just filled colors
             ),
           );
         },

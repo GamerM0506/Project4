@@ -6,6 +6,7 @@ import '../../domain/entities/post_entity.dart';
 import '../../domain/usecases/like_post_usecase.dart';
 import '../../domain/usecases/unlike_post_usecase.dart';
 import 'group_feed_state.dart';
+import '../../../../core/network/media_service.dart';
 
 class GroupFeedCubit extends Cubit<GroupFeedState> {
   final GetPostsUseCase getPostsUseCase;
@@ -13,7 +14,10 @@ class GroupFeedCubit extends Cubit<GroupFeedState> {
   final DeletePostUseCase deletePostUseCase;
   final LikePostUseCase likePostUseCase;
   final UnlikePostUseCase unlikePostUseCase;
+  final MediaService? mediaService;
   final int _limit = 20;
+  bool _isFetching = false;
+  int _generation = 0;
 
   GroupFeedCubit({
     required this.getPostsUseCase,
@@ -21,10 +25,13 @@ class GroupFeedCubit extends Cubit<GroupFeedState> {
     required this.deletePostUseCase,
     required this.likePostUseCase,
     required this.unlikePostUseCase,
+    this.mediaService,
   }) : super(GroupFeedInitial());
 
   Future<void> fetchPosts(String groupId, {bool isRefresh = false}) async {
-    if (state is GroupFeedLoading && !isRefresh) return;
+    if (_isFetching) return;
+    _isFetching = true;
+    final generation = isRefresh ? ++_generation : _generation;
 
     int offset = 0;
     if (!isRefresh && state is GroupFeedLoaded) {
@@ -40,6 +47,10 @@ class GroupFeedCubit extends Cubit<GroupFeedState> {
       offset: offset,
       limit: _limit,
     );
+    if (generation != _generation) {
+      _isFetching = false;
+      return;
+    }
 
     result.fold((error) => emit(GroupFeedError(message: error)), (posts) {
       if (state is GroupFeedLoaded && !isRefresh) {
@@ -59,14 +70,16 @@ class GroupFeedCubit extends Cubit<GroupFeedState> {
         );
       }
     });
+    _isFetching = false;
   }
 
   Future<void> createPost(
     String groupId,
     String content,
     String type,
-    List<String> imageUrls,
-  ) async {
+    List<String> imageUrls, {
+    List<String> mediaIds = const <String>[],
+  }) async {
     final currentState = state;
     emit(GroupFeedCreating());
 
@@ -84,6 +97,9 @@ class GroupFeedCubit extends Cubit<GroupFeedState> {
         });
       },
       (post) {
+        if (mediaIds.isNotEmpty && mediaService != null) {
+          mediaService!.linkMedia(mediaIds, 'post', post.id).catchError((_) {});
+        }
         emit(GroupFeedCreateSuccess(post: post));
         Future.delayed(const Duration(milliseconds: 100), () {
           if (currentState is GroupFeedLoaded) {

@@ -55,19 +55,28 @@ class _CreatePostWidgetState extends State<CreatePostWidget> {
       _isUploadingImages = true;
     });
 
-    List<String> uploadedUrls = [];
+    final uploadedUrls = <String>[];
+    final mediaIds = <String>[];
     final mediaService = sl<MediaService>();
 
     try {
       for (var img in _selectedImages) {
         final bytes = await img.readAsBytes();
-        final mimeType = img.mimeType ?? MediaService.mimeFromFileName(img.name);
-        final url = await mediaService.uploadImage(bytes, mimeType, refType: 'post_images');
-        uploadedUrls.add(url);
+        final mimeType =
+            img.mimeType ?? MediaService.mimeFromFileName(img.name);
+        final uploaded = await mediaService.uploadImageResult(
+          bytes,
+          mimeType,
+          refType: 'post',
+        );
+        uploadedUrls.add(uploaded.publicUrl);
+        mediaIds.add(uploaded.mediaId);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi tải ảnh lên: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi tải ảnh lên: $e')));
       }
       setState(() {
         _isUploadingImages = false;
@@ -81,6 +90,7 @@ class _CreatePostWidgetState extends State<CreatePostWidget> {
         _contentController.text.trim(),
         _selectedType,
         uploadedUrls,
+        mediaIds: mediaIds,
       );
     }
   }
@@ -110,7 +120,9 @@ class _CreatePostWidgetState extends State<CreatePostWidget> {
           setState(() {
             _isUploadingImages = false;
           });
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(state.message)));
         }
       },
       builder: (context, state) {
@@ -133,30 +145,46 @@ class _CreatePostWidgetState extends State<CreatePostWidget> {
                   children: [
                     CircleAvatar(
                       backgroundColor: colorScheme.primaryContainer,
-                      child: Icon(Icons.person, color: colorScheme.onPrimaryContainer),
+                      child: Icon(
+                        Icons.person,
+                        color: colorScheme.onPrimaryContainer,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         value: _selectedType,
                         decoration: InputDecoration(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
                           ),
                           filled: true,
-                          fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                          fillColor: colorScheme.surfaceContainerHighest
+                              .withValues(alpha: 0.3),
                         ),
                         items: _postTypes.map((type) {
                           return DropdownMenuItem(
                             value: type['value'],
-                            child: Text(type['label']!, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                            child: Text(
+                              type['label']!,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           );
                         }).toList(),
-                        onChanged: isLoading ? null : (val) {
-                          if (val != null) setState(() => _selectedType = val);
-                        },
+                        onChanged: isLoading
+                            ? null
+                            : (val) {
+                                if (val != null)
+                                  setState(() => _selectedType = val);
+                              },
                       ),
                     ),
                   ],
@@ -186,31 +214,37 @@ class _CreatePostWidgetState extends State<CreatePostWidget> {
                             ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: kIsWeb
-                                ? Image.network(
-                                    _selectedImages[index].path,
-                                    width: 80,
-                                    height: 80,
-                                    fit: BoxFit.cover,
-                                  )
-                                : Image.file(
-                                    File(_selectedImages[index].path),
-                                    width: 80,
-                                    height: 80,
-                                    fit: BoxFit.cover,
-                                  ),
+                                  ? Image.network(
+                                      _selectedImages[index].path,
+                                      width: 80,
+                                      height: 80,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Image.file(
+                                      File(_selectedImages[index].path),
+                                      width: 80,
+                                      height: 80,
+                                      fit: BoxFit.cover,
+                                    ),
                             ),
                             Positioned(
                               top: 2,
                               right: 2,
                               child: InkWell(
-                                onTap: isLoading ? null : () => _removeImage(index),
+                                onTap: isLoading
+                                    ? null
+                                    : () => _removeImage(index),
                                 child: Container(
                                   padding: const EdgeInsets.all(2),
                                   decoration: const BoxDecoration(
                                     color: Colors.black54,
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const Icon(Icons.close, size: 14, color: Colors.white),
+                                  child: const Icon(
+                                    Icons.close,
+                                    size: 14,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
                             ),
@@ -227,7 +261,9 @@ class _CreatePostWidgetState extends State<CreatePostWidget> {
                       onPressed: isLoading ? null : _pickImages,
                       icon: const Icon(Icons.image_outlined),
                       label: const Text('Thêm ảnh'),
-                      style: TextButton.styleFrom(foregroundColor: colorScheme.onSurfaceVariant),
+                      style: TextButton.styleFrom(
+                        foregroundColor: colorScheme.onSurfaceVariant,
+                      ),
                     ),
                     const Spacer(),
                     FilledButton(
@@ -240,7 +276,10 @@ class _CreatePostWidgetState extends State<CreatePostWidget> {
                           ? const SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
                           : const Text('Đăng bài'),
                     ),

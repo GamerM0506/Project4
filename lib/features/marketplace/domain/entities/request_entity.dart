@@ -2,21 +2,26 @@ import 'package:equatable/equatable.dart';
 
 class RequestEntity extends Equatable {
   final String id;
+  final String code;
   final String listingId;
   final String groupId;
   final String receiverId;
   final int quantity;
   final String reason;
-  final String status; // 'pending', 'approved', 'rejected', 'scheduled', 'completed'
+
+  /// pending, approved, rejected, scheduled, completed, cancelled, no_show.
+  final String status;
   final String? reviewedBy;
+  final DateTime? reviewedAt;
+  final String? rejectReason;
   final DateTime? scheduledAt;
-  final String? confirmedBy;
-  final String? qrToken;
-  final String? photoUrl;
+  final DateTime? completedAt;
   final DateTime createdAt;
+  final DateTime? updatedAt;
 
   const RequestEntity({
     required this.id,
+    required this.code,
     required this.listingId,
     required this.groupId,
     required this.receiverId,
@@ -24,27 +29,30 @@ class RequestEntity extends Equatable {
     required this.reason,
     required this.status,
     this.reviewedBy,
+    this.reviewedAt,
+    this.rejectReason,
     this.scheduledAt,
-    this.confirmedBy,
-    this.qrToken,
-    this.photoUrl,
+    this.completedAt,
     required this.createdAt,
+    this.updatedAt,
   });
 
   @override
   List<Object?> get props => [
-        id,
-        listingId,
-        groupId,
-        receiverId,
-        quantity,
-        reason,
-        status,
-        reviewedBy,
-        scheduledAt,
-        confirmedBy,
-        qrToken,
-        photoUrl,
-        createdAt,
-      ];
+    id,
+    code,
+    listingId,
+    groupId,
+    receiverId,
+    quantity,
+    reason,
+    status,
+    reviewedBy,
+    reviewedAt,
+    rejectReason,
+    scheduledAt,
+    completedAt,
+    createdAt,
+    updatedAt,
+  ];
 }

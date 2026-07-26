@@ -126,3 +126,60 @@ class GetInventoryUseCase {
     );
   }
 }
+
+class GetDonationUseCase {
+  final DonationRepository repository;
+  GetDonationUseCase(this.repository);
+
+  Future<Either<String, DonationModel>> call(String donationId) {
+    return repository.getDonation(donationId);
+  }
+}
+
+class ScheduleDonationUseCase {
+  final DonationRepository repository;
+  ScheduleDonationUseCase(this.repository);
+
+  Future<Either<String, DonationModel>> call(
+    String donationId,
+    DateTime scheduledAt,
+  ) {
+    return repository.scheduleDonation(donationId, scheduledAt);
+  }
+}
+
+class CancelDonationUseCase {
+  final DonationRepository repository;
+  CancelDonationUseCase(this.repository);
+
+  Future<Either<String, DonationModel>> call(String donationId) {
+    return repository.cancelDonation(donationId);
+  }
+}
+
+class GetDonationTimelineUseCase {
+  final DonationRepository repository;
+  GetDonationTimelineUseCase(this.repository);
+
+  Future<Either<String, List<DonationTimelineModel>>> call(String donationId) {
+    return repository.getDonationTimeline(donationId);
+  }
+}
+
+class GetInventoryItemUseCase {
+  final DonationRepository repository;
+  GetInventoryItemUseCase(this.repository);
+
+  Future<Either<String, InventoryItemModel>> call(String itemId) {
+    return repository.getInventoryItem(itemId);
+  }
+}
+
+class GetInventoryHistoryUseCase {
+  final DonationRepository repository;
+  GetInventoryHistoryUseCase(this.repository);
+
+  Future<Either<String, List<InventoryHistoryModel>>> call(String itemId) {
+    return repository.getInventoryHistory(itemId);
+  }
+}

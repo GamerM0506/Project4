@@ -18,8 +18,12 @@ class GetMessagesUseCase {
 
   GetMessagesUseCase(this.repository);
 
-  Future<Either<String, List<ChatMessage>>> call(String conversationId) {
-    return repository.getMessages(conversationId);
+  Future<Either<String, List<ChatMessage>>> call(
+    String conversationId, {
+    int limit = 50,
+    int offset = 0,
+  }) {
+    return repository.getMessages(conversationId, limit: limit, offset: offset);
   }
 }
 

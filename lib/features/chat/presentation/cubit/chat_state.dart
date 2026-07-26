@@ -48,7 +48,17 @@ class ChatMessage extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, content, senderId, senderName, senderAvatar, createdAt, isMine, type, metadata];
+  List<Object?> get props => [
+    id,
+    content,
+    senderId,
+    senderName,
+    senderAvatar,
+    createdAt,
+    isMine,
+    type,
+    metadata,
+  ];
 }
 
 class ChatState extends Equatable {
@@ -56,12 +66,18 @@ class ChatState extends Equatable {
   final List<ChatMessage> messages;
   final String? activeConversationId;
   final String? error;
+  final bool isLoadingHistory;
+  final bool isLoadingOlder;
+  final bool hasMore;
 
   const ChatState({
     this.isConnected = false,
     this.messages = const [],
     this.activeConversationId,
     this.error,
+    this.isLoadingHistory = false,
+    this.isLoadingOlder = false,
+    this.hasMore = true,
   });
 
   ChatState copyWith({
@@ -69,15 +85,29 @@ class ChatState extends Equatable {
     List<ChatMessage>? messages,
     String? activeConversationId,
     String? error,
+    bool? isLoadingHistory,
+    bool? isLoadingOlder,
+    bool? hasMore,
   }) {
     return ChatState(
       isConnected: isConnected ?? this.isConnected,
       messages: messages ?? this.messages,
       activeConversationId: activeConversationId ?? this.activeConversationId,
       error: error, // Clear error if null is not passed explicitly
+      isLoadingHistory: isLoadingHistory ?? this.isLoadingHistory,
+      isLoadingOlder: isLoadingOlder ?? this.isLoadingOlder,
+      hasMore: hasMore ?? this.hasMore,
     );
   }
 
   @override
-  List<Object?> get props => [isConnected, messages, activeConversationId, error];
+  List<Object?> get props => [
+    isConnected,
+    messages,
+    activeConversationId,
+    error,
+    isLoadingHistory,
+    isLoadingOlder,
+    hasMore,
+  ];
 }

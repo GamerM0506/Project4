@@ -40,13 +40,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<AuthModel> login(String? email, String? phone, String password) async {
     final response = await apiClient.dio.post(
       '${AppConstants.authApiBaseUrl}/auth/login',
-      data: {
-        if (email != null) 'email': email,
-        if (phone != null) 'phone': phone,
-        'password': password,
-      },
+      data: {'email': ?email, 'phone': ?phone, 'password': password},
     );
-    return AuthModel.fromJson(response.data);
+    return AuthModel.fromJson(Map<String, dynamic>.from(response.data as Map));
   }
 
   @override
@@ -55,7 +51,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       '${AppConstants.authApiBaseUrl}/auth/login/2fa',
       data: {'challenge_token': challengeToken, 'code': code},
     );
-    return AuthModel.fromJson(response.data);
+    return AuthModel.fromJson(Map<String, dynamic>.from(response.data as Map));
   }
 
   @override
@@ -84,16 +80,16 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         'password': password,
       },
     );
-    return AuthModel.fromJson(response.data);
+    return AuthModel.fromRegistrationJson(
+      Map<String, dynamic>.from(response.data as Map),
+    );
   }
 
   @override
   Future<void> verify(String emailOrPhone, String code) async {
-    final body = <String, dynamic>{'code': code};
-    if (emailOrPhone.contains('@')) {
-      body['email'] = emailOrPhone;
-    } else {
-      body['phone'] = emailOrPhone;
+    final body = <String, dynamic>{'email': emailOrPhone, 'code': code};
+    if (!emailOrPhone.contains('@')) {
+      throw Exception('Chỉ hỗ trợ xác thực bằng email');
     }
 
     await apiClient.dio.post(
@@ -104,11 +100,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<void> resendVerification(String emailOrPhone) async {
-    final body = <String, dynamic>{};
-    if (emailOrPhone.contains('@')) {
-      body['email'] = emailOrPhone;
-    } else {
-      body['phone'] = emailOrPhone;
+    final body = <String, dynamic>{'email': emailOrPhone};
+    if (!emailOrPhone.contains('@')) {
+      throw Exception('Chỉ hỗ trợ xác thực bằng email');
     }
 
     await apiClient.dio.post(
@@ -143,12 +137,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   ) async {
     await apiClient.dio.post(
       '${AppConstants.authApiBaseUrl}/auth/reset-password',
-      data: {
-        'email': email,
-        'code': code,
-        'reset_token': resetToken,
-        'new_password': newPassword,
-      },
+      data: {'reset_token': resetToken, 'new_password': newPassword},
     );
   }
 

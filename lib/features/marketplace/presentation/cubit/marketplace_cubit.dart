@@ -1,35 +1,100 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../domain/usecases/listing_usecases.dart';
-import '../../domain/entities/category_entity.dart';
 import 'marketplace_state.dart';
 
 class MarketplaceCubit extends Cubit<MarketplaceState> {
   final GetCatalogUseCase getCatalogUseCase;
   final GetCategoriesUseCase getCategoriesUseCase;
 
-  List<CategoryEntity> _categories = [];
+  static const _limit = 20;
+  int _generation = 0;
+  int _page = 1;
+  String? _categoryId;
+  String? _provinceCode;
+  String? _groupId;
+  String? _search;
 
   MarketplaceCubit({
     required this.getCatalogUseCase,
     required this.getCategoriesUseCase,
-  }) : super(MarketplaceInitial());
+  }) : super(const MarketplaceState());
 
-  Future<void> loadCatalog({String? category, String? province, String? groupId}) async {
-    emit(MarketplaceLoading());
+  Future<void> loadCatalog({
+    String? categoryId,
+    String? provinceCode,
+    String? groupId,
+    String? search,
+  }) async {
+    _categoryId = _clean(categoryId);
+    _provinceCode = _clean(provinceCode);
+    _groupId = _clean(groupId);
+    _search = _clean(search);
+    _page = 1;
+    final generation = ++_generation;
+    emit(state.copyWith(isLoading: true, clearError: true));
 
-    if (_categories.isEmpty) {
-      final catResult = await getCategoriesUseCase();
-      catResult.fold(
-        (error) => null,
-        (cats) => _categories = cats,
-      );
+    var categories = state.categories;
+    if (categories.isEmpty) {
+      final categoryResult = await getCategoriesUseCase();
+      categoryResult.fold((_) {}, (value) => categories = value);
     }
 
-    final result = await getCatalogUseCase(category: category, province: province, groupId: groupId);
-
-    result.fold(
-      (error) => emit(MarketplaceError(message: error)),
-      (listings) => emit(MarketplaceLoaded(listings: listings, categories: _categories)),
+    final result = await getCatalogUseCase(
+      categoryId: _categoryId,
+      provinceCode: _provinceCode,
+      groupId: _groupId,
+      page: _page,
+      limit: _limit,
+      search: _search,
     );
+    if (generation != _generation || isClosed) return;
+    result.fold(
+      (error) => emit(
+        state.copyWith(categories: categories, isLoading: false, error: error),
+      ),
+      (page) => emit(
+        MarketplaceState(
+          listings: page.items,
+          categories: categories,
+          hasMore: page.hasMore,
+        ),
+      ),
+    );
+  }
+
+  Future<void> loadMore() async {
+    if (state.isLoading || state.isLoadingMore || !state.hasMore) return;
+    final generation = _generation;
+    final nextPage = _page + 1;
+    emit(state.copyWith(isLoadingMore: true, clearError: true));
+    final result = await getCatalogUseCase(
+      categoryId: _categoryId,
+      provinceCode: _provinceCode,
+      groupId: _groupId,
+      page: nextPage,
+      limit: _limit,
+      search: _search,
+    );
+    if (generation != _generation || isClosed) return;
+    result.fold(
+      (error) => emit(state.copyWith(isLoadingMore: false, error: error)),
+      (page) {
+        _page = nextPage;
+        emit(
+          state.copyWith(
+            listings: [...state.listings, ...page.items],
+            isLoadingMore: false,
+            hasMore: page.hasMore,
+            clearError: true,
+          ),
+        );
+      },
+    );
+  }
+
+  String? _clean(String? value) {
+    final result = value?.trim();
+    return result == null || result.isEmpty ? null : result;
   }
 }

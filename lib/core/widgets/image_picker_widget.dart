@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../injection_container.dart';
@@ -44,20 +43,21 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
 
       final mediaService = sl<MediaService>();
       final bytes = await image.readAsBytes();
-      final mimeType = image.mimeType ?? MediaService.mimeFromFileName(image.name);
-      
-      final publicUrl = await mediaService.uploadImage(
+      final mimeType =
+          image.mimeType ?? MediaService.mimeFromFileName(image.name);
+
+      final uploaded = await mediaService.uploadImageResult(
         bytes,
         mimeType,
-        refType: widget.isAvatar ? 'avatar' : 'post'
+        refType: widget.isAvatar ? 'avatar' : 'post',
       );
 
       setState(() {
-        _currentUrl = publicUrl;
+        _currentUrl = uploaded.publicUrl;
         _isUploading = false;
       });
 
-      widget.onImageUploaded(publicUrl);
+      widget.onImageUploaded(uploaded.publicUrl);
     } catch (e) {
       setState(() {
         _isUploading = false;
@@ -96,12 +96,21 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
                     color: colorScheme.surfaceContainerHighest,
                     shape: BoxShape.circle,
                     image: _currentUrl != null
-                        ? DecorationImage(image: NetworkImage(_currentUrl!), fit: BoxFit.cover)
+                        ? DecorationImage(
+                            image: NetworkImage(_currentUrl!),
+                            fit: BoxFit.cover,
+                          )
                         : null,
-                    border: Border.all(color: colorScheme.outline.withValues(alpha: 0.5)),
+                    border: Border.all(
+                      color: colorScheme.outline.withValues(alpha: 0.5),
+                    ),
                   ),
                   child: _currentUrl == null && !_isUploading
-                      ? Icon(Icons.camera_alt, color: colorScheme.onSurfaceVariant, size: 32)
+                      ? Icon(
+                          Icons.camera_alt,
+                          color: colorScheme.onSurfaceVariant,
+                          size: 32,
+                        )
                       : null,
                 ),
                 if (_isUploading)
@@ -128,7 +137,11 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
                           color: Colors.red,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.close, color: Colors.white, size: 16),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 16,
+                        ),
                       ),
                     ),
                   ),
@@ -158,17 +171,31 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
                   color: colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(16),
                   image: _currentUrl != null
-                      ? DecorationImage(image: NetworkImage(_currentUrl!), fit: BoxFit.cover)
+                      ? DecorationImage(
+                          image: NetworkImage(_currentUrl!),
+                          fit: BoxFit.cover,
+                        )
                       : null,
-                  border: Border.all(color: colorScheme.outline.withValues(alpha: 0.5)),
+                  border: Border.all(
+                    color: colorScheme.outline.withValues(alpha: 0.5),
+                  ),
                 ),
                 child: _currentUrl == null && !_isUploading
                     ? Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.add_photo_alternate, color: colorScheme.onSurfaceVariant, size: 48),
+                          Icon(
+                            Icons.add_photo_alternate,
+                            color: colorScheme.onSurfaceVariant,
+                            size: 48,
+                          ),
                           const SizedBox(height: 8),
-                          Text('Nhấn để chọn ảnh', style: TextStyle(color: colorScheme.onSurfaceVariant)),
+                          Text(
+                            'Nhấn để chọn ảnh',
+                            style: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
                         ],
                       )
                     : null,
@@ -197,7 +224,11 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
                         color: Colors.red,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.close, color: Colors.white, size: 20),
+                      child: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                     ),
                   ),
                 ),

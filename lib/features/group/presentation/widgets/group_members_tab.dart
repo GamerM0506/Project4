@@ -9,18 +9,20 @@ import '../cubit/group_members_state.dart';
 class GroupMembersTab extends StatelessWidget {
   final String groupId;
   final String? currentUserRole;
+  final String status;
 
   const GroupMembersTab({
     super.key,
     required this.groupId,
     required this.currentUserRole,
+    this.status = 'approved',
   });
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) =>
-          sl<GroupMembersCubit>()..fetchMembers(groupId, status: 'approved'),
+          sl<GroupMembersCubit>()..fetchMembers(groupId, status: status),
       child: BlocBuilder<GroupMembersCubit, GroupMembersState>(
         builder: (context, state) {
           if (state is GroupMembersLoading) {
@@ -40,12 +42,27 @@ class GroupMembersTab extends StatelessWidget {
 
             return ListView.separated(
               padding: const EdgeInsets.all(16),
-              itemCount: members.length,
+              itemCount: members.length + (state.hasReachedMax ? 0 : 1),
               separatorBuilder: (context, index) => const Divider(),
               itemBuilder: (context, index) {
+                if (index == members.length) {
+                  return Center(
+                    child: TextButton(
+                      onPressed: state.isLoadingMore
+                          ? null
+                          : () => context.read<GroupMembersCubit>().loadMore(
+                              groupId,
+                            ),
+                      child: state.isLoadingMore
+                          ? const CircularProgressIndicator()
+                          : const Text('Xem thêm'),
+                    ),
+                  );
+                }
                 final member = members[index];
                 final canChangeRole = currentUserRole == 'owner';
                 final canKick =
+                    status == 'approved' &&
                     member.role != 'owner' &&
                     (currentUserRole == 'owner' ||
                         (currentUserRole == 'moderator' &&
@@ -65,7 +82,18 @@ class GroupMembersTab extends StatelessWidget {
                         : 'Thành viên ẩn danh',
                   ), // Display User Name or anonymous
                   subtitle: Text('Vai trò: ${_roleText(member.role)}'),
-                  trailing: canChangeRole || canKick
+                  trailing:
+                      status == 'banned' &&
+                          member.role == 'member' &&
+                          (currentUserRole == 'owner' ||
+                              currentUserRole == 'moderator')
+                      ? TextButton(
+                          onPressed: () => context
+                              .read<GroupMembersCubit>()
+                              .unbanMember(groupId, member.userId),
+                          child: const Text('Bỏ cấm'),
+                        )
+                      : canChangeRole || canKick
                       ? PopupMenuButton<String>(
                           icon: const Icon(Icons.more_vert),
                           onSelected: (value) {

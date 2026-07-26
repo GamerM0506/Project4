@@ -14,11 +14,17 @@ class GroupJoinRequestsLoading extends GroupJoinRequestsState {}
 
 class GroupJoinRequestsLoaded extends GroupJoinRequestsState {
   final List<JoinRequestEntity> requests;
+  final bool hasReachedMax;
+  final bool isLoadingMore;
 
-  const GroupJoinRequestsLoaded(this.requests);
+  const GroupJoinRequestsLoaded(
+    this.requests, {
+    this.hasReachedMax = false,
+    this.isLoadingMore = false,
+  });
 
   @override
-  List<Object?> get props => [requests];
+  List<Object?> get props => [requests, hasReachedMax, isLoadingMore];
 }
 
 class GroupJoinRequestsError extends GroupJoinRequestsState {

@@ -48,10 +48,40 @@ class _ChangePasswordViewState extends State<_ChangePasswordView> {
       return;
     }
 
-    if (_newPasswordController.text.length < 6) {
+    if (_currentPasswordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Mật khẩu mới phải có ít nhất 6 ký tự.'),
+          content: const Text('Vui lòng nhập mật khẩu hiện tại.'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      return;
+    }
+
+    if (_newPasswordController.text.length < 8) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Mật khẩu mới phải có ít nhất 8 ký tự.'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      return;
+    }
+
+    if (_newPasswordController.text.length > 128) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Mật khẩu mới không được vượt quá 128 ký tự.'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      return;
+    }
+
+    if (_currentPasswordController.text == _newPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Mật khẩu mới phải khác mật khẩu hiện tại.'),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
@@ -59,9 +89,9 @@ class _ChangePasswordViewState extends State<_ChangePasswordView> {
     }
 
     context.read<ChangePasswordCubit>().changePassword(
-          _currentPasswordController.text.trim(),
-          _newPasswordController.text.trim(),
-        );
+      _currentPasswordController.text,
+      _newPasswordController.text,
+    );
   }
 
   @override

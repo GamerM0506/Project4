@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:dio/dio.dart';
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../../../core/constants/app_constants.dart';
@@ -13,6 +11,7 @@ import '../../../group/data/models/group_model.dart';
 import '../../../../injection_container.dart';
 import '../cubit/create_listing_cubit.dart';
 import '../cubit/create_listing_state.dart';
+import '../../../ai/data/ai_service.dart';
 
 class CreateListingPage extends StatefulWidget {
   final String? groupId;
@@ -25,6 +24,7 @@ class CreateListingPage extends StatefulWidget {
 
 class _CreateListingPageState extends State<CreateListingPage> {
   final _cubit = sl<CreateListingCubit>();
+  final AiService _aiService = sl<AiService>();
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
 
@@ -136,23 +136,8 @@ class _CreateListingPageState extends State<CreateListingPage> {
     setState(() => _isDetecting = true);
     try {
       final bytes = await _imageFile!.readAsBytes();
-      final base64Image = base64Encode(bytes);
-      final dataUri = 'data:image/jpeg;base64,$base64Image';
-
-      final dio = Dio(
-        BaseOptions(
-          connectTimeout: const Duration(seconds: 15),
-          receiveTimeout: const Duration(seconds: 15),
-        ),
-      );
-
-      final response = await dio.post(
-        '${AppConstants.aiApiBaseUrl}/detect-item',
-        data: {'imageUrl': dataUri},
-      );
-
-      if (response.statusCode == 200 && response.data != null) {
-        final data = response.data;
+      final data = await _aiService.detectItem(bytes);
+      if (data.isNotEmpty) {
         setState(() {
           if (data['name'] != null && data['name'].toString().isNotEmpty) {
             _titleController.text = data['name'];
@@ -215,24 +200,15 @@ class _CreateListingPageState extends State<CreateListingPage> {
 
     setState(() => _isGeneratingDesc = true);
     try {
-      final dio = Dio();
-      final response = await dio.post(
-        '${AppConstants.aiApiBaseUrl}/generate-description',
-        data: {'name': _titleController.text.trim(), 'condition': _condition},
+      final desc = await _aiService.generateDescription(
+        name: _titleController.text.trim(),
+        condition: _condition,
       );
-
-      if (response.statusCode == 200 && response.data != null) {
-        final desc = response.data['description'];
-        if (desc != null) {
-          setState(() {
-            _descController.text = desc;
-          });
-          _showSnackBar(
-            '✨ AI đã tự động tạo đoạn văn mô tả ấm áp!',
-            isSuccess: true,
-          );
-        }
-      }
+      setState(() => _descController.text = desc);
+      _showSnackBar(
+        'AI đã tạo mô tả. Vui lòng kiểm tra trước khi đăng.',
+        isSuccess: true,
+      );
     } catch (e) {
       _showSnackBar('Lỗi khi sinh mô tả tự động', isError: true);
     } finally {

@@ -1,8 +1,8 @@
-import 'dart:convert';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/network/session_token.dart';
+import '../../domain/entities/auth_entity.dart';
 import '../../domain/usecases/login_usecase.dart';
 import '../../domain/usecases/login_two_factor_usecase.dart';
 import '../../domain/usecases/logout_usecase.dart';
@@ -26,6 +26,11 @@ class AuthCubit extends Cubit<AuthState> {
   final ResetPasswordUseCase resetPasswordUseCase;
   final SharedPreferences sharedPreferences;
   String? _challengeToken;
+  bool? _pendingRememberMe;
+  String? _pendingIdentifier;
+
+  bool get hasActiveLoginChallenge =>
+      _challengeToken != null && _challengeToken!.isNotEmpty;
 
   AuthCubit({
     required this.loginUseCase,
@@ -40,11 +45,27 @@ class AuthCubit extends Cubit<AuthState> {
     required this.sharedPreferences,
   }) : super(AuthInitial());
 
-  Future<void> login(String emailOrPhone, String password) async {
+  Future<void> login(
+    String emailOrPhone,
+    String password, {
+    required bool rememberMe,
+  }) async {
+    _clearPendingLogin();
     if (emailOrPhone.isEmpty || password.isEmpty) {
       emit(AuthFailure(message: 'Vui lòng nhập đầy đủ thông tin.'));
       return;
     }
+    if (password.length > 128) {
+      emit(AuthFailure(message: 'Mật khẩu không được quá 128 ký tự.'));
+      return;
+    }
+
+    await sharedPreferences.setBool(AppConstants.keyRememberMe, rememberMe);
+    if (!rememberMe) {
+      await sharedPreferences.remove(AppConstants.keyRememberedIdentifier);
+    }
+    _pendingRememberMe = rememberMe;
+    _pendingIdentifier = emailOrPhone;
 
     emit(AuthLoading());
 
@@ -59,12 +80,16 @@ class AuthCubit extends Cubit<AuthState> {
 
     final result = await loginUseCase(email, phone, password);
 
-    result.fold(
-      (failureMessage) => emit(AuthFailure(message: failureMessage)),
+    await result.fold<Future<void>>(
+      (failureMessage) async {
+        _clearPendingLogin();
+        emit(AuthFailure(message: failureMessage));
+      },
       (authEntity) async {
         if (authEntity.twoFactorRequired) {
           final challengeToken = authEntity.challengeToken;
           if (challengeToken == null || challengeToken.isEmpty) {
+            _clearPendingLogin();
             emit(AuthFailure(message: 'Máy chủ không trả về mã xác thực 2FA.'));
             return;
           }
@@ -72,12 +97,11 @@ class AuthCubit extends Cubit<AuthState> {
           emit(AuthTwoFactorRequired());
           return;
         }
-        await _persistTokens(authEntity.accessToken, authEntity.refreshToken);
-        await _persistUserId(authEntity.userId, authEntity.accessToken);
-        if (authEntity.accessToken != null &&
-            authEntity.accessToken!.isNotEmpty) {
+        if (await _persistSession(authEntity)) {
+          await _applyRememberPreference();
           emit(AuthSuccess());
         } else {
+          _clearPendingLogin();
           emit(
             AuthFailure(
               message:
@@ -105,44 +129,36 @@ class AuthCubit extends Cubit<AuthState> {
     await result.fold(
       (failureMessage) async => emit(AuthFailure(message: failureMessage)),
       (authEntity) async {
-        await _persistTokens(authEntity.accessToken, authEntity.refreshToken);
-        await _persistUserId(authEntity.userId, authEntity.accessToken);
+        if (!await _persistSession(authEntity)) {
+          _clearPendingLogin();
+          emit(AuthFailure(message: 'Phản hồi đăng nhập 2FA không hợp lệ.'));
+          return;
+        }
         await sharedPreferences.setBool(AppConstants.keyTwoFactorEnabled, true);
-        _challengeToken = null;
+        await _applyRememberPreference();
         emit(AuthSuccess());
       },
     );
   }
 
-  Future<void> _persistTokens(String? access, String? refresh) async {
-    if (access != null && access.isNotEmpty) {
-      await sharedPreferences.setString(AppConstants.keyAccessToken, access);
+  Future<bool> _persistSession(AuthEntity authEntity) async {
+    final access = authEntity.accessToken;
+    final refresh = authEntity.refreshToken;
+    final resolvedUserId = authEntity.userId ?? jwtSubject(access);
+    if (access == null ||
+        access.isEmpty ||
+        refresh == null ||
+        refresh.isEmpty ||
+        resolvedUserId == null ||
+        resolvedUserId.isEmpty) {
+      return false;
     }
-    if (refresh != null && refresh.isNotEmpty) {
-      await sharedPreferences.setString(AppConstants.keyRefreshToken, refresh);
-    }
-  }
 
-  Future<void> _persistUserId(String? userId, String? accessToken) async {
-    final resolvedUserId = userId ?? _readJwtSubject(accessToken);
-    if (resolvedUserId != null && resolvedUserId.isNotEmpty) {
-      await sharedPreferences.setString(AppConstants.keyUserId, resolvedUserId);
-    }
-  }
-
-  String? _readJwtSubject(String? token) {
-    if (token == null || token.isEmpty) return null;
-    try {
-      final parts = token.split('.');
-      if (parts.length != 3) return null;
-      final payload = utf8.decode(
-        base64Url.decode(base64Url.normalize(parts[1])),
-      );
-      final json = jsonDecode(payload);
-      return json is Map ? json['sub']?.toString() : null;
-    } catch (_) {
-      return null;
-    }
+    await _clearSession(clearPendingLogin: false);
+    await sharedPreferences.setString(AppConstants.keyAccessToken, access);
+    await sharedPreferences.setString(AppConstants.keyRefreshToken, refresh);
+    await sharedPreferences.setString(AppConstants.keyUserId, resolvedUserId);
+    return true;
   }
 
   Future<void> handleSessionExpired() async {
@@ -150,20 +166,53 @@ class AuthCubit extends Cubit<AuthState> {
     emit(AuthUnauthenticated());
   }
 
-  Future<void> _clearSession() async {
-    _challengeToken = null;
+  Future<void> _clearSession({bool clearPendingLogin = true}) async {
+    if (clearPendingLogin) _clearPendingLogin();
     await sharedPreferences.remove(AppConstants.keyAccessToken);
     await sharedPreferences.remove(AppConstants.keyRefreshToken);
     await sharedPreferences.remove(AppConstants.keyUserId);
     await sharedPreferences.remove(AppConstants.keyTwoFactorEnabled);
+    await sharedPreferences.setInt(
+      AppConstants.keySessionGeneration,
+      (sharedPreferences.getInt(AppConstants.keySessionGeneration) ?? 0) + 1,
+    );
+  }
+
+  Future<void> _applyRememberPreference() async {
+    final rememberMe = _pendingRememberMe ?? true;
+    final identifier = _pendingIdentifier;
+    await sharedPreferences.setBool(AppConstants.keyRememberMe, rememberMe);
+    if (rememberMe && identifier != null && identifier.isNotEmpty) {
+      await sharedPreferences.setString(
+        AppConstants.keyRememberedIdentifier,
+        identifier,
+      );
+    } else {
+      await sharedPreferences.remove(AppConstants.keyRememberedIdentifier);
+    }
+    _clearPendingLogin();
+  }
+
+  void cancelLoginChallenge() {
+    _clearPendingLogin();
+  }
+
+  void _clearPendingLogin() {
+    _challengeToken = null;
+    _pendingRememberMe = null;
+    _pendingIdentifier = null;
   }
 
   Future<void> registerUser(
+    String username,
     String fullName,
-    String emailOrPhone,
+    String email,
     String password,
   ) async {
-    if (fullName.isEmpty || emailOrPhone.isEmpty || password.isEmpty) {
+    if (username.isEmpty ||
+        fullName.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty) {
       emit(AuthFailure(message: 'Vui lòng nhập đầy đủ thông tin.'));
       return;
     }
@@ -172,41 +221,37 @@ class AuthCubit extends Cubit<AuthState> {
       emit(AuthFailure(message: 'Mật khẩu phải có ít nhất 8 ký tự.'));
       return;
     }
+    if (password.length > 128) {
+      emit(AuthFailure(message: 'Mật khẩu không được quá 128 ký tự.'));
+      return;
+    }
+    if (!RegExp(r'^[a-zA-Z0-9_]{3,30}$').hasMatch(username)) {
+      emit(
+        AuthFailure(
+          message: 'Tên đăng nhập gồm 3-30 ký tự chữ, số hoặc dấu gạch dưới.',
+        ),
+      );
+      return;
+    }
+    if (!email.contains('@')) {
+      emit(AuthFailure(message: 'Vui lòng nhập email hợp lệ để xác thực.'));
+      return;
+    }
 
     emit(AuthLoading());
-
-    String? email;
-    String? phone;
-
-    if (emailOrPhone.contains('@')) {
-      email = emailOrPhone;
-    } else {
-      phone = emailOrPhone;
-    }
-
-    String username = '';
-    if (email != null && email.contains('@')) {
-      username = email.split('@')[0].replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '');
-    } else if (phone != null) {
-      username = 'user_$phone';
-    } else {
-      username = 'user_${DateTime.now().millisecondsSinceEpoch}';
-    }
-    if (username.length < 3) username = 'usr$username';
-    if (username.length > 30) username = username.substring(0, 30);
 
     final result = await registerUseCase(
       username,
       fullName,
       email,
-      phone,
+      null,
       password,
     );
 
     result.fold(
       (failureMessage) => emit(AuthFailure(message: failureMessage)),
       (data) {
-        emit(RegisterSuccess(emailOrPhone: emailOrPhone));
+        emit(RegisterSuccess(emailOrPhone: email));
       },
     );
   }
@@ -275,6 +320,10 @@ class AuthCubit extends Cubit<AuthState> {
       emit(AuthFailure(message: 'Mật khẩu phải có ít nhất 8 ký tự.'));
       return;
     }
+    if (newPassword.length > 128) {
+      emit(AuthFailure(message: 'Mật khẩu không được quá 128 ký tự.'));
+      return;
+    }
 
     emit(ResetPasswordLoading());
     final result = await resetPasswordUseCase(
@@ -299,11 +348,12 @@ class AuthCubit extends Cubit<AuthState> {
       );
       return;
     }
+    emit(ResendVerificationLoading());
     final result = await resendVerificationUseCase(emailOrPhone);
 
     result.fold(
       (failureMessage) => emit(VerifyFailure(message: failureMessage)),
-      (_) {},
+      (_) => emit(ResendVerificationSuccess()),
     );
   }
 
@@ -311,9 +361,9 @@ class AuthCubit extends Cubit<AuthState> {
     final refreshToken = sharedPreferences.getString(
       AppConstants.keyRefreshToken,
     );
+    await handleSessionExpired();
     if (refreshToken != null && refreshToken.isNotEmpty) {
       await logoutUseCase(refreshToken);
     }
-    await handleSessionExpired();
   }
 }

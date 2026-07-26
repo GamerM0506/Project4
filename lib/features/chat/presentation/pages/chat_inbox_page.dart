@@ -38,6 +38,7 @@ class _ChatInboxView extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(16),
             child: TextField(
+              onChanged: context.read<ChatInboxCubit>().search,
               decoration: InputDecoration(
                 hintText: 'Tìm kiếm tin nhắn...',
                 prefixIcon: const Icon(Icons.search),

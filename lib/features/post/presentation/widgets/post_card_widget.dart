@@ -22,16 +22,24 @@ class PostCardWidget extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final textTheme = theme.textTheme;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      elevation: 0,
-      color: colorScheme.surface,
-      shape: RoundedRectangleBorder(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.2)),
+        border: Border.all(
+          color: colorScheme.onSurfaceVariant.withOpacity(0.1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2F2F2F).withOpacity(0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -39,10 +47,14 @@ class PostCardWidget extends StatelessWidget {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: colorScheme.primaryContainer,
+                  radius: 20,
+                  backgroundColor: colorScheme.surfaceContainerHighest,
                   child: Text(
                     post.authorId.substring(0, 2).toUpperCase(),
-                    style: TextStyle(color: colorScheme.onPrimaryContainer),
+                    style: TextStyle(
+                      color: colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -53,15 +65,18 @@ class PostCardWidget extends StatelessWidget {
                       Text(
                         'Người dùng ${post.authorId.substring(0, 4)}',
                         style: textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
                         ),
                       ),
+                      const SizedBox(height: 2),
                       Row(
                         children: [
                           Text(
                             timeago.format(post.createdAt, locale: 'vi'),
                             style: textTheme.bodySmall?.copyWith(
                               color: colorScheme.onSurfaceVariant,
+                              fontSize: 12,
                             ),
                           ),
                           if (post.type != 'normal') ...[
@@ -74,64 +89,39 @@ class PostCardWidget extends StatelessWidget {
                   ),
                 ),
                 if (canModerate)
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_horiz),
-                    onSelected: (value) {
-                      if (value == 'delete') {
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Ẩn bài đăng?'),
-                            content: const Text(
-                              'Bạn có chắc chắn muốn ẩn bài đăng này không?',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx),
-                                child: const Text('Hủy'),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pop(ctx);
-                                  context.read<GroupFeedCubit>().deletePost(
-                                    post.id,
-                                  );
-                                },
-                                style: TextButton.styleFrom(
-                                  foregroundColor: Colors.red,
-                                ),
-                                child: const Text('Xóa'),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
+                  IconButton(
+                    icon: Icon(
+                      Icons.more_horiz,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    onPressed: () {
+                      _showModerationMenu(context);
                     },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Text(
-                          'Ẩn bài viết',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      ),
-                    ],
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
             // Content
-            Text(post.content, style: textTheme.bodyLarge),
+            Text(
+              post.content,
+              style: textTheme.bodyLarge?.copyWith(
+                color: colorScheme.onSurface,
+                height: 1.5,
+              ),
+            ),
 
             // Images
             if (post.imageUrls.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              _buildImageGallery(post.imageUrls),
+              const SizedBox(height: 16),
+              _buildImageGallery(post.imageUrls, colorScheme),
             ],
 
             const SizedBox(height: 16),
-            const Divider(height: 1),
+            Divider(
+              color: colorScheme.onSurfaceVariant.withOpacity(0.1),
+              height: 1,
+            ),
             const SizedBox(height: 8),
 
             // Actions
@@ -141,10 +131,11 @@ class PostCardWidget extends StatelessWidget {
                   onTap: () {
                     context.read<GroupFeedCubit>().toggleLike(post.id);
                   },
+                  borderRadius: BorderRadius.circular(20),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       vertical: 8,
-                      horizontal: 4,
+                      horizontal: 8,
                     ),
                     child: Row(
                       children: [
@@ -152,15 +143,17 @@ class PostCardWidget extends StatelessWidget {
                           post.isLiked ? Icons.favorite : Icons.favorite_border,
                           size: 20,
                           color: post.isLiked
-                              ? Colors.red
+                              ? const Color(0xFFAE2F34) // primary heart
                               : colorScheme.onSurfaceVariant,
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 6),
                         Text(
                           '${post.likeCount}',
                           style: TextStyle(
-                            color: colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w500,
+                            color: post.isLiked
+                                ? const Color(0xFFAE2F34)
+                                : colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
@@ -178,10 +171,11 @@ class PostCardWidget extends StatelessWidget {
                           .incrementCommentCount(post.id),
                     );
                   },
+                  borderRadius: BorderRadius.circular(20),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       vertical: 8,
-                      horizontal: 4,
+                      horizontal: 8,
                     ),
                     child: Row(
                       children: [
@@ -190,12 +184,12 @@ class PostCardWidget extends StatelessWidget {
                           size: 20,
                           color: colorScheme.onSurfaceVariant,
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 6),
                         Text(
                           '${post.commentCount}',
                           style: TextStyle(
                             color: colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
@@ -203,16 +197,80 @@ class PostCardWidget extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                _buildActionBtn(
-                  Icons.share_outlined,
-                  'Chia sẻ',
-                  colorScheme,
+                InkWell(
                   onTap: () => _sharePost(),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 8,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.share_outlined,
+                          size: 20,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showModerationMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.visibility_off, color: Colors.red),
+              title: const Text(
+                'Ẩn bài viết',
+                style: TextStyle(color: Colors.red),
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                _confirmDelete(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Ẩn bài đăng?'),
+        content: const Text('Bạn có chắc chắn muốn ẩn bài đăng này không?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<GroupFeedCubit>().deletePost(post.id);
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Ẩn'),
+          ),
+        ],
       ),
     );
   }
@@ -241,9 +299,9 @@ class PostCardWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Text(
         label,
@@ -256,31 +314,39 @@ class PostCardWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildImageGallery(List<String> imageUrls) {
+  Widget _buildImageGallery(List<String> imageUrls, ColorScheme colorScheme) {
     if (imageUrls.length == 1) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+      return Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: colorScheme.surfaceContainerHighest,
+        ),
+        clipBehavior: Clip.antiAlias,
         child: Image.network(
           imageUrls[0],
           width: double.infinity,
-          height: 200,
+          height: 250,
           fit: BoxFit.cover,
         ),
       );
     } else {
       return SizedBox(
-        height: 200,
+        height: 250,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: imageUrls.length,
           separatorBuilder: (_, _) => const SizedBox(width: 8),
           itemBuilder: (context, index) {
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+            return Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: colorScheme.surfaceContainerHighest,
+              ),
+              clipBehavior: Clip.antiAlias,
               child: Image.network(
                 imageUrls[index],
-                width: 150,
-                height: 200,
+                width: 200,
+                height: 250,
                 fit: BoxFit.cover,
               ),
             );
@@ -297,33 +363,6 @@ class PostCardWidget extends StatelessWidget {
       'Mã bài viết: ${post.id}\n'
       'Nhóm: ${post.groupId}',
       subject: 'Chia sẻ bài viết từ ChoSV',
-    );
-  }
-
-  Widget _buildActionBtn(
-    IconData icon,
-    String label,
-    ColorScheme colorScheme, {
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: colorScheme.onSurfaceVariant),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

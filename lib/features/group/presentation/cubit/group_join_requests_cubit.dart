@@ -8,6 +8,8 @@ class GroupJoinRequestsCubit extends Cubit<GroupJoinRequestsState> {
   final GetJoinRequestsUseCase getJoinRequestsUseCase;
   final ApproveJoinUseCase approveJoinUseCase;
   final RejectJoinUseCase rejectJoinUseCase;
+  static const _limit = 20;
+  String? _status;
 
   GroupJoinRequestsCubit({
     required this.getJoinRequestsUseCase,
@@ -16,12 +18,53 @@ class GroupJoinRequestsCubit extends Cubit<GroupJoinRequestsState> {
   }) : super(GroupJoinRequestsInitial());
 
   Future<void> fetchRequests(String groupId, {String? status}) async {
+    _status = status;
     emit(GroupJoinRequestsLoading());
-    final result = await getJoinRequestsUseCase(groupId, status: status);
-    
+    final result = await getJoinRequestsUseCase(
+      groupId,
+      status: status,
+      limit: _limit,
+    );
+
     result.fold(
       (failure) => emit(GroupJoinRequestsError(failure)),
-      (requests) => emit(GroupJoinRequestsLoaded(requests)),
+      (requests) => emit(
+        GroupJoinRequestsLoaded(
+          requests,
+          hasReachedMax: requests.length < _limit,
+        ),
+      ),
+    );
+  }
+
+  Future<void> loadMore(String groupId) async {
+    final current = state;
+    if (current is! GroupJoinRequestsLoaded ||
+        current.hasReachedMax ||
+        current.isLoadingMore) {
+      return;
+    }
+    emit(
+      GroupJoinRequestsLoaded(
+        current.requests,
+        hasReachedMax: current.hasReachedMax,
+        isLoadingMore: true,
+      ),
+    );
+    final result = await getJoinRequestsUseCase(
+      groupId,
+      status: _status,
+      limit: _limit,
+      offset: current.requests.length,
+    );
+    result.fold(
+      (failure) => emit(GroupJoinRequestsError(failure)),
+      (requests) => emit(
+        GroupJoinRequestsLoaded([
+          ...current.requests,
+          ...requests,
+        ], hasReachedMax: requests.length < _limit),
+      ),
     );
   }
 
@@ -29,20 +72,27 @@ class GroupJoinRequestsCubit extends Cubit<GroupJoinRequestsState> {
     if (state is GroupJoinRequestsLoaded) {
       final currentState = state as GroupJoinRequestsLoaded;
       final currentRequests = currentState.requests;
-      
+
       emit(GroupJoinRequestActionLoading(requestId));
-      
+
       final result = await approveJoinUseCase(groupId, requestId);
-      
+
       result.fold(
         (failure) {
           emit(GroupJoinRequestsError(failure));
-          emit(GroupJoinRequestsLoaded(currentRequests)); // Revert
+          emit(currentState); // Revert
         },
         (request) {
           // Remove from list or update status
-          final updatedRequests = currentRequests.where((r) => r.id != requestId).toList();
-          emit(GroupJoinRequestsLoaded(updatedRequests));
+          final updatedRequests = currentRequests
+              .where((r) => r.id != requestId)
+              .toList();
+          emit(
+            GroupJoinRequestsLoaded(
+              updatedRequests,
+              hasReachedMax: currentState.hasReachedMax,
+            ),
+          );
         },
       );
     }
@@ -52,20 +102,27 @@ class GroupJoinRequestsCubit extends Cubit<GroupJoinRequestsState> {
     if (state is GroupJoinRequestsLoaded) {
       final currentState = state as GroupJoinRequestsLoaded;
       final currentRequests = currentState.requests;
-      
+
       emit(GroupJoinRequestActionLoading(requestId));
-      
+
       final result = await rejectJoinUseCase(groupId, requestId);
-      
+
       result.fold(
         (failure) {
           emit(GroupJoinRequestsError(failure));
-          emit(GroupJoinRequestsLoaded(currentRequests)); // Revert
+          emit(currentState); // Revert
         },
         (request) {
           // Remove from list
-          final updatedRequests = currentRequests.where((r) => r.id != requestId).toList();
-          emit(GroupJoinRequestsLoaded(updatedRequests));
+          final updatedRequests = currentRequests
+              .where((r) => r.id != requestId)
+              .toList();
+          emit(
+            GroupJoinRequestsLoaded(
+              updatedRequests,
+              hasReachedMax: currentState.hasReachedMax,
+            ),
+          );
         },
       );
     }

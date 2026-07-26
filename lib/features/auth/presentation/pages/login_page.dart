@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/router/app_routes.dart';
+import '../../../../injection_container.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 import '../widgets/auth_text_field.dart';
@@ -20,6 +22,18 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _emailOrPhoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  late bool _rememberMe;
+
+  @override
+  void initState() {
+    super.initState();
+    final preferences = sl<SharedPreferences>();
+    _rememberMe = preferences.getBool(AppConstants.keyRememberMe) ?? true;
+    if (_rememberMe) {
+      _emailOrPhoneController.text =
+          preferences.getString(AppConstants.keyRememberedIdentifier) ?? '';
+    }
+  }
 
   @override
   void dispose() {
@@ -31,51 +45,9 @@ class _LoginPageState extends State<LoginPage> {
   void _login() {
     context.read<AuthCubit>().login(
       _emailOrPhoneController.text.trim(),
-      _passwordController.text.trim(),
+      _passwordController.text,
+      rememberMe: _rememberMe,
     );
-  }
-
-  Future<void> _showTwoFactorDialog() async {
-    final codeController = TextEditingController();
-    final code = await showDialog<String>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Xác thực 2 bước'),
-        content: TextField(
-          controller: codeController,
-          autofocus: true,
-          keyboardType: TextInputType.number,
-          maxLength: 6,
-          textAlign: TextAlign.center,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: const InputDecoration(
-            labelText: 'Mã từ ứng dụng Authenticator',
-          ),
-          onSubmitted: (value) {
-            if (value.length == 6) Navigator.of(dialogContext).pop(value);
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final value = codeController.text.trim();
-              if (value.length == 6) Navigator.of(dialogContext).pop(value);
-            },
-            child: const Text('Xác nhận'),
-          ),
-        ],
-      ),
-    );
-    codeController.dispose();
-
-    if (code != null && mounted) {
-      context.read<AuthCubit>().verifyLoginTwoFactor(code);
-    }
   }
 
   @override
@@ -91,7 +63,7 @@ class _LoginPageState extends State<LoginPage> {
             context.read<UserCubit>().fetchProfile();
             context.go(AppRoutes.home);
           } else if (state is AuthTwoFactorRequired) {
-            _showTwoFactorDialog();
+            context.go(AppRoutes.loginTwoFactor);
           } else if (state is AuthFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -159,6 +131,20 @@ class _LoginPageState extends State<LoginPage> {
                             hintText: 'Mật khẩu',
                             isPassword: true,
                             prefixIcon: Icons.lock_outline,
+                          ),
+
+                          CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            title: const Text('Ghi nhớ đăng nhập'),
+                            value: _rememberMe,
+                            onChanged: state is AuthLoading
+                                ? null
+                                : (value) {
+                                    setState(() => _rememberMe = value ?? true);
+                                  },
+                            activeColor: colorScheme.primary,
+                            dense: true,
                           ),
 
                           // Forgot password

@@ -5,6 +5,7 @@ import '../cubit/update_group_cubit.dart';
 import '../cubit/group_detail_cubit.dart';
 import '../../data/models/group_model.dart';
 import '../../../../core/widgets/image_picker_widget.dart';
+import '../../../../core/network/location_service.dart';
 
 class GroupDashboardSettings extends StatefulWidget {
   final GroupModel group;
@@ -18,7 +19,18 @@ class GroupDashboardSettings extends StatefulWidget {
 class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
-  late TextEditingController _provinceController;
+  late TextEditingController _addressController;
+
+  final LocationService _locationService = LocationService();
+  List<dynamic> _provinces = [];
+  List<dynamic> _districts = [];
+
+  String? _selectedProvinceId;
+  String? _selectedDistrictId;
+  bool _isLoadingProvinces = true;
+  late bool _allowMemberPost;
+  late bool _requirePostReview;
+
   String? _avatarUrl;
   String? _coverUrl;
 
@@ -29,18 +41,78 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
     _descriptionController = TextEditingController(
       text: widget.group.description,
     );
-    _provinceController = TextEditingController(
-      text: widget.group.provinceCode,
-    );
+    _addressController = TextEditingController(text: widget.group.address);
+    _selectedProvinceId = widget.group.provinceCode;
+    _selectedDistrictId = widget.group.districtCode;
+
     _avatarUrl = widget.group.avatarUrl;
     _coverUrl = widget.group.coverUrl;
+    _allowMemberPost = widget.group.allowMemberPost;
+    _requirePostReview = widget.group.requirePostReview;
+
+    _loadProvinces();
+  }
+
+  Future<void> _loadProvinces() async {
+    try {
+      final data = await _locationService.getProvinces();
+      if (!mounted) return;
+      setState(() {
+        _provinces = data;
+        _isLoadingProvinces = false;
+      });
+
+      if (_selectedProvinceId != null) {
+        Map<String, dynamic>? province;
+        for (final p in _provinces) {
+          if (p is Map && p['code']?.toString() == _selectedProvinceId) {
+            province = Map<String, dynamic>.from(p);
+            break;
+          }
+        }
+        if (province != null && province['districts'] != null) {
+          final districtsList = province['districts'] as List<dynamic>;
+          setState(() {
+            _districts = districtsList;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingProvinces = false;
+        });
+      }
+    }
+  }
+
+  void _onProvinceChanged(String? provinceCode) {
+    if (provinceCode == null) return;
+
+    setState(() {
+      _selectedProvinceId = provinceCode;
+      _selectedDistrictId = null;
+      _districts = [];
+    });
+
+    final province = _provinces.firstWhere(
+      (p) => p['code'].toString() == provinceCode,
+      orElse: () => null,
+    );
+
+    if (province != null && province['districts'] != null) {
+      final districtsList = province['districts'] as List<dynamic>;
+      setState(() {
+        _districts = districtsList;
+      });
+    }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
-    _provinceController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
@@ -61,7 +133,11 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
       description: _descriptionController.text.trim(),
       avatarUrl: _avatarUrl,
       coverUrl: _coverUrl,
-      // provinceCode: _provinceController.text.trim(), // Assuming UpdateGroupUseCase doesn't support this yet, so we skip or update it if supported
+      provinceCode: _selectedProvinceId,
+      districtCode: _selectedDistrictId,
+      address: _addressController.text.trim(),
+      allowMemberPost: _allowMemberPost,
+      requirePostReview: _requirePostReview,
     );
   }
 
@@ -134,15 +210,89 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
                 ),
                 const SizedBox(height: 16),
 
-                // Location Field
+                // Location Dropdowns Row
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildModernDropdown(
+                        label: 'Tỉnh / Thành phố',
+                        icon: Icons.location_on_outlined,
+                        value: _selectedProvinceId,
+                        items: _provinces.map((p) {
+                          return DropdownMenuItem<String>(
+                            value: p['code'].toString(),
+                            child: Text(
+                              p['name']?.toString() ?? '',
+                              style: textTheme.bodyLarge?.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: _onProvinceChanged,
+                        isLoading: _isLoadingProvinces,
+                        colorScheme: colorScheme,
+                        textTheme: textTheme,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildModernDropdown(
+                        label: 'Quận / Huyện',
+                        icon: Icons.map_outlined,
+                        value: _selectedDistrictId,
+                        items: _districts.map((d) {
+                          return DropdownMenuItem<String>(
+                            value: d['code'].toString(),
+                            child: Text(
+                              d['name']?.toString() ?? '',
+                              style: textTheme.bodyLarge?.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          setState(() {
+                            _selectedDistrictId = val;
+                          });
+                        },
+                        isLoading: false,
+                        colorScheme: colorScheme,
+                        textTheme: textTheme,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Address Field
                 _buildModernTextField(
-                  controller: _provinceController,
-                  label: 'Tỉnh / Thành phố',
-                  icon: Icons.location_on_outlined,
+                  controller: _addressController,
+                  label: 'Địa chỉ cụ thể (Tòa nhà, số nhà, v.v...)',
+                  icon: Icons.home_outlined,
                   colorScheme: colorScheme,
                   textTheme: textTheme,
                 ),
                 const SizedBox(height: 32),
+
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Cho phép thành viên đăng bài'),
+                  value: _allowMemberPost,
+                  onChanged: (value) =>
+                      setState(() => _allowMemberPost = value),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Bài viết cần được kiểm duyệt'),
+                  value: _requirePostReview,
+                  onChanged: (value) =>
+                      setState(() => _requirePostReview = value),
+                ),
+                const SizedBox(height: 16),
 
                 Text(
                   'Hình ảnh hiển thị',
@@ -263,6 +413,67 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
                     size: 22,
                   ),
                 ),
+          filled: true,
+          fillColor: Colors.transparent,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 18,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: colorScheme.secondary, width: 1.5),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernDropdown({
+    required String label,
+    required IconData icon,
+    required String? value,
+    required List<DropdownMenuItem<String>> items,
+    required void Function(String?) onChanged,
+    required bool isLoading,
+    required ColorScheme colorScheme,
+    required TextTheme textTheme,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: DropdownButtonFormField<String>(
+        value: value,
+        items: items,
+        onChanged: onChanged,
+        isExpanded: true, // Fix for overflowing text in dropdowns
+        icon: isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.arrow_drop_down),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: textTheme.bodyLarge?.copyWith(
+            color: colorScheme.onSurfaceVariant.withOpacity(0.8),
+            overflow: TextOverflow.ellipsis,
+          ),
+          prefixIcon: Icon(
+            icon,
+            color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+            size: 22,
+          ),
           filled: true,
           fillColor: Colors.transparent,
           contentPadding: const EdgeInsets.symmetric(

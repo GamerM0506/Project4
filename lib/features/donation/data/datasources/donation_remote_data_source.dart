@@ -40,6 +40,15 @@ abstract class DonationRemoteDataSource {
 
   Future<DonationModel> getDonation(String donationId);
 
+  Future<DonationModel> scheduleDonation(
+    String donationId,
+    DateTime scheduledAt,
+  );
+
+  Future<DonationModel> cancelDonation(String donationId);
+
+  Future<List<DonationTimelineModel>> getDonationTimeline(String donationId);
+
   Future<List<InventoryItemModel>> getInventory({
     String? groupId,
     String? status,
@@ -47,6 +56,10 @@ abstract class DonationRemoteDataSource {
     int limit = 20,
     int offset = 0,
   });
+
+  Future<InventoryItemModel> getInventoryItem(String itemId);
+
+  Future<List<InventoryHistoryModel>> getInventoryHistory(String itemId);
 }
 
 class DonationRemoteDataSourceImpl implements DonationRemoteDataSource {
@@ -225,6 +238,54 @@ class DonationRemoteDataSourceImpl implements DonationRemoteDataSource {
   }
 
   @override
+  Future<DonationModel> scheduleDonation(
+    String donationId,
+    DateTime scheduledAt,
+  ) async {
+    try {
+      final response = await apiClient.dio.put(
+        '$_base/donations/$donationId/schedule',
+        data: {'scheduled_at': scheduledAt.toUtc().toIso8601String()},
+      );
+      return DonationModel.fromJson(_unwrap(response.data));
+    } on DioException catch (e) {
+      throw Exception(_errorMessage(e, 'Không lưu được lịch tiếp nhận'));
+    }
+  }
+
+  @override
+  Future<DonationModel> cancelDonation(String donationId) async {
+    try {
+      final response = await apiClient.dio.put(
+        '$_base/donations/$donationId/cancel',
+      );
+      return DonationModel.fromJson(_unwrap(response.data));
+    } on DioException catch (e) {
+      throw Exception(_errorMessage(e, 'Không hủy được đơn quyên góp'));
+    }
+  }
+
+  @override
+  Future<List<DonationTimelineModel>> getDonationTimeline(
+    String donationId,
+  ) async {
+    try {
+      final response = await apiClient.dio.get(
+        '$_base/donations/$donationId/timeline',
+      );
+      return _unwrapList(response.data)
+          .whereType<Map>()
+          .map(
+            (item) =>
+                DonationTimelineModel.fromJson(Map<String, dynamic>.from(item)),
+          )
+          .toList();
+    } on DioException catch (e) {
+      throw Exception(_errorMessage(e, 'Không tải được tiến trình quyên góp'));
+    }
+  }
+
+  @override
   Future<List<InventoryItemModel>> getInventory({
     String? groupId,
     String? status,
@@ -251,6 +312,34 @@ class DonationRemoteDataSourceImpl implements DonationRemoteDataSource {
           .toList();
     } on DioException catch (e) {
       throw Exception(_errorMessage(e, 'Không tải được kho đồ'));
+    }
+  }
+
+  @override
+  Future<InventoryItemModel> getInventoryItem(String itemId) async {
+    try {
+      final response = await apiClient.dio.get('$_base/inventory/$itemId');
+      return InventoryItemModel.fromJson(_unwrap(response.data));
+    } on DioException catch (e) {
+      throw Exception(_errorMessage(e, 'Không tải được vật phẩm'));
+    }
+  }
+
+  @override
+  Future<List<InventoryHistoryModel>> getInventoryHistory(String itemId) async {
+    try {
+      final response = await apiClient.dio.get(
+        '$_base/inventory/$itemId/history',
+      );
+      return _unwrapList(response.data)
+          .whereType<Map>()
+          .map(
+            (item) =>
+                InventoryHistoryModel.fromJson(Map<String, dynamic>.from(item)),
+          )
+          .toList();
+    } on DioException catch (e) {
+      throw Exception(_errorMessage(e, 'Không tải được lịch sử vật phẩm'));
     }
   }
 }

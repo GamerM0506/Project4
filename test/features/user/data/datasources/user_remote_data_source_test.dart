@@ -7,6 +7,7 @@ import 'package:project4_chosv/features/user/data/datasources/user_remote_data_s
 import 'package:project4_chosv/features/user/data/models/user_model.dart';
 
 class MockApiClient extends Mock implements ApiClient {}
+
 class MockDio extends Mock implements Dio {}
 
 void main() {
@@ -27,7 +28,7 @@ void main() {
       email: 'test@example.com',
       fullName: 'Test User',
     );
-    
+
     final tUserJson = {
       'id': '1',
       'email': 'test@example.com',
@@ -36,11 +37,13 @@ void main() {
 
     test('should perform a GET request for getProfile', () async {
       // arrange
-      when(() => mockDio.get(any())).thenAnswer((_) async => Response(
-            data: tUserJson,
-            statusCode: 200,
-            requestOptions: RequestOptions(path: ''),
-          ));
+      when(() => mockDio.get(any())).thenAnswer(
+        (_) async => Response(
+          data: {'data': tUserJson},
+          statusCode: 200,
+          requestOptions: RequestOptions(path: ''),
+        ),
+      );
       // act
       final result = await dataSource.getProfile();
       // assert
@@ -50,11 +53,13 @@ void main() {
 
     test('should perform a GET request for getPublicProfile', () async {
       // arrange
-      when(() => mockDio.get(any())).thenAnswer((_) async => Response(
-            data: tUserJson,
-            statusCode: 200,
-            requestOptions: RequestOptions(path: ''),
-          ));
+      when(() => mockDio.get(any())).thenAnswer(
+        (_) async => Response(
+          data: {'data': tUserJson},
+          statusCode: 200,
+          requestOptions: RequestOptions(path: ''),
+        ),
+      );
       // act
       final result = await dataSource.getPublicProfile('2');
       // assert
@@ -64,16 +69,43 @@ void main() {
 
     test('should perform a GET request for getMyActivities', () async {
       // arrange
-      when(() => mockDio.get(any())).thenAnswer((_) async => Response(
-            data: [{'activity': 'login'}],
-            statusCode: 200,
-            requestOptions: RequestOptions(path: ''),
-          ));
+      when(
+        () =>
+            mockDio.get(any(), queryParameters: any(named: 'queryParameters')),
+      ).thenAnswer(
+        (_) async => Response(
+          data: {
+            'data': {
+              'items': [
+                {
+                  'id': 1,
+                  'action': 'login',
+                  'ref_type': null,
+                  'ref_id': null,
+                  'created_at': '2026-07-25T10:00:00Z',
+                },
+              ],
+              'meta': {'page': 1, 'limit': 20, 'total': 1},
+            },
+          },
+          statusCode: 200,
+          requestOptions: RequestOptions(path: ''),
+        ),
+      );
       // act
-      final result = await dataSource.getMyActivities();
+      final result = await dataSource.getMyActivities(page: 1, limit: 20);
       // assert
-      verify(() => mockDio.get('${AppConstants.authApiBaseUrl}/profile/me/activities'));
-      expect(result.length, 1);
+      verify(
+        () => mockDio.get(
+          '${AppConstants.authApiBaseUrl}/profile/me/activities',
+          queryParameters: {'page': 1, 'limit': 20},
+        ),
+      );
+      expect(result.items.length, 1);
+      expect(result.items.single.action, 'login');
+      expect(result.page, 1);
+      expect(result.limit, 20);
+      expect(result.total, 1);
     });
   });
 }

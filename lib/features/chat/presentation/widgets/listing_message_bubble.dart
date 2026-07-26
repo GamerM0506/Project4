@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubit/chat_state.dart';
-import '../cubit/chat_cubit.dart';
 
 class ListingMessageBubble extends StatelessWidget {
   final ChatMessage message;
@@ -109,23 +107,9 @@ class ListingMessageBubble extends StatelessWidget {
                   ),
                   if (isAdmin && !isApproved) ...[
                     const Divider(height: 24),
-                    ElevatedButton(
-                      onPressed: () {
-                        context.read<ChatCubit>().approveDonation(message);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Đang duyệt sản phẩm vào kho chung...',
-                            ),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colorScheme.primary,
-                        foregroundColor: colorScheme.onPrimary,
-                        minimumSize: const Size.fromHeight(40),
-                      ),
-                      child: const Text('Duyệt & nhập kho'),
+                    Text(
+                      'Duyệt quyên góp trong mục quản lý nhóm. Trạng thái thẻ chat không được máy chủ hỗ trợ.',
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
                 ],

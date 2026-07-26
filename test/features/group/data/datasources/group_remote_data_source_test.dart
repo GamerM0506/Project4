@@ -4,6 +4,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:project4_chosv/core/constants/app_constants.dart';
 import 'package:project4_chosv/core/network/api_client.dart';
 import 'package:project4_chosv/features/group/data/datasources/group_remote_data_source.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MockApiClient extends Mock implements ApiClient {}
 
@@ -12,12 +13,49 @@ class MockDio extends Mock implements Dio {}
 void main() {
   late MockDio dio;
   late GroupRemoteDataSourceImpl dataSource;
+  late SharedPreferences preferences;
 
-  setUp(() {
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({AppConstants.keyUserId: 'user-a'});
+    preferences = await SharedPreferences.getInstance();
     final apiClient = MockApiClient();
     dio = MockDio();
     when(() => apiClient.dio).thenReturn(dio);
+    when(() => apiClient.sharedPreferences).thenReturn(preferences);
     dataSource = GroupRemoteDataSourceImpl(apiClient);
+  });
+
+  test('stores pending joins separately for each account', () async {
+    when(() => dio.post(any(), data: any(named: 'data'))).thenAnswer(
+      (_) async => Response(
+        data: {
+          'data': {
+            'id': '33333333-3333-3333-3333-333333333333',
+            'group_id': '11111111-1111-1111-1111-111111111111',
+            'user_id': '22222222-2222-2222-2222-222222222222',
+            'message': null,
+            'status': 'pending',
+            'reviewed_by': null,
+            'reviewed_at': null,
+            'created_at': '2026-07-24T00:00:00Z',
+          },
+        },
+        statusCode: 201,
+        requestOptions: RequestOptions(path: ''),
+      ),
+    );
+
+    await dataSource.joinGroup('11111111-1111-1111-1111-111111111111');
+    expect(
+      dataSource.hasPendingJoin('11111111-1111-1111-1111-111111111111'),
+      isTrue,
+    );
+
+    await preferences.setString(AppConstants.keyUserId, 'user-b');
+    expect(
+      dataSource.hasPendingJoin('11111111-1111-1111-1111-111111111111'),
+      isFalse,
+    );
   });
 
   test('loads membership fields from the real groups/me envelope', () async {

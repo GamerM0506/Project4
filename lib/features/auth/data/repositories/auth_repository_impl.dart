@@ -4,6 +4,7 @@ import '../datasources/auth_remote_data_source.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/entities/auth_entity.dart';
 import '../../domain/entities/two_factor_setup_entity.dart';
+import '../../../../core/network/api_error_parser.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
@@ -20,17 +21,7 @@ class AuthRepositoryImpl implements AuthRepository {
       final response = await remoteDataSource.login(email, phone, password);
       return Right(response);
     } on DioException catch (e) {
-      if (e.response != null && e.response?.data != null) {
-        final errorData = e.response?.data;
-        if (errorData is Map<String, dynamic> && errorData['detail'] != null) {
-          final detail = errorData['detail'];
-          if (detail is String) return Left(detail);
-          if (detail is List && detail.isNotEmpty) {
-            return Left(detail[0]['msg'] ?? 'Validation Error');
-          }
-        }
-      }
-      return const Left('Tài khoản hoặc mật khẩu không chính xác.');
+      return Left(parseApiError(e, 'Tài khoản hoặc mật khẩu không chính xác.'));
     } catch (e) {
       return Left('Đã xảy ra lỗi: ${e.toString()}');
     }
@@ -54,18 +45,11 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       return Right(response);
     } on DioException catch (e) {
-      if (e.response != null && e.response?.data != null) {
-        final errorData = e.response?.data;
-        if (errorData is Map<String, dynamic> && errorData['detail'] != null) {
-          final detail = errorData['detail'];
-          if (detail is String) return Left(detail);
-          if (detail is List && detail.isNotEmpty) {
-            return Left(detail[0]['msg'] ?? 'Validation Error');
-          }
-        }
-      }
-      return const Left(
-        'Đăng ký không thành công. Vui lòng kiểm tra lại thông tin.',
+      return Left(
+        parseApiError(
+          e,
+          'Đăng ký không thành công. Vui lòng kiểm tra lại thông tin.',
+        ),
       );
     } catch (e) {
       return Left('Đã xảy ra lỗi: ${e.toString()}');
@@ -78,14 +62,9 @@ class AuthRepositoryImpl implements AuthRepository {
       await remoteDataSource.verify(emailOrPhone, code);
       return const Right(null);
     } on DioException catch (e) {
-      if (e.response != null && e.response?.data != null) {
-        final errorData = e.response?.data;
-        if (errorData is Map<String, dynamic> && errorData['detail'] != null) {
-          final detail = errorData['detail'];
-          if (detail is String) return Left(detail);
-        }
-      }
-      return const Left('Mã xác thực không hợp lệ hoặc đã hết hạn.');
+      return Left(
+        parseApiError(e, 'Mã xác thực không hợp lệ hoặc đã hết hạn.'),
+      );
     } catch (e) {
       return Left('Đã xảy ra lỗi: ${e.toString()}');
     }
@@ -97,14 +76,12 @@ class AuthRepositoryImpl implements AuthRepository {
       await remoteDataSource.resendVerification(emailOrPhone);
       return const Right(null);
     } on DioException catch (e) {
-      if (e.response != null && e.response?.data != null) {
-        final errorData = e.response?.data;
-        if (errorData is Map<String, dynamic> && errorData['detail'] != null) {
-          final detail = errorData['detail'];
-          if (detail is String) return Left(detail);
-        }
-      }
-      return const Left('Không thể gửi lại mã xác thực. Vui lòng thử lại sau.');
+      return Left(
+        parseApiError(
+          e,
+          'Không thể gửi lại mã xác thực. Vui lòng thử lại sau.',
+        ),
+      );
     } catch (e) {
       return Left('Đã xảy ra lỗi: ${e.toString()}');
     }
@@ -116,15 +93,8 @@ class AuthRepositoryImpl implements AuthRepository {
       await remoteDataSource.forgotPassword(email);
       return const Right(null);
     } on DioException catch (e) {
-      if (e.response != null && e.response?.data != null) {
-        final errorData = e.response?.data;
-        if (errorData is Map<String, dynamic> && errorData['detail'] != null) {
-          final detail = errorData['detail'];
-          if (detail is String) return Left(detail);
-        }
-      }
-      return const Left(
-        'Không thể gửi mã khôi phục. Email có thể không tồn tại.',
+      return Left(
+        parseApiError(e, 'Không thể gửi mã khôi phục. Vui lòng thử lại.'),
       );
     } catch (e) {
       return Left('Đã xảy ra lỗi: ${e.toString()}');
@@ -140,14 +110,9 @@ class AuthRepositoryImpl implements AuthRepository {
       final resetToken = await remoteDataSource.verifyResetCode(email, code);
       return Right(resetToken);
     } on DioException catch (e) {
-      if (e.response != null && e.response?.data != null) {
-        final errorData = e.response?.data;
-        if (errorData is Map<String, dynamic> && errorData['detail'] != null) {
-          final detail = errorData['detail'];
-          if (detail is String) return Left(detail);
-        }
-      }
-      return const Left('Mã xác nhận không hợp lệ hoặc đã hết hạn.');
+      return Left(
+        parseApiError(e, 'Mã xác nhận không hợp lệ hoặc đã hết hạn.'),
+      );
     } catch (e) {
       return Left('Đã xảy ra lỗi: ${e.toString()}');
     }
@@ -169,14 +134,9 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       return const Right(null);
     } on DioException catch (e) {
-      if (e.response != null && e.response?.data != null) {
-        final errorData = e.response?.data;
-        if (errorData is Map<String, dynamic> && errorData['detail'] != null) {
-          final detail = errorData['detail'];
-          if (detail is String) return Left(detail);
-        }
-      }
-      return const Left('Không thể đổi mật khẩu. Vui lòng thử lại.');
+      return Left(
+        parseApiError(e, 'Không thể đặt lại mật khẩu. Vui lòng thử lại.'),
+      );
     } catch (e) {
       return Left('Đã xảy ra lỗi: ${e.toString()}');
     }
@@ -190,6 +150,10 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       await remoteDataSource.changePassword(currentPassword, newPassword);
       return const Right(null);
+    } on DioException catch (e) {
+      return Left(
+        parseApiError(e, 'Không thể đổi mật khẩu. Vui lòng thử lại.'),
+      );
     } catch (e) {
       return Left('Đã xảy ra lỗi: ${e.toString()}');
     }
@@ -275,20 +239,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   String _mapDioError(DioException e, String fallback) {
-    final data = e.response?.data;
-    if (data is Map) {
-      final error = data['error'] ?? data['detail'] ?? data['message'];
-      if (error is String && error.isNotEmpty) {
-        return _localizeTwoFactorError(error);
-      }
-      if (error is Map && error['message'] != null) {
-        return error['message'].toString();
-      }
-    }
-    if (e.response?.statusCode == 401) {
-      return 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.';
-    }
-    return fallback;
+    return _localizeTwoFactorError(parseApiError(e, fallback));
   }
 
   String _localizeTwoFactorError(String error) {

@@ -10,6 +10,8 @@ import '../widgets/group_dashboard_inventory.dart';
 import '../widgets/group_dashboard_posts.dart';
 import '../widgets/group_dashboard_members.dart';
 import '../widgets/group_dashboard_settings.dart';
+import '../../../user/presentation/cubit/user_cubit.dart';
+import '../../../user/presentation/cubit/user_state.dart';
 
 class GroupDashboardPage extends StatefulWidget {
   final String groupId;
@@ -21,6 +23,30 @@ class GroupDashboardPage extends StatefulWidget {
 }
 
 class _GroupDashboardPageState extends State<GroupDashboardPage> {
+  Future<Map<String, int>>? _statsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _statsFuture = _fetchStatsFromApi();
+  }
+
+  // Simulate API call for stats
+  Future<Map<String, int>> _fetchStatsFromApi() async {
+    try {
+      // TODO: Connect this to actual backend API when the endpoints are implemented
+      // e.g. await sl<GroupRemoteDataSource>().getGroupStats(widget.groupId);
+      await Future.delayed(
+        const Duration(milliseconds: 800),
+      ); // Mock network delay
+
+      // Return mocked API response data for now
+      return {'items': 45, 'pending_posts': 12, 'helped': 128};
+    } catch (e) {
+      return {'items': 0, 'pending_posts': 0, 'helped': 0};
+    }
+  }
+
   final List<_DashboardTab> _tabs = [
     _DashboardTab(
       icon: Icons.dashboard_outlined,
@@ -68,6 +94,34 @@ class _GroupDashboardPageState extends State<GroupDashboardPage> {
             );
           }
 
+          final userState = context.watch<UserCubit>().state;
+          final currentUserId = userState is UserLoaded
+              ? userState.user.id
+              : null;
+          final canModerate =
+              (currentGroup.myStatus == 'approved' &&
+                  (currentGroup.myRole == 'owner' ||
+                      currentGroup.myRole == 'moderator')) ||
+              (currentUserId != null && currentUserId == currentGroup.ownerId);
+          if (!canModerate) {
+            return Scaffold(
+              appBar: AppBar(title: const Text('Quản lý nhóm')),
+              body: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Bạn không có quyền truy cập trang này.'),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed: () => context.pop(),
+                      child: const Text('Quay lại'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
           return DefaultTabController(
             length: _tabs.length,
             child: Scaffold(
@@ -79,7 +133,7 @@ class _GroupDashboardPageState extends State<GroupDashboardPage> {
                 centerTitle: true,
                 bottom: TabBar(
                   isScrollable: true,
-                  tabAlignment: TabAlignment.start,
+                  tabAlignment: TabAlignment.center,
                   labelColor: const Color(0xFFB73A41),
                   unselectedLabelColor: Theme.of(
                     context,
@@ -130,46 +184,57 @@ class _GroupDashboardPageState extends State<GroupDashboardPage> {
           ),
           const SizedBox(height: 32),
 
-          LayoutBuilder(
-            builder: (context, constraints) {
-              int crossAxisCount = constraints.maxWidth > 600 ? 4 : 2;
-              return GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: crossAxisCount,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1.5,
-                children: [
-                  _buildStatCard(
-                    context,
-                    'Thành viên',
-                    '${group.memberCount}',
-                    Icons.people,
-                    colorScheme.primary,
-                  ),
-                  _buildStatCard(
-                    context,
-                    'Vật phẩm',
-                    '45',
-                    Icons.inventory_2,
-                    Colors.orange,
-                  ),
-                  _buildStatCard(
-                    context,
-                    'Bài viết chờ duyệt',
-                    '12',
-                    Icons.article,
-                    Colors.red,
-                  ),
-                  _buildStatCard(
-                    context,
-                    'Đã giúp',
-                    '128',
-                    Icons.volunteer_activism,
-                    Colors.teal,
-                  ),
-                ],
+          FutureBuilder<Map<String, int>>(
+            future: _statsFuture,
+            builder: (context, snapshot) {
+              final stats =
+                  snapshot.data ??
+                  {'items': 0, 'pending_posts': 0, 'helped': 0};
+              final isLoading =
+                  snapshot.connectionState == ConnectionState.waiting;
+
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  int crossAxisCount = constraints.maxWidth > 600 ? 4 : 2;
+                  return GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: crossAxisCount,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 1.5,
+                    children: [
+                      _buildStatCard(
+                        context,
+                        'Thành viên',
+                        '${group.memberCount}',
+                        Icons.people,
+                        colorScheme.primary,
+                      ),
+                      _buildStatCard(
+                        context,
+                        'Vật phẩm',
+                        isLoading ? '...' : '${stats['items']}',
+                        Icons.inventory_2,
+                        Colors.orange,
+                      ),
+                      _buildStatCard(
+                        context,
+                        'Bài viết chờ duyệt',
+                        isLoading ? '...' : '${stats['pending_posts']}',
+                        Icons.article,
+                        Colors.red,
+                      ),
+                      _buildStatCard(
+                        context,
+                        'Đã giúp',
+                        isLoading ? '...' : '${stats['helped']}',
+                        Icons.volunteer_activism,
+                        Colors.teal,
+                      ),
+                    ],
+                  );
+                },
               );
             },
           ),

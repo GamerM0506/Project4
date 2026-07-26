@@ -9,36 +9,26 @@ class HomeRepository {
   HomeRepository({required this.apiClient});
 
   Future<List<GroupModel>> getFeaturedGroups({int limit = 5}) async {
-    try {
-      final response = await apiClient.dio.get(
-        '${AppConstants.communityApiBaseUrl}/groups',
-        queryParameters: {'limit': limit},
-      );
-      if (response.statusCode == 200) {
-        final List data = response.data['data']['items'] ?? [];
-        return data.map((json) => GroupModel.fromJson(json)).toList();
-      }
-      return [];
-    } catch (e) {
-      print('Error fetching featured groups: $e');
-      return [];
-    }
+    final response = await apiClient.dio.get(
+      '${AppConstants.communityApiBaseUrl}/groups',
+      queryParameters: {'limit': limit},
+    );
+    final body = response.data;
+    final List data = body is Map && body['data'] is Map
+        ? (body['data']['items'] as List? ?? const [])
+        : const [];
+    return data.map((json) => GroupModel.fromJson(json)).toList();
   }
 
   Future<List<ListingModel>> getRecentItems({int limit = 5}) async {
-    try {
-      final response = await apiClient.dio.get(
-        '${AppConstants.marketplaceApiBaseUrl}/catalog',
-        queryParameters: {'limit': limit},
-      );
-      if (response.statusCode == 200) {
-        final List data = response.data['data'] ?? [];
-        return data.map((json) => ListingModel.fromJson(json)).toList();
-      }
-      return [];
-    } catch (e) {
-      print('Error fetching recent items: $e');
-      return [];
-    }
+    final response = await apiClient.dio.get(
+      '${AppConstants.marketplaceApiBaseUrl}/catalog',
+      queryParameters: {'limit': limit},
+    );
+    final body = response.data;
+    final List data = body is Map && body['data'] is List
+        ? body['data'] as List
+        : const [];
+    return data.map((json) => ListingModel.fromJson(json)).toList();
   }
 }

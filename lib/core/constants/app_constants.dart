@@ -1,8 +1,15 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
-
 class AppConstants {
-  static const String apiHost = '216.108.237.20';
-  static const String apiBaseUrl = 'http://$apiHost:8000/api';
+  static const String apiBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://216.108.237.20:8000/api',
+  );
+
+  static String get socketBaseUrl {
+    final uri = Uri.parse(apiBaseUrl);
+    return uri.replace(path: '', query: null, fragment: null).toString();
+  }
+
+  static String get apiHost => Uri.parse(apiBaseUrl).host;
 
   static const String authApiBaseUrl = '$apiBaseUrl/identity';
   static const String mediaApiBaseUrl = '$apiBaseUrl/media';
@@ -20,6 +27,9 @@ class AppConstants {
   static const String keyRefreshToken = 'REFRESH_TOKEN';
   static const String keyUserId = 'USER_ID';
   static const String keyTwoFactorEnabled = 'TWO_FACTOR_ENABLED';
+  static const String keySessionGeneration = 'SESSION_GENERATION';
+  static const String keyRememberMe = 'REMEMBER_ME';
+  static const String keyRememberedIdentifier = 'REMEMBERED_IDENTIFIER';
 
   static const String appName = 'ChoSV';
 }

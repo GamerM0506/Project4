@@ -4,6 +4,8 @@ import '../../domain/entities/request_entity.dart';
 import '../../domain/entities/category_entity.dart';
 import '../../domain/repositories/marketplace_repository.dart';
 import '../datasources/marketplace_remote_data_source.dart';
+import '../../domain/entities/delivery_confirmation_entity.dart';
+import '../../domain/entities/paginated_result.dart';
 
 class MarketplaceRepositoryImpl implements MarketplaceRepository {
   final MarketplaceRemoteDataSource remoteDataSource;
@@ -11,20 +13,38 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   MarketplaceRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Future<Either<String, List<ListingEntity>>> getCatalog({
-    String? category,
-    String? province,
+  Future<Either<String, PaginatedResult<ListingEntity>>> getCatalog({
+    String? categoryId,
+    String? provinceCode,
     String? groupId,
+    String? status,
+    int page = 1,
+    int limit = 20,
+    String? search,
   }) async {
     try {
       final items = await remoteDataSource.getCatalog(
-        category: category,
-        province: province,
+        categoryId: categoryId,
+        provinceCode: provinceCode,
         groupId: groupId,
+        status: status,
+        page: page,
+        limit: limit,
+        search: search,
       );
       return Right(items);
     } catch (e) {
       return Left(e.toString());
+    }
+  }
+
+  @override
+  Future<Either<String, void>> closeListing(String id) async {
+    try {
+      await remoteDataSource.closeListing(id);
+      return const Right(null);
+    } catch (e) {
+      return Left(_message(e));
     }
   }
 
@@ -100,10 +120,24 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   }
 
   @override
-  Future<Either<String, List<RequestEntity>>> getRequests() async {
+  Future<Either<String, PaginatedResult<RequestEntity>>> getRequests({
+    String? groupId,
+    String? listingId,
+    String? receiverId,
+    String? status,
+    int page = 1,
+    int limit = 20,
+  }) async {
     try {
-      final items = await remoteDataSource.getRequests();
-      return Right(items);
+      final models = await remoteDataSource.getRequests(
+        groupId: groupId,
+        listingId: listingId,
+        receiverId: receiverId,
+        status: status,
+        page: page,
+        limit: limit,
+      );
+      return Right(models);
     } catch (e) {
       return Left(e.toString());
     }
@@ -131,12 +165,9 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   }
 
   @override
-  Future<Either<String, void>> approveRequest(
-    String id,
-    String reviewedBy,
-  ) async {
+  Future<Either<String, void>> approveRequest(String id) async {
     try {
-      await remoteDataSource.approveRequest(id, reviewedBy);
+      await remoteDataSource.approveRequest(id);
       return const Right(null);
     } catch (e) {
       return Left(e.toString());
@@ -144,13 +175,9 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   }
 
   @override
-  Future<Either<String, void>> rejectRequest(
-    String id,
-    String reviewedBy,
-    String reason,
-  ) async {
+  Future<Either<String, void>> rejectRequest(String id, String reason) async {
     try {
-      await remoteDataSource.rejectRequest(id, reviewedBy, reason);
+      await remoteDataSource.rejectRequest(id, reason);
       return const Right(null);
     } catch (e) {
       return Left(e.toString());
@@ -170,11 +197,10 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   @override
   Future<Either<String, void>> scheduleRequest(
     String id,
-    String reviewedBy,
     DateTime scheduledAt,
   ) async {
     try {
-      await remoteDataSource.scheduleRequest(id, reviewedBy, scheduledAt);
+      await remoteDataSource.scheduleRequest(id, scheduledAt);
       return const Right(null);
     } catch (e) {
       return Left(e.toString());
@@ -184,20 +210,55 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   @override
   Future<Either<String, void>> completeRequest(
     String id,
-    String confirmedBy,
     String qrToken,
-    String photoUrl,
+    String? photoUrl,
+    String? note,
   ) async {
     try {
       await remoteDataSource.completeRequest(
         id,
-        confirmedBy,
-        qrToken,
-        photoUrl,
+        qrToken: qrToken,
+        photoUrl: photoUrl,
+        note: note,
       );
       return const Right(null);
     } catch (e) {
       return Left(e.toString());
     }
+  }
+
+  @override
+  Future<Either<String, void>> cancelRequest(String id) async {
+    try {
+      await remoteDataSource.cancelRequest(id);
+      return const Right(null);
+    } catch (e) {
+      return Left(_message(e));
+    }
+  }
+
+  @override
+  Future<Either<String, void>> noShowRequest(String id) async {
+    try {
+      await remoteDataSource.noShowRequest(id);
+      return const Right(null);
+    } catch (e) {
+      return Left(_message(e));
+    }
+  }
+
+  @override
+  Future<Either<String, DeliveryConfirmationEntity>> getDeliveryConfirmation(
+    String id,
+  ) async {
+    try {
+      return Right(await remoteDataSource.getDeliveryConfirmation(id));
+    } catch (e) {
+      return Left(_message(e));
+    }
+  }
+
+  String _message(Object error) {
+    return error.toString().replaceFirst('Exception: ', '');
   }
 }

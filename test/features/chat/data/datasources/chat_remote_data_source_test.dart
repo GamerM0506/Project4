@@ -61,7 +61,9 @@ void main() {
   });
 
   test('maps message ownership from the persisted user id', () async {
-    when(() => dio.get(any())).thenAnswer(
+    when(
+      () => dio.get(any(), queryParameters: any(named: 'queryParameters')),
+    ).thenAnswer(
       (_) async => Response(
         requestOptions: RequestOptions(path: ''),
         data: [
@@ -79,6 +81,12 @@ void main() {
     final result = await dataSource.getMessages('conversation-1');
 
     expect(result.single.isMine, isTrue);
+    verify(
+      () => dio.get(
+        '${AppConstants.chatApiBaseUrl}/conversations/conversation-1/messages',
+        queryParameters: {'limit': 50, 'offset': 0},
+      ),
+    ).called(1);
   });
 
   test('does not swallow backend errors when sending a message', () async {

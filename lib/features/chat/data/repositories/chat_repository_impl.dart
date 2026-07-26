@@ -28,10 +28,16 @@ class ChatRepositoryImpl implements ChatRepository {
 
   @override
   Future<Either<String, List<ChatMessage>>> getMessages(
-    String conversationId,
-  ) async {
+    String conversationId, {
+    int limit = 50,
+    int offset = 0,
+  }) async {
     try {
-      final messages = await remoteDataSource.getMessages(conversationId);
+      final messages = await remoteDataSource.getMessages(
+        conversationId,
+        limit: limit,
+        offset: offset,
+      );
       return Right(messages);
     } on DioException catch (e) {
       return Left(_mapDioError(e, 'Lỗi khi tải lịch sử tin nhắn'));

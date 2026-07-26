@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import '../entities/listing_entity.dart';
 import '../entities/category_entity.dart';
 import '../repositories/marketplace_repository.dart';
+import '../entities/paginated_result.dart';
 
 class GetCategoriesUseCase {
   final MarketplaceRepository repository;
@@ -16,17 +17,32 @@ class GetCatalogUseCase {
   final MarketplaceRepository repository;
   GetCatalogUseCase(this.repository);
 
-  Future<Either<String, List<ListingEntity>>> call({
-    String? category,
-    String? province,
+  Future<Either<String, PaginatedResult<ListingEntity>>> call({
+    String? categoryId,
+    String? provinceCode,
     String? groupId,
+    String? status,
+    int page = 1,
+    int limit = 20,
+    String? search,
   }) {
     return repository.getCatalog(
-      category: category,
-      province: province,
+      categoryId: categoryId,
+      provinceCode: provinceCode,
       groupId: groupId,
+      status: status,
+      page: page,
+      limit: limit,
+      search: search,
     );
   }
+}
+
+class CloseListingUseCase {
+  final MarketplaceRepository repository;
+  CloseListingUseCase(this.repository);
+
+  Future<Either<String, void>> call(String id) => repository.closeListing(id);
 }
 
 class GetListingDetailUseCase {
