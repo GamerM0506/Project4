@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../injection_container.dart';
+import '../../../../core/constants/app_constants.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../domain/entities/listing_entity.dart';
 import '../cubit/listing_detail_cubit.dart';
 import '../cubit/listing_detail_state.dart';
@@ -23,6 +26,14 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
     super.initState();
     _cubit.loadDetail(widget.listingId);
   }
+
+  bool _hasRequested(ListingDetailState state) => switch (state) {
+    ListingDetailLoaded(:final hasRequested) => hasRequested,
+    ListingRequestSubmitting(:final hasRequested) => hasRequested,
+    ListingRequestSuccess(:final hasRequested) => hasRequested,
+    ListingRequestFailure(:final hasRequested) => hasRequested,
+    _ => false,
+  };
 
   @override
   void dispose() {
@@ -189,7 +200,8 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
             actions: [
               IconButton(
                 icon: Icon(Icons.share, color: colorScheme.onSurface),
-                onPressed: () {},
+                onPressed: () =>
+                    Share.share('Vật phẩm trên ChoSV\nMã: ${widget.listingId}'),
               ),
             ],
           ),
@@ -287,7 +299,8 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                               children: [
                                 CircleAvatar(
                                   radius: 20,
-                                  backgroundColor: colorScheme.surfaceVariant,
+                                  backgroundColor:
+                                      colorScheme.surfaceContainerHighest,
                                   child: Icon(
                                     Icons.person,
                                     color: colorScheme.onSurfaceVariant,
@@ -316,7 +329,15 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                                   ),
                                 ),
                                 OutlinedButton(
-                                  onPressed: () {},
+                                  onPressed: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Chưa thể nhắn tin: vật phẩm không cung cấp mã cuộc trò chuyện.',
+                                        ),
+                                      ),
+                                    );
+                                  },
                                   style: OutlinedButton.styleFrom(
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(20),
@@ -359,6 +380,12 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
               final listing = _listingFromState(state);
               if (listing != null) {
                 final isSubmitting = state is ListingRequestSubmitting;
+                final hasRequested = _hasRequested(state);
+                final currentUserId = sl<SharedPreferences>().getString(
+                  AppConstants.keyUserId,
+                );
+                final isOwnListing =
+                    currentUserId != null && currentUserId == listing.createdBy;
                 final isAvailable =
                     listing.status == 'active' && listing.quantityAvailable > 0;
                 return Container(
@@ -368,14 +395,18 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                     color: colorScheme.surfaceContainerLowest,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         offset: const Offset(0, -4),
                         blurRadius: 12,
                       ),
                     ],
                   ),
                   child: ElevatedButton(
-                    onPressed: isSubmitting || !isAvailable
+                    onPressed:
+                        isSubmitting ||
+                            !isAvailable ||
+                            hasRequested ||
+                            isOwnListing
                         ? null
                         : _requestItem,
                     style: ElevatedButton.styleFrom(
@@ -393,7 +424,13 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : Text(
-                            isAvailable ? 'Nhận món này' : 'Đã hết vật phẩm',
+                            hasRequested
+                                ? 'Đã gửi yêu cầu'
+                                : isOwnListing
+                                ? 'Không thể tự yêu cầu'
+                                : isAvailable
+                                ? 'Nhận món này'
+                                : 'Đã hết vật phẩm',
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,

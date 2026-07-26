@@ -1,84 +1,171 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../../../injection_container.dart';
+import '../../../marketplace/domain/entities/request_entity.dart';
+import '../../../marketplace/presentation/cubit/my_requests_cubit.dart';
+import '../../../marketplace/presentation/cubit/my_requests_state.dart';
 
 class MyRequestsPage extends StatelessWidget {
   const MyRequestsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Yêu cầu của tôi'),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+    return BlocProvider(
+      create: (_) => sl<MyRequestsCubit>()..load(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Yêu cầu của tôi'),
+          centerTitle: true,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.pop(),
+          ),
         ),
-      ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: 2,
-        itemBuilder: (context, index) {
-          final items = [
-            {'title': 'Xin SGK Văn lớp 12', 'status': 'Đang chờ duyệt', 'date': '17/07/2026'},
-            {'title': 'Xin màn hình máy tính cũ', 'status': 'Đã được chấp nhận', 'date': '12/07/2026'},
-          ];
-          final item = items[index];
-          final isAccepted = item['status'] == 'Đã được chấp nhận';
-
-          return Card(
-            margin: const EdgeInsets.only(bottom: 16),
-            clipBehavior: Clip.antiAlias,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Row(
-              children: [
-                Container(
-                  width: 100,
-                  height: 100,
-                  color: colorScheme.surfaceContainerHighest,
-                  child: Icon(Icons.volunteer_activism, color: colorScheme.primary),
+        body: BlocConsumer<MyRequestsCubit, MyRequestsState>(
+          listener: (context, state) {
+            if (state.error != null && state.requests.isNotEmpty) {
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(state.error!)));
+            }
+          },
+          builder: (context, state) {
+            if (state.isLoading && state.requests.isEmpty) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (state.error != null && state.requests.isEmpty) {
+              return Center(
+                child: FilledButton.icon(
+                  onPressed: context.read<MyRequestsCubit>().load,
+                  icon: const Icon(Icons.refresh),
+                  label: Text(state.error!),
                 ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item['title']!,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text('Yêu cầu ngày: ${item['date']}', style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12)),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: isAccepted ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            item['status']!,
-                            style: TextStyle(
-                              color: isAccepted ? Colors.green : Colors.orange,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+              );
+            }
+            if (state.requests.isEmpty) {
+              return RefreshIndicator(
+                onRefresh: context.read<MyRequestsCubit>().load,
+                child: ListView(
+                  children: const [
+                    SizedBox(height: 180),
+                    Icon(Icons.inbox_outlined, size: 56),
+                    SizedBox(height: 12),
+                    Center(child: Text('Bạn chưa gửi yêu cầu nhận đồ nào.')),
+                  ],
                 ),
-              ],
-            ),
-          );
-        },
+              );
+            }
+            return RefreshIndicator(
+              onRefresh: context.read<MyRequestsCubit>().load,
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: state.requests.length,
+                itemBuilder: (context, index) {
+                  final request = state.requests[index];
+                  return _RequestCard(
+                    request: request,
+                    title: state.listingTitles[request.listingId] ?? 'Vật phẩm',
+                    isProcessing: state.processingId == request.id,
+                  );
+                },
+              ),
+            );
+          },
+        ),
       ),
     );
   }
+}
+
+class _RequestCard extends StatelessWidget {
+  final RequestEntity request;
+  final String title;
+  final bool isProcessing;
+
+  const _RequestCard({
+    required this.request,
+    required this.title,
+    required this.isProcessing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final canCancel = const {
+      'pending',
+      'approved',
+      'scheduled',
+    }.contains(request.status);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Chip(label: Text(_statusLabel(request.status))),
+              ],
+            ),
+            Text('Mã: ${request.code.isEmpty ? request.id : request.code}'),
+            Text('Số lượng: ${request.quantity}'),
+            if (request.reason.isNotEmpty) Text('Lý do: ${request.reason}'),
+            if (request.rejectReason?.isNotEmpty ?? false)
+              Text('Lý do từ chối: ${request.rejectReason}'),
+            if (request.scheduledAt != null)
+              Text('Lịch nhận: ${_date(request.scheduledAt!)}'),
+            Text('Ngày gửi: ${_date(request.createdAt)}'),
+            if (canCancel) ...[
+              const Divider(),
+              Align(
+                alignment: Alignment.centerRight,
+                child: OutlinedButton(
+                  onPressed: isProcessing
+                      ? null
+                      : () =>
+                            context.read<MyRequestsCubit>().cancel(request.id),
+                  child: isProcessing
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Hủy yêu cầu'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _statusLabel(String status) => switch (status) {
+  'pending' => 'Chờ duyệt',
+  'approved' => 'Đã duyệt',
+  'rejected' => 'Đã từ chối',
+  'scheduled' => 'Đã hẹn',
+  'completed' => 'Đã nhận',
+  'cancelled' => 'Đã hủy',
+  'no_show' => 'Không đến nhận',
+  _ => status,
+};
+
+String _date(DateTime date) {
+  final local = date.toLocal();
+  return '${local.day.toString().padLeft(2, '0')}/'
+      '${local.month.toString().padLeft(2, '0')}/${local.year} '
+      '${local.hour.toString().padLeft(2, '0')}:'
+      '${local.minute.toString().padLeft(2, '0')}';
 }

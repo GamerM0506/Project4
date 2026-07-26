@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/router/app_routes.dart';
+import '../../../../core/network/session_token.dart';
 import '../../../../features/user/presentation/cubit/user_cubit.dart';
 import '../../../../injection_container.dart';
 
@@ -48,8 +49,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
     final accessToken = prefs.getString(AppConstants.keyAccessToken);
     final refreshToken = prefs.getString(AppConstants.keyRefreshToken);
     final hasSession =
-        (accessToken?.isNotEmpty ?? false) ||
-        (refreshToken?.isNotEmpty ?? false);
+        isUsableAccessToken(accessToken) || (refreshToken?.isNotEmpty ?? false);
 
     if (hasSession) {
       await context.read<UserCubit>().fetchProfile();
@@ -60,9 +60,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
 
     final validAccessToken = prefs.getString(AppConstants.keyAccessToken);
     context.go(
-      validAccessToken != null && validAccessToken.isNotEmpty
-          ? AppRoutes.home
-          : AppRoutes.login,
+      isUsableAccessToken(validAccessToken) ? AppRoutes.home : AppRoutes.login,
     );
   }
 

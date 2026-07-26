@@ -85,6 +85,9 @@ class AuthInterceptor extends Interceptor {
       return handler.resolve(response);
     } catch (e) {
       if (e is DioException) {
+        if (e.response?.statusCode == 401) {
+          await _forceLogout();
+        }
         return handler.next(e);
       }
       return handler.next(err);
@@ -103,6 +106,8 @@ class AuthInterceptor extends Interceptor {
 
     try {
       final refreshToken = prefs.getString(AppConstants.keyRefreshToken);
+      final sessionGeneration =
+          prefs.getInt(AppConstants.keySessionGeneration) ?? 0;
       if (refreshToken == null || refreshToken.isEmpty) {
         success = false;
       } else {
@@ -119,7 +124,11 @@ class AuthInterceptor extends Interceptor {
         final access = data?['access_token']?.toString();
         final refresh = data?['refresh_token']?.toString();
 
-        if (access != null && access.isNotEmpty) {
+        final sessionUnchanged =
+            prefs.getString(AppConstants.keyRefreshToken) == refreshToken &&
+            (prefs.getInt(AppConstants.keySessionGeneration) ?? 0) ==
+                sessionGeneration;
+        if (access != null && access.isNotEmpty && sessionUnchanged) {
           await prefs.setString(AppConstants.keyAccessToken, access);
           if (refresh != null && refresh.isNotEmpty) {
             await prefs.setString(AppConstants.keyRefreshToken, refresh);
@@ -147,6 +156,10 @@ class AuthInterceptor extends Interceptor {
     await prefs.remove(AppConstants.keyRefreshToken);
     await prefs.remove(AppConstants.keyUserId);
     await prefs.remove(AppConstants.keyTwoFactorEnabled);
+    await prefs.setInt(
+      AppConstants.keySessionGeneration,
+      (prefs.getInt(AppConstants.keySessionGeneration) ?? 0) + 1,
+    );
     onSessionExpired?.call();
   }
 }

@@ -24,8 +24,9 @@ class HomeSliverAppBar extends StatelessWidget {
       title: BlocBuilder<UserCubit, UserState>(
         builder: (context, state) {
           final user = state.userOrNull;
-          final fullName =
-              (user?.fullName.isNotEmpty == true) ? user!.fullName : 'bạn';
+          final fullName = (user?.fullName.isNotEmpty == true)
+              ? user!.fullName
+              : 'bạn';
           final avatarUrl = user?.resolvedAvatarUrl;
           final firstName = fullName.trim().split(RegExp(r'\s+')).last;
 
@@ -86,38 +87,16 @@ class HomeSliverAppBar extends StatelessWidget {
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.search),
-          color: colorScheme.onSurfaceVariant,
-          onPressed: () {},
-        ),
-        IconButton(
           icon: const Icon(Icons.chat_bubble_outline),
           color: colorScheme.onSurfaceVariant,
           onPressed: () {
             context.push(AppRoutes.chatInbox);
           },
         ),
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.notifications_none),
-              color: colorScheme.onSurfaceVariant,
-              onPressed: () {},
-            ),
-            Positioned(
-              top: 12,
-              right: 12,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: colorScheme.primary,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          ],
+        IconButton(
+          icon: const Icon(Icons.notifications_none),
+          color: colorScheme.onSurfaceVariant,
+          onPressed: () => context.push(AppRoutes.notifications),
         ),
         const SizedBox(width: 12),
       ],

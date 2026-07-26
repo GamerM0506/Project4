@@ -132,6 +132,42 @@ class DonationRepositoryImpl implements DonationRepository {
   }
 
   @override
+  Future<Either<String, DonationModel>> scheduleDonation(
+    String donationId,
+    DateTime scheduledAt,
+  ) async {
+    try {
+      return Right(
+        await remoteDataSource.scheduleDonation(donationId, scheduledAt),
+      );
+    } catch (e) {
+      return Left(_mapError(e, 'Không lưu được lịch tiếp nhận'));
+    }
+  }
+
+  @override
+  Future<Either<String, DonationModel>> cancelDonation(
+    String donationId,
+  ) async {
+    try {
+      return Right(await remoteDataSource.cancelDonation(donationId));
+    } catch (e) {
+      return Left(_mapError(e, 'Không hủy được đơn quyên góp'));
+    }
+  }
+
+  @override
+  Future<Either<String, List<DonationTimelineModel>>> getDonationTimeline(
+    String donationId,
+  ) async {
+    try {
+      return Right(await remoteDataSource.getDonationTimeline(donationId));
+    } catch (e) {
+      return Left(_mapError(e, 'Không tải được tiến trình quyên góp'));
+    }
+  }
+
+  @override
   Future<Either<String, List<InventoryItemModel>>> getInventory({
     String? groupId,
     String? status,
@@ -150,6 +186,28 @@ class DonationRepositoryImpl implements DonationRepository {
       return Right(result);
     } catch (e) {
       return Left(_mapError(e, 'Không tải được kho đồ'));
+    }
+  }
+
+  @override
+  Future<Either<String, InventoryItemModel>> getInventoryItem(
+    String itemId,
+  ) async {
+    try {
+      return Right(await remoteDataSource.getInventoryItem(itemId));
+    } catch (e) {
+      return Left(_mapError(e, 'Không tải được vật phẩm'));
+    }
+  }
+
+  @override
+  Future<Either<String, List<InventoryHistoryModel>>> getInventoryHistory(
+    String itemId,
+  ) async {
+    try {
+      return Right(await remoteDataSource.getInventoryHistory(itemId));
+    } catch (e) {
+      return Left(_mapError(e, 'Không tải được lịch sử vật phẩm'));
     }
   }
 

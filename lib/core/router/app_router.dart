@@ -4,16 +4,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_routes.dart';
 import '../constants/app_constants.dart';
+import '../network/session_token.dart';
 import '../layout/main_layout.dart';
 import '../../injection_container.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/auth/presentation/pages/verification_page.dart';
 import '../../features/auth/presentation/pages/forgot_password_page.dart';
+import '../../features/auth/presentation/pages/change_password_page.dart';
 import '../../features/auth/presentation/pages/forgot_password_verification_page.dart';
 import '../../features/auth/presentation/pages/reset_password_page.dart';
-import '../../features/auth/presentation/pages/change_password_page.dart';
 import '../../features/auth/presentation/pages/two_factor_page.dart';
+import '../../features/auth/presentation/pages/login_two_factor_page.dart';
+import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/marketplace/presentation/pages/marketplace_page.dart';
 import '../../features/marketplace/presentation/pages/create_listing_page.dart';
@@ -34,6 +37,8 @@ import '../../features/user/presentation/pages/support_page.dart';
 import '../../features/user/presentation/pages/my_items_page.dart';
 import '../../features/user/presentation/pages/my_requests_page.dart';
 import '../../features/user/presentation/pages/saved_groups_page.dart';
+import '../../features/user/presentation/pages/activity_page.dart';
+import '../../features/notification/presentation/pages/notification_page.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'root',
@@ -86,9 +91,11 @@ final GoRouter appRouter = GoRouter(
   initialLocation: AppRoutes.splash,
   redirect: (context, state) {
     final prefs = sl<SharedPreferences>();
-    final hasSession =
-        (prefs.getString(AppConstants.keyAccessToken)?.isNotEmpty ?? false) ||
-        (prefs.getString(AppConstants.keyRefreshToken)?.isNotEmpty ?? false);
+    final hasValidAccess = isUsableAccessToken(
+      prefs.getString(AppConstants.keyAccessToken),
+    );
+    final hasRefresh =
+        prefs.getString(AppConstants.keyRefreshToken)?.isNotEmpty ?? false;
     final path = state.uri.path;
     final publicPaths = {
       AppRoutes.splash,
@@ -100,10 +107,15 @@ final GoRouter appRouter = GoRouter(
       AppRoutes.resetPassword,
     };
 
-    if (!hasSession && !publicPaths.contains(path)) {
-      return AppRoutes.login;
+    if (path == AppRoutes.loginTwoFactor) {
+      if (hasValidAccess) return AppRoutes.home;
+      return sl<AuthCubit>().hasActiveLoginChallenge ? null : AppRoutes.login;
     }
-    if (hasSession && path == AppRoutes.login) {
+
+    if (!hasValidAccess && !publicPaths.contains(path)) {
+      return hasRefresh ? AppRoutes.splash : AppRoutes.login;
+    }
+    if (hasValidAccess && path == AppRoutes.login) {
       return AppRoutes.splash;
     }
     return null;
@@ -235,6 +247,11 @@ final GoRouter appRouter = GoRouter(
                 slideUp: false,
               ),
             ),
+            GoRoute(
+              path: AppRoutes.activity,
+              pageBuilder: (context, state) =>
+                  _buildPageWithAnimation(const ActivityPage(), slideUp: false),
+            ),
           ],
         ),
       ],
@@ -262,8 +279,7 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.verify,
       parentNavigatorKey: _rootNavigatorKey,
       pageBuilder: (context, state) {
-        final emailOrPhone =
-            state.extra as String? ?? state.uri.queryParameters['email'] ?? '';
+        final emailOrPhone = state.extra as String? ?? '';
         return _buildPageWithAnimation(
           VerificationPage(emailOrPhone: emailOrPhone),
         );
@@ -290,14 +306,7 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.resetPassword,
       parentNavigatorKey: _rootNavigatorKey,
       pageBuilder: (context, state) {
-        final extraArgs = state.extra as Map<String, String>?;
-        final args =
-            extraArgs ??
-            {
-              'email': state.uri.queryParameters['email'] ?? '',
-              'code': state.uri.queryParameters['code'] ?? '',
-              'resetToken': state.uri.queryParameters['token'] ?? '',
-            };
+        final args = state.extra as Map<String, String>? ?? const {};
         return _buildPageWithAnimation(ResetPasswordPage(args: args));
       },
     ),
@@ -308,16 +317,16 @@ final GoRouter appRouter = GoRouter(
           _buildPageWithAnimation(const ChangePasswordPage()),
     ),
     GoRoute(
+      path: AppRoutes.loginTwoFactor,
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) =>
+          _buildPageWithAnimation(const LoginTwoFactorPage()),
+    ),
+    GoRoute(
       path: AppRoutes.twoFactor,
       parentNavigatorKey: _rootNavigatorKey,
       pageBuilder: (context, state) =>
           _buildPageWithAnimation(const TwoFactorPage()),
-    ),
-    GoRoute(
-      path: AppRoutes.productDetail,
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) =>
-          const Scaffold(body: Center(child: Text('Trang chi tiết vật phẩm'))),
     ),
     GoRoute(
       path: AppRoutes.chatInbox,
@@ -342,9 +351,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.notifications,
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) {
-        return const Scaffold(body: Center(child: Text('Trang thông báo')));
-      },
+      builder: (context, state) => const NotificationPage(),
     ),
   ],
 );

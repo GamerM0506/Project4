@@ -10,9 +10,10 @@ class HomeCubit extends Cubit<HomeState> {
   Future<void> fetchHomeData() async {
     emit(HomeLoading());
     try {
-      final groups = await repository.getFeaturedGroups(limit: 5);
-      final listings = await repository.getRecentItems(limit: 5);
-      
+      final groupsFuture = repository.getFeaturedGroups(limit: 5);
+      final listingsFuture = repository.getRecentItems(limit: 5);
+      final groups = await groupsFuture;
+      final listings = await listingsFuture;
       emit(HomeLoaded(groups: groups, listings: listings));
     } catch (e) {
       emit(HomeError(e.toString()));

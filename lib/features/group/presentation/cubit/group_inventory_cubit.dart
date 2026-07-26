@@ -10,14 +10,18 @@ class GroupInventoryCubit extends Cubit<GroupInventoryState> {
   final GetInventoryUseCase getInventoryUseCase;
   final ReviewDonationUseCase reviewDonationUseCase;
   final CheckDonationItemUseCase checkDonationItemUseCase;
+  final ScheduleDonationUseCase scheduleDonationUseCase;
   final CreateListingUseCase createListingUseCase;
+  final GetCategoriesUseCase getCategoriesUseCase;
 
   GroupInventoryCubit({
     required this.getDonationsUseCase,
     required this.getInventoryUseCase,
     required this.reviewDonationUseCase,
     required this.checkDonationItemUseCase,
+    required this.scheduleDonationUseCase,
     required this.createListingUseCase,
+    required this.getCategoriesUseCase,
   }) : super(GroupInventoryInitial());
 
   Future<void> fetchInventory(String groupId) async {
@@ -91,30 +95,72 @@ class GroupInventoryCubit extends Cubit<GroupInventoryState> {
     );
   }
 
+  Future<void> schedule(
+    String groupId,
+    String donationId,
+    DateTime scheduledAt,
+  ) async {
+    final result = await scheduleDonationUseCase(donationId, scheduledAt);
+    await result.fold(
+      (error) async => emit(GroupInventoryError(error)),
+      (_) async => fetchInventory(groupId),
+    );
+  }
+
   Future<void> publish(String groupId, InventoryItemModel item) async {
     final current = state;
-    final imageUrls = current is GroupInventoryLoaded
-        ? current.donations
-              .expand((donation) => donation.items)
-              .where((donationItem) => donationItem.id == item.donationItemId)
-              .expand((donationItem) => donationItem.images)
-              .map((image) => image.imageUrl)
-              .where((url) => url.isNotEmpty)
-              .toList()
-        : <String>[];
+    if (current is! GroupInventoryLoaded ||
+        current.publishingItemId != null ||
+        item.status != 'in_stock') {
+      return;
+    }
+    emit(
+      GroupInventoryLoaded(
+        donations: current.donations,
+        items: current.items,
+        publishingItemId: item.id,
+      ),
+    );
+    final imageUrls = current.donations
+        .expand((donation) => donation.items)
+        .where((donationItem) => donationItem.id == item.donationItemId)
+        .expand((donationItem) => donationItem.images)
+        .map((image) => image.imageUrl)
+        .where((url) => url.isNotEmpty)
+        .toList();
+    String categoryId = item.categoryId ?? '';
+    if (categoryId.isEmpty) {
+      final catResult = await getCategoriesUseCase();
+      catResult.fold((error) => null, (cats) {
+        if (cats.isNotEmpty) {
+          final khac = cats.firstWhere(
+            (c) => c.slug == 'khac',
+            orElse: () => cats.first,
+          );
+          categoryId = khac.id;
+        }
+      });
+    }
+
     final result = await createListingUseCase(
       item.id,
       groupId,
       item.name,
       '',
-      item.categoryId ?? '',
+      categoryId,
       item.condition,
       item.quantity,
       '',
       imageUrls: imageUrls,
     );
     await result.fold(
-      (error) async => emit(GroupInventoryError(error)),
+      (error) async => emit(
+        GroupInventoryLoaded(
+          donations: current.donations,
+          items: current.items,
+          actionError: error,
+        ),
+      ),
       (_) async => fetchInventory(groupId),
     );
   }

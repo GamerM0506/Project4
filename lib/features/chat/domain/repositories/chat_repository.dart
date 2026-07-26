@@ -6,7 +6,11 @@ abstract class ChatRepository {
   Future<Either<String, List<ConversationEntity>>> getConversations({
     String? groupId,
   });
-  Future<Either<String, List<ChatMessage>>> getMessages(String conversationId);
+  Future<Either<String, List<ChatMessage>>> getMessages(
+    String conversationId, {
+    int limit = 50,
+    int offset = 0,
+  });
   Future<Either<String, ChatMessage>> sendMessage(
     String conversationId,
     String content, {

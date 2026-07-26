@@ -6,7 +6,11 @@ import '../../presentation/cubit/chat_state.dart';
 
 abstract class ChatRemoteDataSource {
   Future<List<ConversationModel>> getConversations({String? groupId});
-  Future<List<ChatMessage>> getMessages(String conversationId);
+  Future<List<ChatMessage>> getMessages(
+    String conversationId, {
+    int limit = 50,
+    int offset = 0,
+  });
   Future<ChatMessage> sendMessage(
     String conversationId,
     String content, {
@@ -36,11 +40,16 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
   }
 
   @override
-  Future<List<ChatMessage>> getMessages(String conversationId) async {
+  Future<List<ChatMessage>> getMessages(
+    String conversationId, {
+    int limit = 50,
+    int offset = 0,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     final currentUserId = prefs.getString(AppConstants.keyUserId);
     final response = await apiClient.dio.get(
       '${AppConstants.chatApiBaseUrl}/conversations/$conversationId/messages',
+      queryParameters: {'limit': limit, 'offset': offset},
     );
     final data = response.data is List
         ? response.data as List

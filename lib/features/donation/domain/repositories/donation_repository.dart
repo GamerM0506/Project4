@@ -38,6 +38,17 @@ abstract class DonationRepository {
 
   Future<Either<String, DonationModel>> getDonation(String donationId);
 
+  Future<Either<String, DonationModel>> scheduleDonation(
+    String donationId,
+    DateTime scheduledAt,
+  );
+
+  Future<Either<String, DonationModel>> cancelDonation(String donationId);
+
+  Future<Either<String, List<DonationTimelineModel>>> getDonationTimeline(
+    String donationId,
+  );
+
   Future<Either<String, List<InventoryItemModel>>> getInventory({
     String? groupId,
     String? status,
@@ -45,6 +56,12 @@ abstract class DonationRepository {
     int limit,
     int offset,
   });
+
+  Future<Either<String, InventoryItemModel>> getInventoryItem(String itemId);
+
+  Future<Either<String, List<InventoryHistoryModel>>> getInventoryHistory(
+    String itemId,
+  );
 
   /// Moderator: accept donation + check all items → import inventory.
   Future<Either<String, DonationModel>> acceptDonationToInventory({

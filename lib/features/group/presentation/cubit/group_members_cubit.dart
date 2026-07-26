@@ -8,6 +8,8 @@ class GroupMembersCubit extends Cubit<GroupMembersState> {
   final GetMembersUseCase getMembersUseCase;
   final UpdateMemberRoleUseCase updateMemberRoleUseCase;
   final UpdateMemberStatusUseCase updateMemberStatusUseCase;
+  static const _limit = 20;
+  String? _status;
 
   GroupMembersCubit({
     required this.getMembersUseCase,
@@ -16,12 +18,50 @@ class GroupMembersCubit extends Cubit<GroupMembersState> {
   }) : super(GroupMembersInitial());
 
   Future<void> fetchMembers(String groupId, {String? status}) async {
+    _status = status;
     emit(GroupMembersLoading());
-    final result = await getMembersUseCase(groupId, status: status);
+    final result = await getMembersUseCase(
+      groupId,
+      status: status,
+      limit: _limit,
+    );
 
     result.fold(
       (failure) => emit(GroupMembersError(failure)),
-      (members) => emit(GroupMembersLoaded(members)),
+      (members) => emit(
+        GroupMembersLoaded(members, hasReachedMax: members.length < _limit),
+      ),
+    );
+  }
+
+  Future<void> loadMore(String groupId) async {
+    final current = state;
+    if (current is! GroupMembersLoaded ||
+        current.hasReachedMax ||
+        current.isLoadingMore) {
+      return;
+    }
+    emit(
+      GroupMembersLoaded(
+        current.members,
+        hasReachedMax: current.hasReachedMax,
+        isLoadingMore: true,
+      ),
+    );
+    final result = await getMembersUseCase(
+      groupId,
+      status: _status,
+      limit: _limit,
+      offset: current.members.length,
+    );
+    result.fold(
+      (failure) => emit(GroupMembersError(failure)),
+      (members) => emit(
+        GroupMembersLoaded([
+          ...current.members,
+          ...members,
+        ], hasReachedMax: members.length < _limit),
+      ),
     );
   }
 
@@ -29,7 +69,7 @@ class GroupMembersCubit extends Cubit<GroupMembersState> {
     final result = await updateMemberRoleUseCase(groupId, userId, role);
     result.fold((error) => emit(GroupMembersError(error)), (_) {
       // Re-fetch members to reflect changes
-      fetchMembers(groupId);
+      fetchMembers(groupId, status: _status);
     });
   }
 
@@ -37,7 +77,15 @@ class GroupMembersCubit extends Cubit<GroupMembersState> {
     // Set status to banned or left
     final result = await updateMemberStatusUseCase(groupId, userId, 'banned');
     result.fold((error) => emit(GroupMembersError(error)), (_) {
-      fetchMembers(groupId);
+      fetchMembers(groupId, status: _status);
     });
+  }
+
+  Future<void> unbanMember(String groupId, String userId) async {
+    final result = await updateMemberStatusUseCase(groupId, userId, 'approved');
+    result.fold(
+      (error) => emit(GroupMembersError(error)),
+      (_) => fetchMembers(groupId, status: _status),
+    );
   }
 }

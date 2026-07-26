@@ -57,6 +57,7 @@ class GroupRepositoryImpl implements GroupRepository {
                 .where((item) => item.id == groupId)
                 .firstOrNull;
             if (membership != null) {
+              await remoteDataSource.clearPendingJoin(groupId);
               return Right(
                 group.copyWith(
                   myRole: membership.myRole,
@@ -72,6 +73,9 @@ class GroupRepositoryImpl implements GroupRepository {
         if (e.response?.statusCode != 401 && e.response?.statusCode != 403) {
           rethrow;
         }
+      }
+      if (remoteDataSource.hasPendingJoin(groupId)) {
+        return Right(group.copyWith(myStatus: 'pending'));
       }
       return Right(group);
     } on DioException catch (e) {

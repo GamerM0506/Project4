@@ -103,6 +103,12 @@ class DonationModel {
   final String title;
   final String? description;
   final String status;
+  final String pickupMethod;
+  final String? pickupAddress;
+  final DateTime? scheduledAt;
+  final DateTime? receivedAt;
+  final String? rejectedReason;
+  final DateTime? createdAt;
   final List<DonationItemModel> items;
 
   const DonationModel({
@@ -113,6 +119,12 @@ class DonationModel {
     required this.title,
     this.description,
     required this.status,
+    this.pickupMethod = 'drop_off',
+    this.pickupAddress,
+    this.scheduledAt,
+    this.receivedAt,
+    this.rejectedReason,
+    this.createdAt,
     this.items = const [],
   });
 
@@ -135,6 +147,12 @@ class DonationModel {
       title: json['title']?.toString() ?? '',
       description: json['description']?.toString(),
       status: json['status']?.toString() ?? 'pending',
+      pickupMethod: json['pickup_method']?.toString() ?? 'drop_off',
+      pickupAddress: json['pickup_address']?.toString(),
+      scheduledAt: DateTime.tryParse(json['scheduled_at']?.toString() ?? ''),
+      receivedAt: DateTime.tryParse(json['received_at']?.toString() ?? ''),
+      rejectedReason: json['rejected_reason']?.toString(),
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? ''),
       items: items,
     );
   }
@@ -151,6 +169,9 @@ class InventoryItemModel {
   final int quantity;
   final String condition;
   final String status;
+  final String? note;
+  final DateTime? importedAt;
+  final DateTime? updatedAt;
 
   const InventoryItemModel({
     required this.id,
@@ -163,6 +184,9 @@ class InventoryItemModel {
     required this.quantity,
     required this.condition,
     required this.status,
+    this.note,
+    this.importedAt,
+    this.updatedAt,
   });
 
   factory InventoryItemModel.fromJson(Map<String, dynamic> json) {
@@ -177,6 +201,76 @@ class InventoryItemModel {
       quantity: (json['quantity'] as num?)?.toInt() ?? 1,
       condition: json['condition']?.toString() ?? 'used',
       status: json['status']?.toString() ?? 'in_stock',
+      note: json['note']?.toString(),
+      importedAt: DateTime.tryParse(json['imported_at']?.toString() ?? ''),
+      updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? ''),
+    );
+  }
+}
+
+class DonationTimelineModel {
+  final DateTime at;
+  final String event;
+  final String? note;
+  final String? actorId;
+  final String? refType;
+  final String? refId;
+
+  const DonationTimelineModel({
+    required this.at,
+    required this.event,
+    this.note,
+    this.actorId,
+    this.refType,
+    this.refId,
+  });
+
+  factory DonationTimelineModel.fromJson(Map<String, dynamic> json) {
+    return DonationTimelineModel(
+      at: DateTime.parse(json['at'].toString()),
+      event: json['event']?.toString() ?? '',
+      note: json['note']?.toString(),
+      actorId: json['actor_id']?.toString(),
+      refType: json['ref_type']?.toString(),
+      refId: json['ref_id']?.toString(),
+    );
+  }
+}
+
+class InventoryHistoryModel {
+  final int id;
+  final String inventoryItemId;
+  final String? fromStatus;
+  final String toStatus;
+  final String? actorId;
+  final String? refType;
+  final String? refId;
+  final String? note;
+  final DateTime createdAt;
+
+  const InventoryHistoryModel({
+    required this.id,
+    required this.inventoryItemId,
+    this.fromStatus,
+    required this.toStatus,
+    this.actorId,
+    this.refType,
+    this.refId,
+    this.note,
+    required this.createdAt,
+  });
+
+  factory InventoryHistoryModel.fromJson(Map<String, dynamic> json) {
+    return InventoryHistoryModel(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      inventoryItemId: json['inventory_item_id']?.toString() ?? '',
+      fromStatus: json['from_status']?.toString(),
+      toStatus: json['to_status']?.toString() ?? '',
+      actorId: json['actor_id']?.toString(),
+      refType: json['ref_type']?.toString(),
+      refId: json['ref_id']?.toString(),
+      note: json['note']?.toString(),
+      createdAt: DateTime.parse(json['created_at'].toString()),
     );
   }
 }

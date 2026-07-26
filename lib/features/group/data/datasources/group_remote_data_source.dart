@@ -58,10 +58,13 @@ abstract class GroupRemoteDataSource {
   Future<void> updateMemberStatus(String groupId, String userId, String status);
   Future<void> approveGroup(String groupId);
   Future<void> suspendGroup(String groupId);
+  bool hasPendingJoin(String groupId);
+  Future<void> clearPendingJoin(String groupId);
 }
 
 class GroupRemoteDataSourceImpl implements GroupRemoteDataSource {
   final ApiClient apiClient;
+  static const _pendingGroupsKeyPrefix = 'PENDING_GROUP_IDS_';
 
   GroupRemoteDataSourceImpl(this.apiClient);
 
@@ -219,10 +222,43 @@ class GroupRemoteDataSourceImpl implements GroupRemoteDataSource {
         data: message != null ? {'message': message} : {},
       );
       final dataEnvelope = response.data as Map<String, dynamic>;
-      return JoinRequestModel.fromJson(dataEnvelope['data']);
+      final request = JoinRequestModel.fromJson(dataEnvelope['data']);
+      await _setPendingJoin(groupId, true);
+      return request;
     } on DioException catch (e) {
       throw Exception(_communityError(e, 'Lỗi khi xin tham gia nhóm'));
     }
+  }
+
+  String? get _pendingGroupsKey {
+    final userId = apiClient.sharedPreferences.getString(
+      AppConstants.keyUserId,
+    );
+    return userId == null || userId.isEmpty
+        ? null
+        : '$_pendingGroupsKeyPrefix$userId';
+  }
+
+  @override
+  bool hasPendingJoin(String groupId) {
+    final key = _pendingGroupsKey;
+    return key != null &&
+        (apiClient.sharedPreferences.getStringList(key) ?? const []).contains(
+          groupId,
+        );
+  }
+
+  @override
+  Future<void> clearPendingJoin(String groupId) =>
+      _setPendingJoin(groupId, false);
+
+  Future<void> _setPendingJoin(String groupId, bool pending) async {
+    final key = _pendingGroupsKey;
+    if (key == null) return;
+    final ids = (apiClient.sharedPreferences.getStringList(key) ?? const [])
+        .toSet();
+    pending ? ids.add(groupId) : ids.remove(groupId);
+    await apiClient.sharedPreferences.setStringList(key, ids.toList());
   }
 
   @override

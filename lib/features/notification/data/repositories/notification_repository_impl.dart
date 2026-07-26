@@ -10,9 +10,15 @@ class NotificationRepositoryImpl implements NotificationRepository {
   NotificationRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Future<Either<String, List<NotificationEntity>>> getNotifications() async {
+  Future<Either<String, List<NotificationEntity>>> getNotifications({
+    int limit = 30,
+    int offset = 0,
+  }) async {
     try {
-      final notifications = await remoteDataSource.getNotifications();
+      final notifications = await remoteDataSource.getNotifications(
+        limit: limit,
+        offset: offset,
+      );
       return Right(notifications);
     } on DioException catch (e) {
       return Left(_mapDioError(e, 'Lỗi khi tải thông báo'));
@@ -42,7 +48,10 @@ class NotificationRepositoryImpl implements NotificationRepository {
   }
 
   @override
-  Future<Either<String, void>> registerDeviceToken(String token, String deviceType) async {
+  Future<Either<String, void>> registerDeviceToken(
+    String token,
+    String deviceType,
+  ) async {
     try {
       await remoteDataSource.registerDeviceToken(token, deviceType);
       return const Right(null);

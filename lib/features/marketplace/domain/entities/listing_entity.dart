@@ -35,19 +35,19 @@ class ListingEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        inventoryItemId,
-        groupId,
-        title,
-        description,
-        categoryId,
-        condition,
-        quantityTotal,
-        quantityAvailable,
-        status,
-        createdBy,
-        createdAt,
-        updatedAt,
-        imageUrl,
-      ];
+    id,
+    inventoryItemId,
+    groupId,
+    title,
+    description,
+    categoryId,
+    condition,
+    quantityTotal,
+    quantityAvailable,
+    status,
+    createdBy,
+    createdAt,
+    updatedAt,
+    imageUrl,
+  ];
 }

@@ -1,6 +1,18 @@
-# project4_chosv
+# ChoSV Flutter
 
-A new Flutter project.
+## Runtime configuration
+
+Override the development API endpoint with
+`--dart-define=API_BASE_URL=https://example.com/api`. The current HTTP server is
+kept only as the development fallback.
+
+Push notification runtime registration is not enabled yet. The repository and
+device-token API contract are ready for a real FCM token, but this project has
+no Firebase configuration files or credentials. Do not register a placeholder
+token.
+
+Chat image sending is disabled in the UI because the backend does not yet link
+uploaded media to a chat message.
 
 ## Getting Started
 

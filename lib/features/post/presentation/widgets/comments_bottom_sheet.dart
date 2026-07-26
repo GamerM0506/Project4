@@ -96,78 +96,95 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                         ),
                       );
                     }
-                    return ListView.separated(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: comments.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 16),
-                      itemBuilder: (context, index) {
-                        final comment = comments[index];
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: colorScheme.primaryContainer,
-                              child: Text(
-                                comment.authorName != null
-                                    ? comment.authorName![0].toUpperCase()
-                                    : comment.authorId
-                                          .substring(0, 2)
-                                          .toUpperCase(),
-                                style: TextStyle(
-                                  color: colorScheme.onPrimaryContainer,
-                                  fontSize: 12,
+                    return NotificationListener<ScrollNotification>(
+                      onNotification: (notification) {
+                        if (notification.metrics.extentAfter < 200) {
+                          context.read<PostCommentsCubit>().loadMore(
+                            widget.postId,
+                          );
+                        }
+                        return false;
+                      },
+                      child: ListView.separated(
+                        padding: const EdgeInsets.all(16),
+                        itemCount:
+                            comments.length + (state.isLoadingMore ? 1 : 0),
+                        separatorBuilder: (_, _) => const SizedBox(height: 16),
+                        itemBuilder: (context, index) {
+                          if (index == comments.length) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
+                          final comment = comments[index];
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                backgroundColor: colorScheme.primaryContainer,
+                                child: Text(
+                                  comment.authorName != null
+                                      ? comment.authorName![0].toUpperCase()
+                                      : comment.authorId
+                                            .substring(0, 2)
+                                            .toUpperCase(),
+                                  style: TextStyle(
+                                    color: colorScheme.onPrimaryContainer,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: colorScheme.surfaceContainerHighest
-                                          .withValues(alpha: 0.3),
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          comment.authorName ??
-                                              'Người dùng ${comment.authorId.substring(0, 4)}',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 13,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: colorScheme
+                                            .surfaceContainerHighest
+                                            .withValues(alpha: 0.3),
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            comment.authorName ??
+                                                'Người dùng ${comment.authorId.substring(0, 4)}',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13,
+                                            ),
                                           ),
+                                          const SizedBox(height: 4),
+                                          Text(comment.content),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: 12),
+                                      child: Text(
+                                        timeago.format(
+                                          comment.createdAt,
+                                          locale: 'vi',
                                         ),
-                                        const SizedBox(height: 4),
-                                        Text(comment.content),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Padding(
-                                    padding: const EdgeInsets.only(left: 12),
-                                    child: Text(
-                                      timeago.format(
-                                        comment.createdAt,
-                                        locale: 'vi',
-                                      ),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: colorScheme.onSurfaceVariant,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: colorScheme.onSurfaceVariant,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        );
-                      },
+                            ],
+                          );
+                        },
+                      ),
                     );
                   }
                   return const SizedBox.shrink();

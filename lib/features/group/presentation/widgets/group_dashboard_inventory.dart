@@ -6,6 +6,7 @@ import '../../../donation/data/models/donation_model.dart';
 import '../../data/models/group_model.dart';
 import '../cubit/group_inventory_cubit.dart';
 import '../cubit/group_inventory_state.dart';
+import 'group_requests_tab.dart';
 
 class GroupDashboardInventory extends StatelessWidget {
   final GroupModel group;
@@ -14,9 +15,46 @@ class GroupDashboardInventory extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => sl<GroupInventoryCubit>()..fetchInventory(group.id),
-      child: _InventoryView(group: group),
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'Quản lý Vật phẩm',
+              style: textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          TabBar(
+            labelColor: const Color(0xFFB73A41),
+            unselectedLabelColor: colorScheme.onSurfaceVariant,
+            indicatorColor: const Color(0xFFB73A41),
+            tabs: const [
+              Tab(text: 'Kho đồ'),
+              Tab(text: 'Yêu cầu nhận đồ'),
+            ],
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                BlocProvider(
+                  create: (_) =>
+                      sl<GroupInventoryCubit>()..fetchInventory(group.id),
+                  child: _InventoryView(group: group),
+                ),
+                GroupRequestsTab(groupId: group.id),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -34,6 +72,10 @@ class _InventoryView extends StatelessWidget {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text(state.message)));
+        } else if (state is GroupInventoryLoaded && state.actionError != null) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(state.actionError!)));
         }
       },
       builder: (context, state) {
@@ -96,7 +138,12 @@ class _InventoryView extends StatelessWidget {
                     const _EmptyCard(text: 'Kho đồ đang trống')
                   else
                     ...state.items.map(
-                      (item) => _InventoryCard(groupId: group.id, item: item),
+                      (item) => _InventoryCard(
+                        groupId: group.id,
+                        item: item,
+                        isPublishing: state.publishingItemId == item.id,
+                        publishLocked: state.publishingItemId != null,
+                      ),
                     ),
                 ],
               ),
@@ -183,6 +230,15 @@ class _DonationCard extends StatelessWidget {
               Text(donation.description!),
             ],
             const SizedBox(height: 12),
+            if (donation.status == 'accepted')
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.tonalIcon(
+                  onPressed: () => _schedule(context),
+                  icon: const Icon(Icons.event_outlined),
+                  label: const Text('Đặt lịch tiếp nhận'),
+                ),
+              ),
             if (donation.status == 'pending')
               Wrap(
                 spacing: 8,
@@ -239,6 +295,26 @@ class _DonationCard extends StatelessWidget {
       donation.id,
       'rejected',
       reason: reason,
+    );
+  }
+
+  Future<void> _schedule(BuildContext context) async {
+    final date = await showDatePicker(
+      context: context,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDate: DateTime.now().add(const Duration(days: 1)),
+    );
+    if (date == null || !context.mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 9, minute: 0),
+    );
+    if (time == null || !context.mounted) return;
+    await context.read<GroupInventoryCubit>().schedule(
+      groupId,
+      donation.id,
+      DateTime(date.year, date.month, date.day, time.hour, time.minute),
     );
   }
 
@@ -318,8 +394,15 @@ class _DonationCard extends StatelessWidget {
 class _InventoryCard extends StatelessWidget {
   final String groupId;
   final InventoryItemModel item;
+  final bool isPublishing;
+  final bool publishLocked;
 
-  const _InventoryCard({required this.groupId, required this.item});
+  const _InventoryCard({
+    required this.groupId,
+    required this.item,
+    required this.isPublishing,
+    required this.publishLocked,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -333,10 +416,15 @@ class _InventoryCard extends StatelessWidget {
           '${item.code} • SL ${item.quantity} • ${_conditionText(item.condition)}',
         ),
         trailing: FilledButton.tonal(
-          onPressed: canPublish
+          onPressed: canPublish && !publishLocked
               ? () => context.read<GroupInventoryCubit>().publish(groupId, item)
               : null,
-          child: Text(canPublish ? 'Đăng gian hàng' : _statusText(item.status)),
+          child: isPublishing
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(canPublish ? 'Đăng gian hàng' : _statusText(item.status)),
         ),
       ),
     );

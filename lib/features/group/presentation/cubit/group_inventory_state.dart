@@ -16,15 +16,25 @@ class GroupInventoryLoaded extends GroupInventoryState {
   final List<DonationModel> donations;
   final List<InventoryItemModel> items;
   final bool isProcessing;
+  final String? publishingItemId;
+  final String? actionError;
 
   const GroupInventoryLoaded({
     required this.donations,
     required this.items,
     this.isProcessing = false,
+    this.publishingItemId,
+    this.actionError,
   });
 
   @override
-  List<Object?> get props => [donations, items, isProcessing];
+  List<Object?> get props => [
+    donations,
+    items,
+    isProcessing,
+    publishingItemId,
+    actionError,
+  ];
 }
 
 class GroupInventoryError extends GroupInventoryState {

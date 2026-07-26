@@ -17,14 +17,16 @@ class RegisterPage extends StatefulWidget {
 
 class _RegisterPageState extends State<RegisterPage> {
   final _fullNameController = TextEditingController();
-  final _emailOrPhoneController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
   @override
   void dispose() {
     _fullNameController.dispose();
-    _emailOrPhoneController.dispose();
+    _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -42,10 +44,11 @@ class _RegisterPageState extends State<RegisterPage> {
     }
 
     context.read<AuthCubit>().registerUser(
-          _fullNameController.text.trim(),
-          _emailOrPhoneController.text.trim(),
-          _passwordController.text.trim(),
-        );
+      _usernameController.text.trim(),
+      _fullNameController.text.trim(),
+      _emailController.text.trim(),
+      _passwordController.text,
+    );
   }
 
   @override
@@ -60,11 +63,13 @@ class _RegisterPageState extends State<RegisterPage> {
           if (state is RegisterSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: const Text('Đăng ký thành công! Vui lòng xác thực email/số điện thoại.'),
+                content: const Text(
+                  'Đăng ký thành công! Vui lòng xác thực email.',
+                ),
                 backgroundColor: colorScheme.secondary,
               ),
             );
-            context.go('${AppRoutes.verify}?email=${Uri.encodeComponent(state.emailOrPhone)}', extra: state.emailOrPhone);
+            context.go(AppRoutes.verify, extra: state.emailOrPhone);
           } else if (state is AuthFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -81,171 +86,196 @@ class _RegisterPageState extends State<RegisterPage> {
               physics: const BouncingScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 16),
-                  // Header
-                  Center(
-                    child: Text(
-                      'Chợ Quyên Góp',
-                      style: textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.primary,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 40),
-                  
-                  // Welcome text
-                  Text(
-                    'Tạo tài khoản mới',
-                    style: textTheme.headlineLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: colorScheme.onSurface,
-                      height: 1.2,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Tham gia ngay để bắt đầu hành trình lan tỏa yêu thương.',
-                    style: textTheme.bodyLarge?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 32),
-                  
-                  // Form
-                  AuthTextField(
-                    controller: _fullNameController,
-                    hintText: 'Họ và tên',
-                    keyboardType: TextInputType.name,
-                    prefixIcon: Icons.person_outline,
-                  ),
-                  const SizedBox(height: 16),
-                  AuthTextField(
-                    controller: _emailOrPhoneController,
-                    hintText: 'Email hoặc Số điện thoại',
-                    keyboardType: TextInputType.emailAddress,
-                    prefixIcon: Icons.email_outlined,
-                  ),
-                  const SizedBox(height: 16),
-                  AuthTextField(
-                    controller: _passwordController,
-                    hintText: 'Mật khẩu',
-                    isPassword: true,
-                    prefixIcon: Icons.lock_outline,
-                  ),
-                  const SizedBox(height: 16),
-                  AuthTextField(
-                    controller: _confirmPasswordController,
-                    hintText: 'Xác nhận Mật khẩu',
-                    isPassword: true,
-                    prefixIcon: Icons.lock_reset_outlined,
-                  ),
-                  
-                  const SizedBox(height: 32),
-                  
-                  // Register Button
-                  ElevatedButton(
-                    onPressed: state is AuthLoading ? null : _register,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colorScheme.primary,
-                      foregroundColor: colorScheme.onPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      elevation: 2,
-                      shadowColor: colorScheme.primary.withValues(alpha: 0.4),
-                    ),
-                    child: state is AuthLoading
-                        ? SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              color: colorScheme.onPrimary,
-                              strokeWidth: 2.5,
-                            ),
-                          )
-                        : Text(
-                            'Đăng Ký',
-                            style: textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.onPrimary,
+                children:
+                    [
+                          const SizedBox(height: 16),
+                          // Header
+                          Center(
+                            child: Text(
+                              'Chợ Quyên Góp',
+                              style: textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.primary,
+                                letterSpacing: 1.2,
+                              ),
                             ),
                           ),
-                  ),
-                  
-                  const SizedBox(height: 32),
-                  
-                  // Divider
-                  Row(
-                    children: [
-                      Expanded(child: Divider(color: colorScheme.surfaceContainerHighest, thickness: 1)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'Hoặc tiếp tục với',
-                          style: textTheme.labelMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
+
+                          const SizedBox(height: 40),
+
+                          // Welcome text
+                          Text(
+                            'Tạo tài khoản mới',
+                            style: textTheme.headlineLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: colorScheme.onSurface,
+                              height: 1.2,
+                              letterSpacing: -0.5,
+                            ),
                           ),
-                        ),
-                      ),
-                      Expanded(child: Divider(color: colorScheme.surfaceContainerHighest, thickness: 1)),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Social Logins
-                  Row(
-                    children: [
-                      SocialLoginButton(
-                        text: 'Google',
-                        icon: Icons.g_mobiledata_rounded,
-                        iconColor: const Color(0xFFDB4437),
-                        onPressed: () {},
-                      ),
-                      const SizedBox(width: 16),
-                      SocialLoginButton(
-                        text: 'Facebook',
-                        icon: Icons.facebook,
-                        iconColor: const Color(0xFF4267B2),
-                        onPressed: () {},
-                      ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 48),
-                  
-                  // Login Link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Đã có tài khoản? ',
-                        style: textTheme.bodyLarge?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () => context.pop(),
-                        child: Text(
-                          'Đăng nhập',
-                          style: textTheme.titleMedium?.copyWith(
-                            color: colorScheme.primary,
-                            fontWeight: FontWeight.bold,
+                          const SizedBox(height: 12),
+                          Text(
+                            'Tham gia ngay để bắt đầu hành trình lan tỏa yêu thương.',
+                            style: textTheme.bodyLarge?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w400,
+                            ),
                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                ].animate(interval: 50.ms).fade(duration: 500.ms, curve: Curves.easeOut).slideY(begin: 0.1, curve: Curves.easeOutQuart),
+
+                          const SizedBox(height: 32),
+
+                          // Form
+                          AuthTextField(
+                            controller: _fullNameController,
+                            hintText: 'Họ và tên',
+                            keyboardType: TextInputType.name,
+                            prefixIcon: Icons.person_outline,
+                          ),
+                          const SizedBox(height: 16),
+                          AuthTextField(
+                            controller: _usernameController,
+                            hintText: 'Tên đăng nhập (chữ, số hoặc _)',
+                            keyboardType: TextInputType.text,
+                            prefixIcon: Icons.alternate_email,
+                          ),
+                          const SizedBox(height: 16),
+                          AuthTextField(
+                            controller: _emailController,
+                            hintText: 'Email',
+                            keyboardType: TextInputType.emailAddress,
+                            prefixIcon: Icons.email_outlined,
+                          ),
+                          const SizedBox(height: 16),
+                          AuthTextField(
+                            controller: _passwordController,
+                            hintText: 'Mật khẩu',
+                            isPassword: true,
+                            prefixIcon: Icons.lock_outline,
+                          ),
+                          const SizedBox(height: 16),
+                          AuthTextField(
+                            controller: _confirmPasswordController,
+                            hintText: 'Xác nhận Mật khẩu',
+                            isPassword: true,
+                            prefixIcon: Icons.lock_reset_outlined,
+                          ),
+
+                          const SizedBox(height: 32),
+
+                          // Register Button
+                          ElevatedButton(
+                            onPressed: state is AuthLoading ? null : _register,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: colorScheme.primary,
+                              foregroundColor: colorScheme.onPrimary,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              elevation: 2,
+                              shadowColor: colorScheme.primary.withValues(
+                                alpha: 0.4,
+                              ),
+                            ),
+                            child: state is AuthLoading
+                                ? SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      color: colorScheme.onPrimary,
+                                      strokeWidth: 2.5,
+                                    ),
+                                  )
+                                : Text(
+                                    'Đăng Ký',
+                                    style: textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: colorScheme.onPrimary,
+                                    ),
+                                  ),
+                          ),
+
+                          const SizedBox(height: 32),
+
+                          // Divider
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Divider(
+                                  color: colorScheme.surfaceContainerHighest,
+                                  thickness: 1,
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                child: Text(
+                                  'Hoặc tiếp tục với',
+                                  style: textTheme.labelMedium?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Divider(
+                                  color: colorScheme.surfaceContainerHighest,
+                                  thickness: 1,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // Social Logins
+                          Row(
+                            children: [
+                              SocialLoginButton(
+                                text: 'Google',
+                                icon: Icons.g_mobiledata_rounded,
+                                iconColor: const Color(0xFFDB4437),
+                                onPressed: () {},
+                              ),
+                              const SizedBox(width: 16),
+                              SocialLoginButton(
+                                text: 'Facebook',
+                                icon: Icons.facebook,
+                                iconColor: const Color(0xFF4267B2),
+                                onPressed: () {},
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 48),
+
+                          // Login Link
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Đã có tài khoản? ',
+                                style: textTheme.bodyLarge?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => context.pop(),
+                                child: Text(
+                                  'Đăng nhập',
+                                  style: textTheme.titleMedium?.copyWith(
+                                    color: colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                        ]
+                        .animate(interval: 50.ms)
+                        .fade(duration: 500.ms, curve: Curves.easeOut)
+                        .slideY(begin: 0.1, curve: Curves.easeOutQuart),
               ),
             ),
           );

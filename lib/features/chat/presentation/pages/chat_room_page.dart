@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/constants/app_constants.dart';
-import '../../../../core/network/media_service.dart';
 import '../../domain/usecases/chat_usecases.dart';
 import '../widgets/donation_bottom_sheet.dart';
 import '../widgets/listing_message_bubble.dart';
@@ -32,14 +30,20 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   late ChatCubit _chatCubit;
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final ImagePicker _imagePicker = ImagePicker();
-  bool _isUploadingImage = false;
 
   @override
   void initState() {
     super.initState();
     _chatCubit = sl<ChatCubit>();
+    _scrollController.addListener(_loadOlderNearTop);
     _openConversation();
+  }
+
+  void _loadOlderNearTop() {
+    if (_scrollController.hasClients &&
+        _scrollController.position.pixels < 120) {
+      _chatCubit.loadOlderMessages();
+    }
   }
 
   Future<void> _openConversation() async {
@@ -104,47 +108,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     }
   }
 
-  Future<void> _pickAndSendImage() async {
-    if (_chatCubit.state.activeConversationId == null || _isUploadingImage) {
-      return;
-    }
-
-    try {
-      final image = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
-        maxWidth: 1920,
-      );
-      if (image == null || !mounted) return;
-
-      setState(() => _isUploadingImage = true);
-      final bytes = await image.readAsBytes();
-      final mimeType =
-          image.mimeType ?? MediaService.mimeFromFileName(image.name);
-      final publicUrl = await sl<MediaService>().uploadImage(
-        bytes,
-        mimeType,
-        refType: 'chat',
-      );
-      await _chatCubit.sendMessage(publicUrl, type: 'image');
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(_imageErrorMessage(error))));
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isUploadingImage = false);
-      }
-    }
-  }
-
-  String _imageErrorMessage(Object error) {
-    final message = error.toString().replaceFirst('Exception: ', '').trim();
-    return message.isEmpty ? 'Không thể gửi hình ảnh.' : message;
-  }
-
   void _openDonateFormWithAI() {
     context.push('/marketplace/create', extra: {'groupId': widget.groupId});
   }
@@ -168,67 +131,72 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               onPressed: () => context.pop(),
             ),
           ),
-          title: Row(
-            children: [
-              Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundColor: colorScheme.primaryContainer,
-                    child: Text(
-                      widget.name.isNotEmpty
-                          ? widget.name[0].toUpperCase()
-                          : '?',
-                      style: TextStyle(
-                        color: colorScheme.onPrimaryContainer,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: Colors.greenAccent[400],
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: colorScheme.surface,
-                          width: 2,
+          title: BlocBuilder<ChatCubit, ChatState>(
+            bloc: _chatCubit,
+            builder: (context, state) => Row(
+              children: [
+                Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundColor: colorScheme.primaryContainer,
+                      child: Text(
+                        widget.name.isNotEmpty
+                            ? widget.name[0].toUpperCase()
+                            : '?',
+                        style: TextStyle(
+                          color: colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      widget.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      'Hội nhóm tiếp nhận',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: colorScheme.onSurfaceVariant,
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: state.isConnected
+                              ? Colors.greenAccent[400]
+                              : colorScheme.outline,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: colorScheme.surface,
+                            width: 2,
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        widget.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        state.isConnected ? 'Đã kết nối' : 'Ngoại tuyến',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             // Nút "🎁 Gửi đồ AI" nổi bật trên AppBar
@@ -315,12 +283,19 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                     ).showSnackBar(SnackBar(content: Text(state.error!)));
                     context.read<ChatCubit>().clearError();
                   }
-                  Future.delayed(
-                    const Duration(milliseconds: 100),
-                    _scrollToBottom,
-                  );
+                  if (!state.isLoadingOlder &&
+                      _scrollController.hasClients &&
+                      _scrollController.position.extentAfter < 200) {
+                    Future.delayed(
+                      const Duration(milliseconds: 100),
+                      _scrollToBottom,
+                    );
+                  }
                 },
                 builder: (context, state) {
+                  if (state.isLoadingHistory && state.messages.isEmpty) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
                   if (state.messages.isEmpty) {
                     return Center(
                       child: Text(
@@ -336,9 +311,19 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                       horizontal: 16,
                       vertical: 20,
                     ),
-                    itemCount: state.messages.length,
+                    itemCount:
+                        state.messages.length + (state.isLoadingOlder ? 1 : 0),
                     itemBuilder: (context, index) {
-                      final msg = state.messages[index];
+                      if (state.isLoadingOlder && index == 0) {
+                        return const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      final messageIndex = state.isLoadingOlder
+                          ? index - 1
+                          : index;
+                      final msg = state.messages[messageIndex];
                       final isMine = msg.isMine;
 
                       if (msg.type == 'donation_proposal') {
@@ -364,12 +349,16 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                                 if (!isMine) ...[
                                   CircleAvatar(
                                     radius: 16,
-                                    backgroundImage: msg.senderAvatar != null && msg.senderAvatar!.isNotEmpty
+                                    backgroundImage:
+                                        msg.senderAvatar != null &&
+                                            msg.senderAvatar!.isNotEmpty
                                         ? NetworkImage(msg.senderAvatar!)
                                         : null,
                                     backgroundColor:
                                         colorScheme.secondaryContainer,
-                                    child: msg.senderAvatar == null || msg.senderAvatar!.isEmpty
+                                    child:
+                                        msg.senderAvatar == null ||
+                                            msg.senderAvatar!.isEmpty
                                         ? Text(
                                             msg.senderName != null &&
                                                     msg.senderName!.isNotEmpty
@@ -559,14 +548,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           child: Row(
             children: [
               IconButton(
-                icon: _isUploadingImage
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(Icons.add_circle, color: colorScheme.primary),
-                onPressed: enabled && !_isUploadingImage
+                icon: Icon(Icons.add_circle, color: colorScheme.primary),
+                onPressed: enabled
                     ? () => _showAttachmentOptions(context)
                     : null,
               ),
@@ -678,9 +661,16 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                     child: const Icon(Icons.image, color: Colors.blue),
                   ),
                   title: const Text('Gửi hình ảnh'),
+                  subtitle: const Text(
+                    'Chưa khả dụng: máy chủ chưa hỗ trợ liên kết media với tin nhắn.',
+                  ),
                   onTap: () {
                     context.pop();
-                    _pickAndSendImage();
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Gửi ảnh chat hiện chưa khả dụng.'),
+                      ),
+                    );
                   },
                 ),
               ],

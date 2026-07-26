@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,6 +11,7 @@ import '../../../user/presentation/cubit/user_state.dart';
 import '../cubit/group_cubit.dart';
 import '../widgets/group_card.dart';
 import '../widgets/group_filter_chips.dart';
+import '../../../../core/network/location_service.dart';
 
 class GroupsPage extends StatelessWidget {
   const GroupsPage({super.key});
@@ -22,8 +25,88 @@ class GroupsPage extends StatelessWidget {
   }
 }
 
-class GroupsView extends StatelessWidget {
+class GroupsView extends StatefulWidget {
   const GroupsView({super.key});
+
+  @override
+  State<GroupsView> createState() => _GroupsViewState();
+}
+
+class _GroupsViewState extends State<GroupsView> {
+  final LocationService _locationService = LocationService();
+  final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
+  List<dynamic> _provinces = [];
+  Timer? _searchDebounce;
+  String? _provinceCode;
+  bool _myGroups = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProvinces();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _scrollController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.extentAfter < 400) {
+      context.read<GroupCubit>().loadMore();
+    }
+  }
+
+  void _applyFilters() {
+    final query = _searchController.text.trim();
+    if (_myGroups) {
+      context.read<GroupCubit>().fetchMyGroups(memberStatus: 'approved');
+    } else {
+      context.read<GroupCubit>().fetchGroups(
+        query: query.isEmpty ? null : query,
+        provinceCode: _provinceCode,
+      );
+    }
+  }
+
+  void _onSearchChanged(String _) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 350), _applyFilters);
+  }
+
+  Future<void> _loadProvinces() async {
+    try {
+      final data = await _locationService.getProvinces();
+      if (mounted) {
+        setState(() {
+          _provinces = data;
+        });
+      }
+    } catch (e) {
+      // Ignore errors
+    }
+  }
+
+  String _getProvinceName(String? code) {
+    if (code == null) return 'Việt Nam';
+    if (_provinces.isEmpty) {
+      return 'Đang tải...';
+    }
+    try {
+      final province = _provinces.firstWhere(
+        (p) => p['code'].toString() == code,
+      );
+      return province['name'] ?? 'Việt Nam';
+    } catch (e) {
+      return code; // Fallback to code if not found
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -68,6 +151,7 @@ class GroupsView extends StatelessWidget {
         child: Icon(Icons.add, color: colorScheme.onPrimary),
       ),
       body: CustomScrollView(
+        controller: _scrollController,
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
@@ -103,6 +187,12 @@ class GroupsView extends StatelessWidget {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: TextField(
+                                  controller: _searchController,
+                                  onChanged: _onSearchChanged,
+                                  onSubmitted: (_) {
+                                    _searchDebounce?.cancel();
+                                    _applyFilters();
+                                  },
                                   decoration: InputDecoration(
                                     border: InputBorder.none,
                                     hintText: 'Tìm kiếm hội nhóm...',
@@ -153,12 +243,14 @@ class GroupsView extends StatelessWidget {
                           'Đà Nẵng',
                         ],
                         onFilterSelected: (filter) {
-                          if (filter == 'Nhóm của tôi') {
-                            context.read<GroupCubit>().fetchMyGroups();
-                          } else {
-                            // For now 'All' and others fetch all
-                            context.read<GroupCubit>().fetchGroups();
-                          }
+                          _myGroups = filter == 'Nhóm của tôi';
+                          _provinceCode = switch (filter) {
+                            'Hà Nội' => '01',
+                            'TP.HCM' => '79',
+                            'Đà Nẵng' => '48',
+                            _ => null,
+                          };
+                          _applyFilters();
                         },
                       )
                       .animate()
@@ -217,7 +309,7 @@ class GroupsView extends StatelessWidget {
                       final isOwner =
                           currentUserId != null &&
                           currentUserId == group.ownerId;
-                      final isMember = group.myRole != null;
+                      final isMember = group.myStatus == 'approved';
 
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 24),
@@ -231,7 +323,9 @@ class GroupsView extends StatelessWidget {
                                       group.avatarUrl ??
                                       'https://ui-avatars.com/api/?name=${Uri.encodeComponent(group.name)}&background=random',
                                   members: '${group.memberCount} Thành viên',
-                                  location: group.provinceCode ?? 'Việt Nam',
+                                  location: _getProvinceName(
+                                    group.provinceCode,
+                                  ),
                                   description:
                                       group.description ?? 'Chưa có mô tả',
                                   isOwner: isOwner,

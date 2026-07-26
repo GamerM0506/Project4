@@ -15,8 +15,6 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  bool _pushNotifications = true;
-  bool _emailNotifications = false;
   bool _twoFactorEnabled = false;
 
   @override
@@ -68,6 +66,7 @@ class _SettingsPageState extends State<SettingsPage> {
               context,
               icon: Icons.lock_outline,
               title: 'Đổi mật khẩu',
+              subtitle: 'Xác nhận mật khẩu hiện tại để thay đổi',
               onTap: () {
                 context.push(AppRoutes.changePassword);
               },
@@ -78,6 +77,13 @@ class _SettingsPageState extends State<SettingsPage> {
               title: 'Xác thực 2 bước',
               subtitle: _twoFactorEnabled ? 'Đang bật' : 'Đang tắt',
               onTap: _openTwoFactor,
+            ),
+            _buildListTile(
+              context,
+              icon: Icons.history,
+              title: 'Lịch sử hoạt động',
+              subtitle: 'Xem các thay đổi và lần đăng nhập gần đây',
+              onTap: () => context.push(AppRoutes.activity),
             ),
 
             const SizedBox(height: 24),
@@ -99,70 +105,6 @@ class _SettingsPageState extends State<SettingsPage> {
               },
             ),
 
-            const SizedBox(height: 24),
-
-            _buildSectionHeader('Thông báo', textTheme, colorScheme),
-            _buildSwitchTile(
-              context,
-              icon: Icons.notifications_active_outlined,
-              title: 'Thông báo đẩy',
-              value: _pushNotifications,
-              onChanged: (val) {
-                setState(() => _pushNotifications = val);
-              },
-            ),
-            _buildSwitchTile(
-              context,
-              icon: Icons.email_outlined,
-              title: 'Thông báo qua email',
-              value: _emailNotifications,
-              onChanged: (val) {
-                setState(() => _emailNotifications = val);
-              },
-            ),
-
-            const SizedBox(height: 24),
-
-            _buildSectionHeader('Liên kết tài khoản', textTheme, colorScheme),
-            _buildListTile(
-              context,
-              icon: Icons.g_mobiledata,
-              title: 'Google',
-              subtitle: 'Chưa liên kết',
-              onTap: () {},
-            ),
-            _buildListTile(
-              context,
-              icon: Icons.facebook,
-              title: 'Facebook',
-              subtitle: 'Chưa liên kết',
-              onTap: () {},
-            ),
-
-            const SizedBox(height: 40),
-
-            Center(
-              child: TextButton.icon(
-                onPressed: () {
-                  _showDeleteAccountDialog(context);
-                },
-                icon: Icon(Icons.delete_outline, color: colorScheme.error),
-                label: Text(
-                  'Xóa tài khoản',
-                  style: textTheme.labelLarge?.copyWith(
-                    color: colorScheme.error,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  backgroundColor: colorScheme.error.withValues(alpha: 0.1),
-                ),
-              ),
-            ),
             const SizedBox(height: 40),
           ],
         ),
@@ -252,41 +194,8 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
       value: value,
       onChanged: onChanged,
-      activeColor: colorScheme.primary,
+      activeThumbColor: colorScheme.primary,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    );
-  }
-
-  void _showDeleteAccountDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Xóa tài khoản'),
-        content: const Text(
-          'Hành động này không thể hoàn tác. Mọi dữ liệu của bạn sẽ bị xóa vĩnh viễn.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Tính năng đang phát triển'),
-                  backgroundColor: Theme.of(context).colorScheme.secondary,
-                ),
-              );
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: const Text('Xóa vĩnh viễn'),
-          ),
-        ],
-      ),
     );
   }
 }

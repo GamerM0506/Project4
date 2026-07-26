@@ -14,11 +14,17 @@ class GroupMembersLoading extends GroupMembersState {}
 
 class GroupMembersLoaded extends GroupMembersState {
   final List<MemberEntity> members;
+  final bool hasReachedMax;
+  final bool isLoadingMore;
 
-  const GroupMembersLoaded(this.members);
+  const GroupMembersLoaded(
+    this.members, {
+    this.hasReachedMax = false,
+    this.isLoadingMore = false,
+  });
 
   @override
-  List<Object?> get props => [members];
+  List<Object?> get props => [members, hasReachedMax, isLoadingMore];
 }
 
 class GroupMembersError extends GroupMembersState {

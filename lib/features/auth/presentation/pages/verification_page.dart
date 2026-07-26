@@ -20,6 +20,7 @@ class _VerificationPageState extends State<VerificationPage> {
   Timer? _timer;
   int _secondsRemaining = 60;
   bool _canResend = false;
+  bool _resendInProgress = false;
 
   @override
   void initState() {
@@ -71,16 +72,24 @@ class _VerificationPageState extends State<VerificationPage> {
           // Navigate to Login and remove Verification from stack
           context.go(AppRoutes.login);
         } else if (state is VerifyFailure) {
+          _resendInProgress = false;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.message),
               backgroundColor: colorScheme.error,
             ),
           );
+        } else if (state is ResendVerificationSuccess && _resendInProgress) {
+          _resendInProgress = false;
+          _startTimer();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Đã gửi lại mã xác thực.')),
+          );
         }
       },
       builder: (context, state) {
-        final isLoading = state is VerifyLoading;
+        final isLoading =
+            state is VerifyLoading || state is ResendVerificationLoading;
 
         return Scaffold(
           backgroundColor: colorScheme.surface,
@@ -131,9 +140,9 @@ class _VerificationPageState extends State<VerificationPage> {
                         ? null
                         : () {
                             context.read<AuthCubit>().verify(
-                                  widget.emailOrPhone,
-                                  _codeController.text,
-                                );
+                              widget.emailOrPhone,
+                              _codeController.text,
+                            );
                           },
                     style: FilledButton.styleFrom(
                       backgroundColor: colorScheme.primary,
@@ -159,7 +168,7 @@ class _VerificationPageState extends State<VerificationPage> {
                           ),
                   ),
                   const SizedBox(height: 24),
-                  
+
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -172,10 +181,9 @@ class _VerificationPageState extends State<VerificationPage> {
                       TextButton(
                         onPressed: (_canResend && !isLoading)
                             ? () {
-                                context.read<AuthCubit>().resendVerification(widget.emailOrPhone);
-                                _startTimer();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Đã gửi lại mã xác thực.')),
+                                _resendInProgress = true;
+                                context.read<AuthCubit>().resendVerification(
+                                  widget.emailOrPhone,
                                 );
                               }
                             : null,
@@ -183,9 +191,13 @@ class _VerificationPageState extends State<VerificationPage> {
                           foregroundColor: colorScheme.primary,
                         ),
                         child: Text(
-                          _canResend ? 'Gửi lại mã' : 'Gửi lại sau ${_secondsRemaining}s',
+                          _canResend
+                              ? 'Gửi lại mã'
+                              : 'Gửi lại sau ${_secondsRemaining}s',
                           style: TextStyle(
-                            fontWeight: _canResend ? FontWeight.bold : FontWeight.normal,
+                            fontWeight: _canResend
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                         ),
                       ),

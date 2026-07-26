@@ -1,36 +1,49 @@
-import 'package:dio/dio.dart';
-import '../../../../core/network/api_client.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../../core/network/api_error.dart';
+import '../../domain/entities/paginated_result.dart';
+import '../models/category_model.dart';
+import '../models/delivery_confirmation_model.dart';
 import '../models/listing_model.dart';
 import '../models/request_model.dart';
-import '../models/category_model.dart';
 
 abstract class MarketplaceRemoteDataSource {
-  Future<List<ListingModel>> getCatalog({
-    String? category,
-    String? province,
+  Future<PaginatedResult<ListingModel>> getCatalog({
+    String? categoryId,
+    String? provinceCode,
     String? groupId,
+    String? status,
+    int page = 1,
+    int limit = 20,
+    String? search,
   });
   Future<List<CategoryModel>> getCategories();
   Future<List<ListingModel>> getListings();
   Future<ListingModel> getListingDetail(String id);
   Future<void> createListing(Map<String, dynamic> data);
+  Future<void> closeListing(String id);
 
-  Future<List<RequestModel>> getRequests();
+  Future<PaginatedResult<RequestModel>> getRequests({
+    String? groupId,
+    String? listingId,
+    String? receiverId,
+    String? status,
+    int page = 1,
+    int limit = 20,
+  });
   Future<void> createRequest(Map<String, dynamic> data);
-  Future<void> approveRequest(String id, String reviewedBy);
-  Future<void> rejectRequest(String id, String reviewedBy, String reason);
-  Future<void> scheduleRequest(
-    String id,
-    String reviewedBy,
-    DateTime scheduledAt,
-  );
+  Future<void> approveRequest(String id);
+  Future<void> rejectRequest(String id, String reason);
+  Future<void> scheduleRequest(String id, DateTime scheduledAt);
   Future<void> completeRequest(
-    String id,
-    String confirmedBy,
-    String qrToken,
-    String photoUrl,
-  );
+    String id, {
+    required String qrToken,
+    String? photoUrl,
+    String? note,
+  });
+  Future<void> cancelRequest(String id);
+  Future<void> noShowRequest(String id);
+  Future<DeliveryConfirmationModel> getDeliveryConfirmation(String id);
   Future<Map<String, dynamic>> getStats();
 }
 
@@ -42,29 +55,38 @@ class MarketplaceRemoteDataSourceImpl implements MarketplaceRemoteDataSource {
   String get _baseUrl => AppConstants.marketplaceApiBaseUrl;
 
   @override
-  Future<List<ListingModel>> getCatalog({
-    String? category,
-    String? province,
+  Future<PaginatedResult<ListingModel>> getCatalog({
+    String? categoryId,
+    String? provinceCode,
     String? groupId,
+    String? status,
+    int page = 1,
+    int limit = 20,
+    String? search,
   }) async {
     try {
-      final queryParams = <String, dynamic>{};
-      if (category != null) queryParams['category'] = category;
-      if (province != null) queryParams['province'] = province;
-      if (groupId != null) queryParams['group_id'] = groupId;
-
       final response = await apiClient.dio.get(
         '$_baseUrl/catalog',
-        queryParameters: queryParams,
+        queryParameters: {
+          if (categoryId?.isNotEmpty ?? false) 'category_id': categoryId,
+          if (provinceCode?.isNotEmpty ?? false) 'province_code': provinceCode,
+          if (groupId?.isNotEmpty ?? false) 'group_id': groupId,
+          if (status?.isNotEmpty ?? false) 'status': status,
+          'page': page,
+          'limit': limit,
+          if (search?.trim().isNotEmpty ?? false) 'search': search!.trim(),
+        },
       );
-
-      // Assume response.data is a list or response.data['data'] is a list
-      final List<dynamic> data = response.data is List
-          ? response.data
-          : (response.data['data'] ?? []);
-      return data.map((json) => ListingModel.fromJson(json)).toList();
-    } catch (e) {
-      throw Exception('Failed to get catalog: $e');
+      return _page(
+        response.data,
+        (json) => ListingModel.fromJson(json),
+        page,
+        limit,
+      );
+    } catch (error) {
+      throw Exception(
+        apiErrorMessage(error, fallback: 'Không thể tải gian hàng.'),
+      );
     }
   }
 
@@ -82,8 +104,10 @@ class MarketplaceRemoteDataSourceImpl implements MarketplaceRemoteDataSource {
             (item) => CategoryModel.fromJson(Map<String, dynamic>.from(item)),
           )
           .toList();
-    } catch (e) {
-      throw Exception('Failed to get categories: $e');
+    } catch (error) {
+      throw Exception(
+        apiErrorMessage(error, fallback: 'Không thể tải danh mục.'),
+      );
     }
   }
 
@@ -91,12 +115,15 @@ class MarketplaceRemoteDataSourceImpl implements MarketplaceRemoteDataSource {
   Future<List<ListingModel>> getListings() async {
     try {
       final response = await apiClient.dio.get('$_baseUrl/listings');
-      final List<dynamic> data = response.data is List
-          ? response.data
-          : (response.data['data'] ?? []);
-      return data.map((json) => ListingModel.fromJson(json)).toList();
-    } catch (e) {
-      throw Exception('Failed to get listings: $e');
+      final data = response.data is Map ? response.data['data'] : response.data;
+      return (data is List ? data : const [])
+          .whereType<Map>()
+          .map((json) => ListingModel.fromJson(Map<String, dynamic>.from(json)))
+          .toList();
+    } catch (error) {
+      throw Exception(
+        apiErrorMessage(error, fallback: 'Không thể tải danh sách vật phẩm.'),
+      );
     }
   }
 
@@ -104,10 +131,14 @@ class MarketplaceRemoteDataSourceImpl implements MarketplaceRemoteDataSource {
   Future<ListingModel> getListingDetail(String id) async {
     try {
       final response = await apiClient.dio.get('$_baseUrl/listings/$id');
-      final data = response.data['data'] ?? response.data;
-      return ListingModel.fromJson(data);
-    } catch (e) {
-      throw Exception('Failed to get listing detail: $e');
+      final data = response.data is Map
+          ? (response.data['data'] ?? response.data)
+          : response.data;
+      return ListingModel.fromJson(Map<String, dynamic>.from(data as Map));
+    } catch (error) {
+      throw Exception(
+        apiErrorMessage(error, fallback: 'Không thể tải chi tiết vật phẩm.'),
+      );
     }
   }
 
@@ -115,55 +146,70 @@ class MarketplaceRemoteDataSourceImpl implements MarketplaceRemoteDataSource {
   Future<void> createListing(Map<String, dynamic> data) async {
     try {
       final payload = Map<String, dynamic>.from(data);
-      final inventoryItemId = payload['inventory_item_id']?.toString() ?? '';
-      final groupId = payload['group_id']?.toString() ?? '';
-
-      if (inventoryItemId.isEmpty) {
+      if ((payload['inventory_item_id']?.toString() ?? '').isEmpty) {
         throw Exception('inventory_item_id is required (UUID từ kho donation)');
       }
-      if (groupId.isEmpty) {
+      if ((payload['group_id']?.toString() ?? '').isEmpty) {
         throw Exception('group_id is required');
       }
-
-      // Backend fills title/category/condition from inventory when missing
       payload.removeWhere((key, value) => value == null || value == '');
-
       await apiClient.dio.post('$_baseUrl/listings', data: payload);
-    } on DioException catch (e) {
-      final detail = e.response?.data;
-      if (detail is Map) {
-        final msg = detail['message'] ?? detail['detail'] ?? detail['error'];
-        if (msg != null) throw Exception(msg.toString());
-      }
-      throw Exception('Failed to create listing: ${e.message}');
-    } catch (e) {
-      throw Exception('Failed to create listing: $e');
+    } catch (error) {
+      throw Exception(
+        apiErrorMessage(error, fallback: 'Không thể đăng vật phẩm.'),
+      );
     }
   }
 
   @override
-  Future<List<RequestModel>> getRequests() async {
+  Future<void> closeListing(String id) => _put(
+    '$_baseUrl/listings/$id/close',
+    fallback: 'Không thể đóng vật phẩm.',
+  );
+
+  @override
+  Future<PaginatedResult<RequestModel>> getRequests({
+    String? groupId,
+    String? listingId,
+    String? receiverId,
+    String? status,
+    int page = 1,
+    int limit = 20,
+  }) async {
     try {
-      final response = await apiClient.dio.get('$_baseUrl/requests');
-      final List<dynamic> data = response.data is List
-          ? response.data
-          : (response.data['data'] ?? []);
-      return data.map((json) => RequestModel.fromJson(json)).toList();
-    } catch (e) {
-      throw Exception('Failed to get requests: $e');
+      final response = await apiClient.dio.get(
+        '$_baseUrl/requests',
+        queryParameters: {
+          if (groupId?.isNotEmpty ?? false) 'group_id': groupId,
+          if (listingId?.isNotEmpty ?? false) 'listing_id': listingId,
+          if (receiverId?.isNotEmpty ?? false) 'receiver_id': receiverId,
+          if (status?.isNotEmpty ?? false) 'status': status,
+          'page': page,
+          'limit': limit,
+        },
+      );
+      return _page(
+        response.data,
+        (json) => RequestModel.fromJson(json),
+        page,
+        limit,
+      );
+    } catch (error) {
+      throw Exception(
+        apiErrorMessage(error, fallback: 'Không thể tải yêu cầu nhận đồ.'),
+      );
     }
   }
 
   @override
   Future<void> createRequest(Map<String, dynamic> data) async {
+    final listingId = data['listing_id']?.toString() ?? '';
+    final quantity = data['quantity'];
+    if (listingId.isEmpty) throw Exception('listing_id is required');
+    if (quantity is! int || quantity <= 0) {
+      throw Exception('quantity must be greater than 0');
+    }
     try {
-      final listingId = data['listing_id']?.toString() ?? '';
-      final quantity = data['quantity'];
-      if (listingId.isEmpty) throw Exception('listing_id is required');
-      if (quantity is! int || quantity <= 0) {
-        throw Exception('quantity must be greater than 0');
-      }
-
       await apiClient.dio.post(
         '$_baseUrl/requests',
         data: {
@@ -173,84 +219,77 @@ class MarketplaceRemoteDataSourceImpl implements MarketplaceRemoteDataSource {
             'reason': data['reason'].toString().trim(),
         },
       );
-    } on DioException catch (e) {
-      final body = e.response?.data;
-      if (body is Map) {
-        final detail = body['message'] ?? body['detail'] ?? body['error'];
-        if (detail is String && detail.isNotEmpty) throw Exception(detail);
-        if (detail is Map && detail['message'] != null) {
-          throw Exception(detail['message'].toString());
-        }
-      }
-      throw Exception('Không thể gửi yêu cầu nhận đồ. Vui lòng thử lại.');
+    } catch (error) {
+      throw Exception(
+        apiErrorMessage(error, fallback: 'Không thể gửi yêu cầu nhận đồ.'),
+      );
     }
   }
 
   @override
-  Future<void> approveRequest(String id, String reviewedBy) async {
-    try {
-      await apiClient.dio.put(
-        '$_baseUrl/requests/$id/approve',
-        data: {'reviewed_by': reviewedBy},
-      );
-    } catch (e) {
-      throw Exception('Failed to approve request: $e');
-    }
-  }
+  Future<void> approveRequest(String id) => _put(
+    '$_baseUrl/requests/$id/approve',
+    data: const <String, dynamic>{},
+    fallback: 'Không thể duyệt yêu cầu.',
+  );
 
   @override
-  Future<void> rejectRequest(
-    String id,
-    String reviewedBy,
-    String reason,
-  ) async {
-    try {
-      await apiClient.dio.put(
-        '$_baseUrl/requests/$id/reject',
-        data: {'reviewed_by': reviewedBy, 'reason': reason},
-      );
-    } catch (e) {
-      throw Exception('Failed to reject request: $e');
-    }
-  }
+  Future<void> rejectRequest(String id, String reason) => _put(
+    '$_baseUrl/requests/$id/reject',
+    data: {'reason': reason},
+    fallback: 'Không thể từ chối yêu cầu.',
+  );
 
   @override
-  Future<void> scheduleRequest(
-    String id,
-    String reviewedBy,
-    DateTime scheduledAt,
-  ) async {
-    try {
-      await apiClient.dio.put(
-        '$_baseUrl/requests/$id/schedule',
-        data: {
-          'reviewed_by': reviewedBy,
-          'scheduled_at': scheduledAt.toIso8601String(),
-        },
-      );
-    } catch (e) {
-      throw Exception('Failed to schedule request: $e');
-    }
-  }
+  Future<void> scheduleRequest(String id, DateTime scheduledAt) => _put(
+    '$_baseUrl/requests/$id/schedule',
+    data: {'scheduled_at': scheduledAt.toIso8601String()},
+    fallback: 'Không thể đặt lịch nhận đồ.',
+  );
 
   @override
   Future<void> completeRequest(
-    String id,
-    String confirmedBy,
-    String qrToken,
-    String photoUrl,
-  ) async {
+    String id, {
+    required String qrToken,
+    String? photoUrl,
+    String? note,
+  }) => _put(
+    '$_baseUrl/requests/$id/complete',
+    data: {
+      'qr_token': qrToken,
+      if (photoUrl?.trim().isNotEmpty ?? false) 'photo_url': photoUrl!.trim(),
+      if (note?.trim().isNotEmpty ?? false) 'note': note!.trim(),
+    },
+    fallback: 'Không thể hoàn tất giao nhận.',
+  );
+
+  @override
+  Future<void> cancelRequest(String id) =>
+      _put('$_baseUrl/requests/$id/cancel', fallback: 'Không thể hủy yêu cầu.');
+
+  @override
+  Future<void> noShowRequest(String id) => _put(
+    '$_baseUrl/requests/$id/no-show',
+    data: const <String, dynamic>{},
+    fallback: 'Không thể đánh dấu không đến nhận.',
+  );
+
+  @override
+  Future<DeliveryConfirmationModel> getDeliveryConfirmation(String id) async {
     try {
-      await apiClient.dio.put(
-        '$_baseUrl/requests/$id/complete',
-        data: {
-          'confirmed_by': confirmedBy,
-          'qr_token': qrToken,
-          'photo_url': photoUrl,
-        },
+      final response = await apiClient.dio.get(
+        '$_baseUrl/requests/$id/confirmation',
       );
-    } catch (e) {
-      throw Exception('Failed to complete request: $e');
+      final data = response.data is Map
+          ? (response.data['data'] ?? response.data)
+          : response.data;
+      return DeliveryConfirmationModel.fromJson(
+        Map<String, dynamic>.from(data as Map),
+      );
+    } catch (error) {
+      throw Exception(
+        apiErrorMessage(error, fallback: 'Không thể tải biên nhận giao đồ.'),
+      );
     }
   }
 
@@ -258,9 +297,50 @@ class MarketplaceRemoteDataSourceImpl implements MarketplaceRemoteDataSource {
   Future<Map<String, dynamic>> getStats() async {
     try {
       final response = await apiClient.dio.get('$_baseUrl/stats');
-      return response.data['data'] as Map<String, dynamic>? ?? response.data;
-    } catch (e) {
-      throw Exception('Failed to get stats: $e');
+      final data = response.data is Map
+          ? (response.data['data'] ?? response.data)
+          : response.data;
+      return Map<String, dynamic>.from(data as Map);
+    } catch (error) {
+      throw Exception(
+        apiErrorMessage(error, fallback: 'Không thể tải thống kê.'),
+      );
     }
+  }
+
+  Future<void> _put(
+    String path, {
+    Map<String, dynamic>? data,
+    required String fallback,
+  }) async {
+    try {
+      await apiClient.dio.put(path, data: data);
+    } catch (error) {
+      throw Exception(apiErrorMessage(error, fallback: fallback));
+    }
+  }
+
+  PaginatedResult<T> _page<T>(
+    dynamic body,
+    T Function(Map<String, dynamic>) convert,
+    int fallbackPage,
+    int fallbackLimit,
+  ) {
+    final map = body is Map ? body : const <String, dynamic>{};
+    final rawItems = body is List ? body : (map['data'] as List? ?? const []);
+    final meta = map['meta'] is Map ? map['meta'] as Map : const {};
+    final items = rawItems
+        .whereType<Map>()
+        .map((json) => convert(Map<String, dynamic>.from(json)))
+        .toList();
+    return PaginatedResult(
+      items: items,
+      page: int.tryParse(meta['page']?.toString() ?? '') ?? fallbackPage,
+      limit: int.tryParse(meta['limit']?.toString() ?? '') ?? fallbackLimit,
+      total: int.tryParse(meta['total']?.toString() ?? '') ?? items.length,
+      totalPages:
+          int.tryParse(meta['total_pages']?.toString() ?? '') ??
+          (items.isEmpty ? 0 : 1),
+    );
   }
 }

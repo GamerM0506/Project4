@@ -24,6 +24,10 @@ class VerifyFailure extends AuthState {
   VerifyFailure({required this.message});
 }
 
+class ResendVerificationLoading extends AuthState {}
+
+class ResendVerificationSuccess extends AuthState {}
+
 class AuthFailure extends AuthState {
   final String message;
 

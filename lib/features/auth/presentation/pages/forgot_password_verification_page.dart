@@ -12,10 +12,12 @@ class ForgotPasswordVerificationPage extends StatefulWidget {
   const ForgotPasswordVerificationPage({super.key, required this.email});
 
   @override
-  State<ForgotPasswordVerificationPage> createState() => _ForgotPasswordVerificationPageState();
+  State<ForgotPasswordVerificationPage> createState() =>
+      _ForgotPasswordVerificationPageState();
 }
 
-class _ForgotPasswordVerificationPageState extends State<ForgotPasswordVerificationPage> {
+class _ForgotPasswordVerificationPageState
+    extends State<ForgotPasswordVerificationPage> {
   final _codeController = TextEditingController();
 
   @override
@@ -25,7 +27,10 @@ class _ForgotPasswordVerificationPageState extends State<ForgotPasswordVerificat
   }
 
   void _submit() {
-    context.read<AuthCubit>().verifyResetCode(widget.email, _codeController.text.trim());
+    context.read<AuthCubit>().verifyResetCode(
+      widget.email,
+      _codeController.text.trim(),
+    );
   }
 
   @override
@@ -38,11 +43,14 @@ class _ForgotPasswordVerificationPageState extends State<ForgotPasswordVerificat
       body: BlocConsumer<AuthCubit, AuthState>(
         listener: (context, state) {
           if (state is VerifyResetCodeSuccess) {
-            context.go('${AppRoutes.resetPassword}?email=${Uri.encodeComponent(widget.email)}&code=${Uri.encodeComponent(_codeController.text.trim())}&token=${Uri.encodeComponent(state.resetToken)}', extra: {
-              'email': widget.email,
-              'code': _codeController.text.trim(),
-              'resetToken': state.resetToken,
-            });
+            context.go(
+              AppRoutes.resetPassword,
+              extra: {
+                'email': widget.email,
+                'code': _codeController.text.trim(),
+                'resetToken': state.resetToken,
+              },
+            );
           } else if (state is AuthFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -62,7 +70,7 @@ class _ForgotPasswordVerificationPageState extends State<ForgotPasswordVerificat
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 16),
-                  
+
                   // Back Button
                   Align(
                     alignment: Alignment.centerLeft,
@@ -72,9 +80,9 @@ class _ForgotPasswordVerificationPageState extends State<ForgotPasswordVerificat
                       padding: EdgeInsets.zero,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Header
                   Text(
                     'Xác thực OTP',
@@ -91,18 +99,18 @@ class _ForgotPasswordVerificationPageState extends State<ForgotPasswordVerificat
                       color: colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 32),
-                  
+
                   // Form
                   AuthTextField(
                     controller: _codeController,
                     hintText: 'Mã xác thực (6 số)',
                     keyboardType: TextInputType.number,
                   ),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Submit Button
                   ElevatedButton(
                     onPressed: isLoading ? null : _submit,

@@ -14,7 +14,7 @@ class GroupDashboardMembers extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -34,6 +34,7 @@ class GroupDashboardMembers extends StatelessWidget {
             tabs: const [
               Tab(text: 'Thành viên'),
               Tab(text: 'Yêu cầu tham gia'),
+              Tab(text: 'Đã cấm'),
             ],
           ),
           Expanded(
@@ -44,6 +45,11 @@ class GroupDashboardMembers extends StatelessWidget {
                   currentUserRole: group.myRole,
                 ),
                 GroupJoinRequestsTab(groupId: group.id),
+                GroupMembersTab(
+                  groupId: group.id,
+                  currentUserRole: group.myRole,
+                  status: 'banned',
+                ),
               ],
             ),
           ),

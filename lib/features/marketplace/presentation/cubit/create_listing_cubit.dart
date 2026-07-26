@@ -109,13 +109,16 @@ class CreateListingCubit extends Cubit<CreateListingState> {
     emit(CreateListingLoading());
 
     String? imageUrl;
+    String? imageMediaId;
     if (imageBytes != null && imageBytes.isNotEmpty) {
       try {
-        imageUrl = await mediaService.uploadImage(
+        final uploaded = await mediaService.uploadImageResult(
           imageBytes,
           imageMimeType ?? 'image/jpeg',
           refType: 'donation',
         );
+        imageUrl = uploaded.publicUrl;
+        imageMediaId = uploaded.mediaId;
       } catch (error) {
         emit(
           CreateListingError(
@@ -145,10 +148,20 @@ class CreateListingCubit extends Cubit<CreateListingState> {
       items: [item],
     );
 
-    result.fold(
-      (error) => emit(CreateListingError(message: error)),
-      (_) => emit(CreateListingSuccess()),
-    );
+    result.fold((error) => emit(CreateListingError(message: error)), (
+      donation,
+    ) async {
+      if (imageMediaId != null && donation.id.isNotEmpty) {
+        try {
+          await mediaService.linkMedia(
+            [imageMediaId!],
+            'donation',
+            donation.id,
+          );
+        } catch (_) {}
+      }
+      emit(CreateListingSuccess());
+    });
   }
 
   /// Moderator path: POST /api/marketplace/listings with real inventory UUID

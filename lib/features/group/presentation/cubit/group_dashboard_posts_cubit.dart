@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../post/domain/usecases/get_posts_usecase.dart';
 import '../../../post/domain/usecases/update_post_status_usecase.dart';
 import '../../../post/domain/usecases/delete_post_usecase.dart';
+import '../../../post/domain/entities/post_entity.dart';
 import 'group_dashboard_posts_state.dart';
 
 class GroupDashboardPostsCubit extends Cubit<GroupDashboardPostsState> {
@@ -18,22 +19,38 @@ class GroupDashboardPostsCubit extends Cubit<GroupDashboardPostsState> {
   Future<void> fetchPosts(String groupId) async {
     emit(GroupDashboardPostsLoading());
 
-    // The backend has no status filter, so moderators filter one bounded page locally.
-    final result = await getPostsUseCase(groupId, limit: 100);
-
-    result.fold((failure) => emit(GroupDashboardPostsError(failure)), (posts) {
-      final pendingPosts = posts
-          .where((p) => p.status == 'pending_review')
-          .toList();
-      final publishedPosts = posts.where((p) => p.status == 'active').toList();
-
-      emit(
-        GroupDashboardPostsLoaded(
-          pendingPosts: pendingPosts,
-          publishedPosts: publishedPosts,
-        ),
+    const limit = 100;
+    final allPosts = <PostEntity>[];
+    var offset = 0;
+    while (true) {
+      final result = await getPostsUseCase(
+        groupId,
+        limit: limit,
+        offset: offset,
       );
-    });
+      final error = result.fold<String?>((failure) => failure, (_) => null);
+      if (error != null) {
+        emit(GroupDashboardPostsError(error));
+        return;
+      }
+      final page = result.getOrElse(() => const []);
+      allPosts.addAll(page);
+      if (page.length < limit) break;
+      offset += limit;
+    }
+
+    final posts = allPosts;
+    final pendingPosts = posts
+        .where((p) => p.status == 'pending_review')
+        .toList();
+    final publishedPosts = posts.where((p) => p.status == 'active').toList();
+
+    emit(
+      GroupDashboardPostsLoaded(
+        pendingPosts: pendingPosts,
+        publishedPosts: publishedPosts,
+      ),
+    );
   }
 
   Future<void> approvePost(String groupId, String postId) async {
