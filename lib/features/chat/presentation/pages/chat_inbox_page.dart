@@ -7,19 +7,23 @@ import '../cubit/chat_inbox_cubit.dart';
 import '../cubit/chat_inbox_state.dart';
 
 class ChatInboxPage extends StatelessWidget {
-  const ChatInboxPage({super.key});
+  final String? groupId;
+
+  const ChatInboxPage({super.key, this.groupId});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<ChatInboxCubit>()..fetchConversations(),
-      child: const _ChatInboxView(),
+      create: (_) => sl<ChatInboxCubit>()..fetchConversations(groupId: groupId),
+      child: _ChatInboxView(groupId: groupId),
     );
   }
 }
 
 class _ChatInboxView extends StatelessWidget {
-  const _ChatInboxView();
+  final String? groupId;
+
+  const _ChatInboxView({this.groupId});
 
   @override
   Widget build(BuildContext context) {
@@ -73,7 +77,7 @@ class _ChatInboxView extends StatelessWidget {
                         FilledButton(
                           onPressed: () => context
                               .read<ChatInboxCubit>()
-                              .fetchConversations(),
+                              .fetchConversations(groupId: groupId),
                           child: const Text('Thử lại'),
                         ),
                       ],

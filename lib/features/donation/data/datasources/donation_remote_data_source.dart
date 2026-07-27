@@ -40,6 +40,8 @@ abstract class DonationRemoteDataSource {
 
   Future<DonationModel> getDonation(String donationId);
 
+  Future<DonationModel> getDonationByCode(String code, String groupId);
+
   Future<DonationModel> scheduleDonation(
     String donationId,
     DateTime scheduledAt,
@@ -234,6 +236,19 @@ class DonationRemoteDataSourceImpl implements DonationRemoteDataSource {
       return DonationModel.fromJson(_unwrap(response.data));
     } on DioException catch (e) {
       throw Exception(_errorMessage(e, 'Không tải được đơn quyên góp'));
+    }
+  }
+
+  @override
+  Future<DonationModel> getDonationByCode(String code, String groupId) async {
+    try {
+      final response = await apiClient.dio.get(
+        '$_base/donations/by-code/${Uri.encodeComponent(code.trim())}',
+        queryParameters: {'group_id': groupId},
+      );
+      return DonationModel.fromJson(_unwrap(response.data));
+    } on DioException catch (e) {
+      throw Exception(_errorMessage(e, 'Không tìm thấy đơn quyên góp'));
     }
   }
 

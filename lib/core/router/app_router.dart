@@ -331,7 +331,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.chatInbox,
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const ChatInboxPage(),
+      builder: (context, state) {
+        final extraArgs = state.extra as Map<String, dynamic>?;
+        return ChatInboxPage(groupId: extraArgs?['groupId'] as String?);
+      },
     ),
     GoRoute(
       path: AppRoutes.chatRoom,

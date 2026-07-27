@@ -253,7 +253,7 @@ class _GroupDashboardPageState extends State<GroupDashboardPage> {
                 label: const Text('Trò chuyện nhóm'),
                 onPressed: () {
                   context.push(
-                    AppRoutes.chatRoom,
+                    AppRoutes.chatInbox,
                     extra: {'groupId': group.id, 'name': group.name},
                   );
                 },

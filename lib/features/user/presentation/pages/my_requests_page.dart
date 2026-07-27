@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../injection_container.dart';
+import '../../../chat/presentation/utils/open_context_conversation.dart';
 import '../../../marketplace/domain/entities/request_entity.dart';
 import '../../../marketplace/presentation/cubit/my_requests_cubit.dart';
 import '../../../marketplace/presentation/cubit/my_requests_state.dart';
@@ -97,6 +98,11 @@ class _RequestCard extends StatelessWidget {
       'approved',
       'scheduled',
     }.contains(request.status);
+    final canChat = const {
+      'approved',
+      'scheduled',
+      'completed',
+    }.contains(request.status);
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -126,22 +132,40 @@ class _RequestCard extends StatelessWidget {
             if (request.scheduledAt != null)
               Text('Lịch nhận: ${_date(request.scheduledAt!)}'),
             Text('Ngày gửi: ${_date(request.createdAt)}'),
-            if (canCancel) ...[
+            if (canCancel || canChat) ...[
               const Divider(),
-              Align(
-                alignment: Alignment.centerRight,
-                child: OutlinedButton(
-                  onPressed: isProcessing
-                      ? null
-                      : () =>
-                            context.read<MyRequestsCubit>().cancel(request.id),
-                  child: isProcessing
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Hủy yêu cầu'),
-                ),
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (canChat)
+                    FilledButton.tonalIcon(
+                      onPressed: () => openContextConversation(
+                        context,
+                        contextType: 'request',
+                        contextId: request.id,
+                        groupId: request.groupId,
+                        name: title,
+                      ),
+                      icon: const Icon(Icons.chat_bubble_outline),
+                      label: const Text('Nhắn tin với nhóm'),
+                    ),
+                  if (canCancel)
+                    OutlinedButton(
+                      onPressed: isProcessing
+                          ? null
+                          : () => context.read<MyRequestsCubit>().cancel(
+                              request.id,
+                            ),
+                      child: isProcessing
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Hủy yêu cầu'),
+                    ),
+                ],
               ),
             ],
           ],

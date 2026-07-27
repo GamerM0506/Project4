@@ -136,6 +136,15 @@ class GetDonationUseCase {
   }
 }
 
+class GetDonationByCodeUseCase {
+  final DonationRepository repository;
+  GetDonationByCodeUseCase(this.repository);
+
+  Future<Either<String, DonationModel>> call(String code, String groupId) {
+    return repository.getDonationByCode(code, groupId);
+  }
+}
+
 class ScheduleDonationUseCase {
   final DonationRepository repository;
   ScheduleDonationUseCase(this.repository);

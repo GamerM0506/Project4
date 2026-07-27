@@ -173,6 +173,42 @@ void main() {
     expect(donations.single.status, 'pending');
   });
 
+  test('gets an exact donation by code within a group', () async {
+    when(
+      () => mockDio.get(any(), queryParameters: any(named: 'queryParameters')),
+    ).thenAnswer(
+      (_) async => Response(
+        data: {
+          'data': {
+            'id': 'donation-id',
+            'code': 'DON-2026-00001',
+            'donor_id': 'donor-id',
+            'group_id': 'group-id',
+            'title': 'Áo khoác',
+            'status': 'scheduled',
+            'items': [],
+          },
+        },
+        statusCode: 200,
+        requestOptions: RequestOptions(path: ''),
+      ),
+    );
+
+    final donation = await dataSource.getDonationByCode(
+      ' don-2026-00001 ',
+      'group-id',
+    );
+
+    verify(
+      () => mockDio.get(
+        '${AppConstants.donationApiBaseUrl}/donations/by-code/don-2026-00001',
+        queryParameters: {'group_id': 'group-id'},
+      ),
+    ).called(1);
+    expect(donation.code, 'DON-2026-00001');
+    expect(donation.status, 'scheduled');
+  });
+
   test('reviews a donation with the backend action contract', () async {
     when(() => mockDio.put(any(), data: any(named: 'data'))).thenAnswer(
       (_) async => Response(

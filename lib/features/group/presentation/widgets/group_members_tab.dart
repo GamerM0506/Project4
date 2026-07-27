@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:timeago/timeago.dart' as timeago;
 
 import '../../../../injection_container.dart';
 import '../cubit/group_members_cubit.dart';

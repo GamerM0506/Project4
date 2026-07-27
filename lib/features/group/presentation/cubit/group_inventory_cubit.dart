@@ -121,13 +121,29 @@ class GroupInventoryCubit extends Cubit<GroupInventoryState> {
         publishingItemId: item.id,
       ),
     );
-    final imageUrls = current.donations
-        .expand((donation) => donation.items)
-        .where((donationItem) => donationItem.id == item.donationItemId)
-        .expand((donationItem) => donationItem.images)
-        .map((image) => image.imageUrl)
-        .where((url) => url.isNotEmpty)
-        .toList();
+    DonationModel? sourceDonation;
+    DonationItemModel? sourceItem;
+    for (final donation in current.donations) {
+      for (final donationItem in donation.items) {
+        if (donationItem.id == item.donationItemId) {
+          sourceDonation = donation;
+          sourceItem = donationItem;
+          break;
+        }
+      }
+      if (sourceItem != null) break;
+    }
+    final imageUrls =
+        sourceItem?.images
+            .map((image) => image.imageUrl.trim())
+            .where((url) => url.isNotEmpty)
+            .toList() ??
+        const <String>[];
+    final description = sourceDonation?.description?.trim().isNotEmpty == true
+        ? sourceDonation!.description!.trim()
+        : item.note?.trim().isNotEmpty == true
+        ? item.note!.trim()
+        : 'Vật phẩm ${item.name} được quyên góp cho hội nhóm.';
     String categoryId = item.categoryId ?? '';
     if (categoryId.isEmpty) {
       final catResult = await getCategoriesUseCase();
@@ -146,7 +162,7 @@ class GroupInventoryCubit extends Cubit<GroupInventoryState> {
       item.id,
       groupId,
       item.name,
-      '',
+      description,
       categoryId,
       item.condition,
       item.quantity,

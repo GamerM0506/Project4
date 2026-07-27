@@ -132,6 +132,18 @@ class DonationRepositoryImpl implements DonationRepository {
   }
 
   @override
+  Future<Either<String, DonationModel>> getDonationByCode(
+    String code,
+    String groupId,
+  ) async {
+    try {
+      return Right(await remoteDataSource.getDonationByCode(code, groupId));
+    } catch (e) {
+      return Left(_mapError(e, 'Không tìm thấy đơn quyên góp'));
+    }
+  }
+
+  @override
   Future<Either<String, DonationModel>> scheduleDonation(
     String donationId,
     DateTime scheduledAt,
