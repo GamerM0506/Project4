@@ -1,11 +1,13 @@
-import 'package:flutter/material.dart';
+import os
+
+code = """import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/constants/app_constants.dart';
-import '../../../../core/router/app_routes.dart';
+import '../../../../core/routes/app_routes.dart';
 import '../../../../injection_container.dart';
 import '../../domain/entities/listing_entity.dart';
 import '../cubit/listing_detail_cubit.dart';
@@ -38,20 +40,20 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   }
 
   ListingEntity? _listingFromState(ListingDetailState state) => switch (state) {
-    ListingDetailLoaded(:final listing) => listing,
-    ListingRequestSubmitting(:final listing) => listing,
-    ListingRequestSuccess(:final listing) => listing,
-    ListingRequestFailure(:final listing) => listing,
-    _ => null,
-  };
+        ListingDetailLoaded(:final listing) => listing,
+        ListingRequestSubmitting(:final listing) => listing,
+        ListingRequestSuccess(:final listing) => listing,
+        ListingRequestFailure(:final listing) => listing,
+        _ => null,
+      };
 
   bool _hasRequested(ListingDetailState state) => switch (state) {
-    ListingDetailLoaded(:final hasRequested) => hasRequested,
-    ListingRequestSubmitting(:final hasRequested) => hasRequested,
-    ListingRequestSuccess(:final hasRequested) => hasRequested,
-    ListingRequestFailure(:final hasRequested) => hasRequested,
-    _ => false,
-  };
+        ListingDetailLoaded(:final hasRequested) => hasRequested,
+        ListingRequestSubmitting(:final hasRequested) => hasRequested,
+        ListingRequestSuccess(:final hasRequested) => hasRequested,
+        ListingRequestFailure(:final hasRequested) => hasRequested,
+        _ => false,
+      };
 
   Future<void> _requestItem() async {
     final listing = _listingFromState(_cubit.state);
@@ -74,9 +76,9 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
 
   void _share(ListingEntity listing) {
     Share.share(
-      '${listing.title}\n'
-      'Vật phẩm miễn phí trên ChoSV\n'
-      'Mã: ${listing.id}',
+      '\\\n'
+      'V?t ph?m mi?n ph� tr�n ChoSV\\n'
+      'M�: \',
     );
   }
 
@@ -91,9 +93,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
           if (state is ListingRequestSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: const Text(
-                  'Đã gửi yêu cầu. Nhóm sẽ phản hồi trong mục Yêu cầu của tôi.',
-                ),
+                content: const Text('�� g?i y�u c?u. Nh�m s? ph?n h?i trong m?c Y�u c?u c?a t�i.'),
                 action: SnackBarAction(
                   label: 'Xem',
                   onPressed: () => context.push(AppRoutes.myRequests),
@@ -113,8 +113,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
           backgroundColor: colorScheme.surface,
           body: BlocBuilder<ListingDetailCubit, ListingDetailState>(
             builder: (context, state) {
-              if (state is ListingDetailLoading ||
-                  state is ListingDetailInitial) {
+              if (state is ListingDetailLoading || state is ListingDetailInitial) {
                 return const _DetailLoading();
               }
               if (state is ListingDetailError) {
@@ -132,29 +131,20 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
               return FutureBuilder<ListingContent>(
                 future: ListingContentResolver.resolve(listing),
                 builder: (context, contentSnapshot) {
-                  final imageUrl =
-                      contentSnapshot.data?.imageUrl ?? listing.imageUrl;
-                  final description =
-                      contentSnapshot.data?.description ?? listing.description;
-
+                  final imageUrl = contentSnapshot.data?.imageUrl ?? listing.imageUrl;
+                  final description = contentSnapshot.data?.description ?? listing.description;
+                  
                   return LayoutBuilder(
                     builder: (context, constraints) {
                       final isWide = constraints.maxWidth >= 820;
-
+                      
                       final requestBar = _RequestBar(
                         isSubmitting: state is ListingRequestSubmitting,
                         hasRequested: _hasRequested(state),
-                        isOwnListing:
-                            sl<SharedPreferences>().getString(
-                              AppConstants.keyUserId,
-                            ) ==
-                            listing.createdBy,
-                        isAvailable:
-                            listing.status == 'active' &&
-                            listing.quantityAvailable > 0,
+                        isOwnListing: sl<SharedPreferences>().getString(AppConstants.keyUserId) == listing.createdBy,
+                        isAvailable: listing.status == 'active' && listing.quantityAvailable > 0,
                         onRequest: _requestItem,
-                        onViewRequests: () =>
-                            context.push(AppRoutes.myRequests),
+                        onViewRequests: () => context.push(AppRoutes.myRequests),
                       );
 
                       if (isWide) {
@@ -211,17 +201,10 @@ class _WebLayout extends StatelessWidget {
       children: [
         // App Bar
         AppBar(
-          title: const Text('Chi tiết vật phẩm'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: onBack,
-          ),
+          title: const Text('Chi ti?t v?t ph?m'),
+          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: onBack),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.ios_share_outlined),
-              onPressed: onShare,
-              tooltip: 'Chia sẻ',
-            ),
+            IconButton(icon: const Icon(Icons.ios_share_outlined), onPressed: onShare, tooltip: 'Chia s?'),
           ],
         ),
         Expanded(
@@ -241,10 +224,7 @@ class _WebLayout extends StatelessWidget {
                         children: [
                           _ListingImage(imageUrl: imageUrl),
                           const SizedBox(height: 32),
-                          _ListingInfoColumn(
-                            listing: listing,
-                            description: description,
-                          ),
+                          _ListingInfoColumn(listing: listing, description: description),
                         ],
                       ),
                     ),
@@ -255,21 +235,16 @@ class _WebLayout extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerLowest,
+                          color: Theme.of(context).colorScheme.surfaceContainerLowest,
                           borderRadius: BorderRadius.circular(24),
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.outlineVariant,
-                          ),
+                          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               listing.title,
-                              style: Theme.of(context).textTheme.headlineSmall
-                                  ?.copyWith(fontWeight: FontWeight.bold),
+                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 16),
                             requestBar,
@@ -315,17 +290,9 @@ class _MobileLayout extends StatelessWidget {
               SliverAppBar(
                 expandedHeight: 360,
                 pinned: true,
-                leading: _OverlayButton(
-                  icon: Icons.arrow_back,
-                  onPressed: onBack,
-                  tooltip: 'Quay lại',
-                ),
+                leading: _OverlayButton(icon: Icons.arrow_back, onPressed: onBack, tooltip: 'Quay l?i'),
                 actions: [
-                  _OverlayButton(
-                    icon: Icons.ios_share_outlined,
-                    onPressed: onShare,
-                    tooltip: 'Chia sẻ',
-                  ),
+                  _OverlayButton(icon: Icons.ios_share_outlined, onPressed: onShare, tooltip: 'Chia s?'),
                   const SizedBox(width: 8),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
@@ -340,14 +307,10 @@ class _MobileLayout extends StatelessWidget {
                     children: [
                       Text(
                         listing.title,
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 16),
-                      _ListingInfoColumn(
-                        listing: listing,
-                        description: description,
-                      ),
+                      _ListingInfoColumn(listing: listing, description: description),
                       const SizedBox(height: 64),
                     ],
                   ),
@@ -358,7 +321,10 @@ class _MobileLayout extends StatelessWidget {
         ),
         // Bottom Action Bar
         SafeArea(
-          child: Padding(padding: const EdgeInsets.all(16), child: requestBar),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: requestBar,
+          ),
         ),
       ],
     );
@@ -370,11 +336,7 @@ class _OverlayButton extends StatelessWidget {
   final VoidCallback onPressed;
   final String tooltip;
 
-  const _OverlayButton({
-    required this.icon,
-    required this.onPressed,
-    required this.tooltip,
-  });
+  const _OverlayButton({required this.icon, required this.onPressed, required this.tooltip});
 
   @override
   Widget build(BuildContext context) {
@@ -416,18 +378,10 @@ class _ListingImage extends StatelessWidget {
               Image.network(
                 resolvedUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Icon(
-                  Icons.broken_image_outlined,
-                  size: 64,
-                  color: colorScheme.onSurfaceVariant,
-                ),
+                errorBuilder: (_, __, ___) => Icon(Icons.broken_image_outlined, size: 64, color: colorScheme.onSurfaceVariant),
               )
             else
-              Icon(
-                Icons.image_not_supported_outlined,
-                size: 64,
-                color: colorScheme.onSurfaceVariant,
-              ),
+              Icon(Icons.image_not_supported_outlined, size: 64, color: colorScheme.onSurfaceVariant),
           ],
         ),
       ),
@@ -458,12 +412,8 @@ class _ListingInfoColumn extends StatelessWidget {
               foreground: colorScheme.onSecondaryContainer,
             ),
             _Pill(
-              icon: listing.quantityAvailable > 0
-                  ? Icons.check_circle_outline
-                  : Icons.cancel_outlined,
-              label: listing.quantityAvailable > 0
-                  ? '${listing.quantityAvailable} khả dụng'
-                  : 'Hết hàng',
+              icon: listing.quantityAvailable > 0 ? Icons.check_circle_outline : Icons.cancel_outlined,
+              label: listing.quantityAvailable > 0 ? '\ kh? d?ng' : 'H?t h�ng',
               background: colorScheme.tertiaryContainer,
               foreground: colorScheme.onTertiaryContainer,
             ),
@@ -476,24 +426,14 @@ class _ListingInfoColumn extends StatelessWidget {
             createdBy: listing.createdBy,
             groupId: listing.groupId,
           ),
-          builder: (context, snapshot) =>
-              _AttributionCard(attribution: snapshot.data),
+          builder: (context, snapshot) => _AttributionCard(attribution: snapshot.data),
         ),
         const SizedBox(height: 24),
-        Text(
-          'Mô tả',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-        ),
+        Text('M� t?', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
         Text(
-          description.isNotEmpty ? description : 'Không có mô tả chi tiết.',
-          style: TextStyle(
-            color: colorScheme.onSurfaceVariant,
-            height: 1.6,
-            fontSize: 16,
-          ),
+          description.isNotEmpty ? description : 'Kh�ng c� m� t? chi ti?t.',
+          style: TextStyle(color: colorScheme.onSurfaceVariant, height: 1.6, fontSize: 16),
         ),
       ],
     );
@@ -520,12 +460,8 @@ class _AttributionCard extends StatelessWidget {
           CircleAvatar(
             radius: 24,
             backgroundColor: colorScheme.primaryContainer,
-            backgroundImage: attribution?.donorAvatar != null
-                ? NetworkImage(attribution!.donorAvatar!)
-                : null,
-            child: attribution?.donorAvatar == null
-                ? Icon(Icons.person, color: colorScheme.onPrimaryContainer)
-                : null,
+            backgroundImage: attribution?.donorAvatar != null ? NetworkImage(attribution!.donorAvatar!) : null,
+            child: attribution?.donorAvatar == null ? Icon(Icons.person, color: colorScheme.onPrimaryContainer) : null,
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -533,30 +469,19 @@ class _AttributionCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  attribution?.donorName ?? 'Đang tải thông tin...',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+                  attribution?.donorName ?? '�ang t?i th�ng tin...',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 if (attribution?.groupName != null) ...[
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(
-                        Icons.shield_outlined,
-                        size: 14,
-                        color: colorScheme.primary,
-                      ),
+                      Icon(Icons.shield_outlined, size: 14, color: colorScheme.primary),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          attribution?.groupName ?? '',
-                          style: TextStyle(
-                            color: colorScheme.primary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          attribution!.groupName!,
+                          style: TextStyle(color: colorScheme.primary, fontSize: 13, fontWeight: FontWeight.w600),
                         ),
                       ),
                     ],
@@ -591,36 +516,28 @@ class _RequestBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-
+    
     if (hasRequested) {
       return SizedBox(
         width: double.infinity,
         child: FilledButton.icon(
           onPressed: onViewRequests,
           icon: const Icon(Icons.history),
-          label: const Text('Xem yêu cầu của tôi'),
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-          ),
+          label: const Text('Xem y�u c?u c?a t�i'),
+          style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
         ),
       );
     }
-
+    
     if (isOwnListing) {
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: colorScheme.errorContainer,
-          borderRadius: BorderRadius.circular(16),
-        ),
+        decoration: BoxDecoration(color: colorScheme.errorContainer, borderRadius: BorderRadius.circular(16)),
         child: Text(
-          'Đây là món đồ của bạn. Bạn không thể tự yêu cầu.',
+          '��y l� m�n d? c?a b?n. B?n kh�ng th? t? y�u c?u.',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: colorScheme.onErrorContainer,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: colorScheme.onErrorContainer, fontWeight: FontWeight.bold),
         ),
       );
     }
@@ -629,25 +546,10 @@ class _RequestBar extends StatelessWidget {
       width: double.infinity,
       child: FilledButton(
         onPressed: isAvailable && !isSubmitting ? onRequest : null,
-        style: FilledButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-        ),
+        style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
         child: isSubmitting
-            ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-            : Text(
-                isAvailable ? 'Nhận đồ' : 'Đã hết vật phẩm',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+            : Text(isAvailable ? 'Nh?n d?' : '�� h?t v?t ph?m', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
       ),
     );
   }
@@ -675,12 +577,7 @@ class _RequestSheetState extends State<_RequestSheet> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
-      padding: EdgeInsets.fromLTRB(
-        24,
-        24,
-        24,
-        MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
+      padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
@@ -689,39 +586,21 @@ class _RequestSheetState extends State<_RequestSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Yêu cầu nhận đồ',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-          ),
+          Text('Y�u c?u nh?n d?', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Số lượng:',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-              ),
+              const Text('S? lu?ng:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
               Row(
                 children: [
                   IconButton(
-                    onPressed: _quantity > 1
-                        ? () => setState(() => _quantity--)
-                        : null,
+                    onPressed: _quantity > 1 ? () => setState(() => _quantity--) : null,
                     icon: const Icon(Icons.remove_circle_outline),
                   ),
-                  Text(
-                    '$_quantity',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  Text('\', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   IconButton(
-                    onPressed: _quantity < widget.listing.quantityAvailable
-                        ? () => setState(() => _quantity++)
-                        : null,
+                    onPressed: _quantity < widget.listing.quantityAvailable ? () => setState(() => _quantity++) : null,
                     icon: const Icon(Icons.add_circle_outline),
                   ),
                 ],
@@ -733,8 +612,8 @@ class _RequestSheetState extends State<_RequestSheet> {
             controller: widget.reasonController,
             maxLines: 3,
             decoration: const InputDecoration(
-              labelText: 'Lời nhắn (không bắt buộc)',
-              hintText: 'VD: Mình là sinh viên năm nhất đang cần...',
+              labelText: 'L?i nh?n (kh�ng b?t bu?c)',
+              hintText: 'VD: M�nh l� sinh vi�n nam nh?t dang c?n...',
               border: OutlineInputBorder(),
             ),
           ),
@@ -744,13 +623,8 @@ class _RequestSheetState extends State<_RequestSheet> {
               Navigator.pop(context);
               widget.onSubmit(_quantity, widget.reasonController.text);
             },
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-            child: const Text(
-              'Gửi yêu cầu',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+            style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+            child: const Text('G?i y�u c?u', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -764,34 +638,19 @@ class _Pill extends StatelessWidget {
   final Color background;
   final Color foreground;
 
-  const _Pill({
-    required this.icon,
-    required this.label,
-    required this.background,
-    required this.foreground,
-  });
+  const _Pill({required this.icon, required this.label, required this.background, required this.foreground});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
-      ),
+      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(999)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 16, color: foreground),
           const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: foreground,
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
-          ),
+          Text(label, style: TextStyle(color: foreground, fontWeight: FontWeight.w600, fontSize: 13)),
         ],
       ),
     );
@@ -800,22 +659,21 @@ class _Pill extends StatelessWidget {
 
 String _conditionText(String value) {
   return switch (value.toLowerCase()) {
-    'new' => 'Mới',
-    'like_new' => 'Gần như mới',
-    'good' => 'Tốt',
-    'used' => 'Đã qua sử dụng',
-    'worn' => 'Hao mòn',
-    'fair' => 'Khá',
-    'poor' => 'Kém',
-    _ => 'Không xác định',
+    'new' => 'M?i',
+    'like_new' => 'G?n nhu m?i',
+    'good' => 'T?t',
+    'used' => '�� qua s? d?ng',
+    'worn' => 'Hao m�n',
+    'fair' => 'Kh�',
+    'poor' => 'K�m',
+    _ => 'Kh�ng x�c d?nh',
   };
 }
 
 class _DetailLoading extends StatelessWidget {
   const _DetailLoading();
   @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: CircularProgressIndicator()));
+  Widget build(BuildContext context) => const Scaffold(body: Center(child: CircularProgressIndicator()));
 }
 
 class _DetailError extends StatelessWidget {
@@ -823,21 +681,12 @@ class _DetailError extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback onRetry;
 
-  const _DetailError({
-    required this.message,
-    required this.onBack,
-    required this.onRetry,
-  });
+  const _DetailError({required this.message, required this.onBack, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: onBack,
-        ),
-      ),
+      appBar: AppBar(leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: onBack)),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -848,7 +697,7 @@ class _DetailError extends StatelessWidget {
               const SizedBox(height: 16),
               Text(message, textAlign: TextAlign.center),
               const SizedBox(height: 24),
-              FilledButton(onPressed: onRetry, child: const Text('Thử lại')),
+              FilledButton(onPressed: onRetry, child: const Text('Th? l?i')),
             ],
           ),
         ),
@@ -856,3 +705,8 @@ class _DetailError extends StatelessWidget {
     );
   }
 }
+"""
+
+with open('lib/features/marketplace/presentation/pages/listing_detail_page.dart', 'w', encoding='utf-8') as f:
+    f.write(code)
+print("File written successfully!")

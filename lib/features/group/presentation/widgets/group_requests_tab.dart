@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../../../../injection_container.dart';
+import '../../../chat/presentation/utils/open_context_conversation.dart';
 import '../../../marketplace/domain/entities/request_entity.dart';
 import '../cubit/group_requests_cubit.dart';
 import '../cubit/group_requests_state.dart';
@@ -177,6 +178,22 @@ class _RequestCard extends StatelessWidget {
                 color: colorScheme.onSurfaceVariant,
               ),
             ),
+            if (request.status != 'pending' &&
+                request.status != 'rejected') ...[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => openContextConversation(
+                  context,
+                  contextType: 'request',
+                  contextId: request.id,
+                  groupId: groupId,
+                  name: receiverName,
+                  asGroup: true,
+                ),
+                icon: const Icon(Icons.chat_bubble_outline),
+                label: const Text('Nhắn tin người nhận'),
+              ),
+            ],
             if (request.status == 'pending') ...[
               const Divider(),
               Row(

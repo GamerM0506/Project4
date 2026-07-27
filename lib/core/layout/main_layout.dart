@@ -4,15 +4,10 @@ import 'package:go_router/go_router.dart';
 class MainLayout extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
 
-  const MainLayout({
-    super.key,
-    required this.navigationShell,
-  });
+  const MainLayout({super.key, required this.navigationShell});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: _MainBottomAppBar(
@@ -32,10 +27,7 @@ class _MainBottomAppBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
-  const _MainBottomAppBar({
-    required this.currentIndex,
-    required this.onTap,
-  });
+  const _MainBottomAppBar({required this.currentIndex, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +127,9 @@ class _NavItem extends StatelessWidget {
               curve: Curves.easeOutCubic,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(
-                color: isSelected ? primaryColor.withOpacity(0.12) : Colors.transparent,
+                color: isSelected
+                    ? primaryColor.withOpacity(0.12)
+                    : Colors.transparent,
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Icon(

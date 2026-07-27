@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../chat/presentation/utils/open_context_conversation.dart';
+
 import '../../../../injection_container.dart';
 import '../../../donation/data/models/donation_model.dart';
+import '../../../donation/domain/usecases/donation_usecases.dart';
 import '../../data/models/group_model.dart';
 import '../cubit/group_inventory_cubit.dart';
 import '../cubit/group_inventory_state.dart';
@@ -59,10 +62,27 @@ class GroupDashboardInventory extends StatelessWidget {
   }
 }
 
-class _InventoryView extends StatelessWidget {
+class _InventoryView extends StatefulWidget {
   final GroupModel group;
 
   const _InventoryView({required this.group});
+
+  @override
+  State<_InventoryView> createState() => _InventoryViewState();
+}
+
+class _InventoryViewState extends State<_InventoryView> {
+  final _codeController = TextEditingController();
+  String _codeQuery = '';
+  DonationModel? _lookupResult;
+  String? _lookupError;
+  bool _isLookingUp = false;
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,8 +105,9 @@ class _InventoryView extends StatelessWidget {
         if (state is GroupInventoryError) {
           return Center(
             child: FilledButton.icon(
-              onPressed: () =>
-                  context.read<GroupInventoryCubit>().fetchInventory(group.id),
+              onPressed: () => context
+                  .read<GroupInventoryCubit>()
+                  .fetchInventory(widget.group.id),
               icon: const Icon(Icons.refresh),
               label: const Text('Tải lại kho'),
             ),
@@ -94,37 +115,112 @@ class _InventoryView extends StatelessWidget {
         }
         if (state is! GroupInventoryLoaded) return const SizedBox.shrink();
 
-        final actionableDonations = state.donations
-            .where(
-              (donation) =>
-                  donation.status == 'pending' ||
-                  donation.status == 'accepted' ||
-                  donation.status == 'scheduled' ||
-                  donation.status == 'received',
-            )
-            .toList();
+        final normalizedQuery = _codeQuery.trim().toLowerCase();
+        final locallyVisibleDonations = normalizedQuery.isEmpty
+            ? state.donations
+                  .where(
+                    (donation) =>
+                        donation.status == 'pending' ||
+                        donation.status == 'accepted' ||
+                        donation.status == 'scheduled' ||
+                        donation.status == 'received',
+                  )
+                  .toList()
+            : state.donations
+                  .where(
+                    (donation) =>
+                        donation.code.toLowerCase().contains(normalizedQuery),
+                  )
+                  .toList();
+        final visibleDonations = _lookupResult == null
+            ? locallyVisibleDonations
+            : [_lookupResult!];
 
         return Stack(
           children: [
             RefreshIndicator(
-              onRefresh: () =>
-                  context.read<GroupInventoryCubit>().fetchInventory(group.id),
+              onRefresh: () => context
+                  .read<GroupInventoryCubit>()
+                  .fetchInventory(widget.group.id),
               child: ListView(
                 padding: const EdgeInsets.all(20),
                 children: [
                   Text(
-                    'Đơn quyên góp cần xử lý',
+                    normalizedQuery.isEmpty
+                        ? 'Đơn quyên góp cần xử lý'
+                        : 'Kết quả tìm mã đơn',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 12),
-                  if (actionableDonations.isEmpty)
-                    const _EmptyCard(text: 'Không có đơn cần xử lý')
+                  TextField(
+                    controller: _codeController,
+                    textCapitalization: TextCapitalization.characters,
+                    onChanged: (value) => setState(() {
+                      _codeQuery = value;
+                      _lookupResult = null;
+                      _lookupError = null;
+                    }),
+                    onSubmitted: (_) => _lookupDonation(),
+                    decoration: InputDecoration(
+                      labelText: 'Tìm theo mã đơn',
+                      hintText: 'Ví dụ: DON-ABCDEF',
+                      prefixIcon: const Icon(Icons.qr_code_scanner),
+                      suffixIcon: _codeQuery.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Xóa mã tìm kiếm',
+                              onPressed: () {
+                                _codeController.clear();
+                                setState(() {
+                                  _codeQuery = '';
+                                  _lookupResult = null;
+                                  _lookupError = null;
+                                });
+                              },
+                              icon: const Icon(Icons.clear),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton.icon(
+                      onPressed: normalizedQuery.isEmpty || _isLookingUp
+                          ? null
+                          : _lookupDonation,
+                      icon: _isLookingUp
+                          ? const SizedBox.square(
+                              dimension: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.search),
+                      label: const Text('Tra cứu mã'),
+                    ),
+                  ),
+                  if (_lookupError != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      _lookupError!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  if (visibleDonations.isEmpty)
+                    _EmptyCard(
+                      text: normalizedQuery.isEmpty
+                          ? 'Không có đơn cần xử lý'
+                          : 'Không tìm thấy đơn có mã "${_codeQuery.trim()}"',
+                    )
                   else
-                    ...actionableDonations.map(
-                      (donation) =>
-                          _DonationCard(groupId: group.id, donation: donation),
+                    ...visibleDonations.map(
+                      (donation) => _DonationCard(
+                        groupId: widget.group.id,
+                        donation: donation,
+                      ),
                     ),
                   const SizedBox(height: 28),
                   Text(
@@ -139,7 +235,7 @@ class _InventoryView extends StatelessWidget {
                   else
                     ...state.items.map(
                       (item) => _InventoryCard(
-                        groupId: group.id,
+                        groupId: widget.group.id,
                         item: item,
                         isPublishing: state.publishingItemId == item.id,
                         publishLocked: state.publishingItemId != null,
@@ -158,6 +254,29 @@ class _InventoryView extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  Future<void> _lookupDonation() async {
+    final code = _codeController.text.trim();
+    if (code.isEmpty || _isLookingUp) return;
+
+    setState(() {
+      _isLookingUp = true;
+      _lookupResult = null;
+      _lookupError = null;
+    });
+    final result = await sl<GetDonationByCodeUseCase>()(code, widget.group.id);
+    if (!mounted) return;
+    result.fold(
+      (error) => setState(() {
+        _isLookingUp = false;
+        _lookupError = error;
+      }),
+      (donation) => setState(() {
+        _isLookingUp = false;
+        _lookupResult = donation;
+      }),
     );
   }
 }
@@ -230,6 +349,19 @@ class _DonationCard extends StatelessWidget {
               Text(donation.description!),
             ],
             const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => openContextConversation(
+                context,
+                contextType: 'donation',
+                contextId: donation.id,
+                groupId: groupId,
+                name: donation.title,
+                asGroup: true,
+              ),
+              icon: const Icon(Icons.chat_bubble_outline),
+              label: const Text('Nhắn tin người gửi'),
+            ),
+            const SizedBox(height: 8),
             if (donation.status == 'accepted')
               Align(
                 alignment: Alignment.centerLeft,

@@ -10,9 +10,9 @@ class ChatInboxCubit extends Cubit<ChatInboxState> {
   ChatInboxCubit({required this.getConversationsUseCase})
     : super(ChatInboxInitial());
 
-  Future<void> fetchConversations() async {
+  Future<void> fetchConversations({String? groupId}) async {
     emit(ChatInboxLoading());
-    final result = await getConversationsUseCase();
+    final result = await getConversationsUseCase(groupId: groupId);
     result.fold((failure) => emit(ChatInboxError(failure)), (conversations) {
       _allConversations = conversations;
       emit(ChatInboxLoaded(conversations));

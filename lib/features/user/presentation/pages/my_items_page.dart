@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../injection_container.dart';
+import '../../../chat/presentation/utils/open_context_conversation.dart';
 import '../../../donation/data/models/donation_model.dart';
 import '../../../donation/domain/usecases/donation_usecases.dart';
 
@@ -240,6 +242,24 @@ class _DonationDialogState extends State<_DonationDialog> {
       ),
     ),
     actions: [
+      TextButton.icon(
+        onPressed: widget.donation.code.trim().isEmpty
+            ? null
+            : () => _showDonationQr(context, widget.donation),
+        icon: const Icon(Icons.qr_code_2),
+        label: const Text('Mã QR'),
+      ),
+      TextButton.icon(
+        onPressed: () => openContextConversation(
+          context,
+          contextType: 'donation',
+          contextId: widget.donation.id,
+          groupId: widget.donation.groupId,
+          name: widget.donation.title,
+        ),
+        icon: const Icon(Icons.chat_bubble_outline),
+        label: const Text('Nhắn tin với nhóm'),
+      ),
       if (!{
         'completed',
         'cancelled',
@@ -252,6 +272,50 @@ class _DonationDialogState extends State<_DonationDialog> {
       ),
     ],
   );
+
+  Future<void> _showDonationQr(
+    BuildContext context,
+    DonationModel donation,
+  ) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Mã đơn quyên góp'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            QrImageView(
+              data: donation.code,
+              version: QrVersions.auto,
+              size: 220,
+              semanticsLabel: 'Mã QR đơn ${donation.code}',
+            ),
+            const SizedBox(height: 16),
+            SelectableText(
+              donation.code,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Đưa mã này cho người tiếp nhận tại hội nhóm.',
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Đóng'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _cancel() async {
     final result = await sl<CancelDonationUseCase>()(widget.donation.id);
     if (!mounted) return;

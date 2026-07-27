@@ -153,11 +153,7 @@ class CreateListingCubit extends Cubit<CreateListingState> {
     ) async {
       if (imageMediaId != null && donation.id.isNotEmpty) {
         try {
-          await mediaService.linkMedia(
-            [imageMediaId!],
-            'donation',
-            donation.id,
-          );
+          await mediaService.linkMedia([imageMediaId], 'donation', donation.id);
         } catch (_) {}
       }
       emit(CreateListingSuccess());

@@ -38,6 +38,11 @@ abstract class DonationRepository {
 
   Future<Either<String, DonationModel>> getDonation(String donationId);
 
+  Future<Either<String, DonationModel>> getDonationByCode(
+    String code,
+    String groupId,
+  );
+
   Future<Either<String, DonationModel>> scheduleDonation(
     String donationId,
     DateTime scheduledAt,

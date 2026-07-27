@@ -233,6 +233,7 @@ Future<void> initDependencies({SharedPreferences? preferences}) async {
   sl.registerLazySingleton(() => AcceptDonationUseCase(sl()));
   sl.registerLazySingleton(() => GetInventoryUseCase(sl()));
   sl.registerLazySingleton(() => GetInventoryItemUseCase(sl()));
+  sl.registerLazySingleton(() => GetDonationByCodeUseCase(sl()));
   sl.registerLazySingleton(() => GetInventoryHistoryUseCase(sl()));
 
   sl.registerLazySingleton(() => GetConversationsUseCase(sl()));
