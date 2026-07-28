@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
+import '../../../../core/widgets/app_empty_state.dart';
+import '../../../../core/widgets/app_status_badge.dart';
 import '../../../../injection_container.dart';
 import '../../../chat/presentation/utils/open_context_conversation.dart';
 import '../../../marketplace/domain/entities/request_entity.dart';
@@ -30,10 +32,22 @@ class GroupRequestsTab extends StatelessWidget {
           if (state is GroupRequestsLoading) {
             return const Center(child: CircularProgressIndicator());
           } else if (state is GroupRequestsError) {
-            return Center(child: Text(state.message));
+            return AppEmptyState(
+              icon: Icons.cloud_off_rounded,
+              title: 'Không tải được yêu cầu',
+              message: state.message,
+              actionLabel: 'Thử lại',
+              onAction: () =>
+                  context.read<GroupRequestsCubit>().fetchRequests(groupId),
+              isError: true,
+            );
           } else if (state is GroupRequestsLoaded) {
             if (state.requests.isEmpty) {
-              return const Center(child: Text('Không có đơn xin đồ nào.'));
+              return const AppEmptyState(
+                icon: Icons.inbox_outlined,
+                title: 'Chưa có yêu cầu nhận đồ',
+                message: 'Yêu cầu nhận vật phẩm sẽ hiện ở đây.',
+              );
             }
             return RefreshIndicator(
               onRefresh: () =>
@@ -80,108 +94,78 @@ class _RequestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-
-    String statusText;
-    Color statusColor;
-    switch (request.status) {
-      case 'pending':
-        statusText = 'Chờ duyệt';
-        statusColor = Colors.orange;
-        break;
-      case 'approved':
-        statusText = 'Đã duyệt';
-        statusColor = Colors.blue;
-        break;
-      case 'scheduled':
-        statusText = 'Đã hẹn ngày';
-        statusColor = Colors.purple;
-        break;
-      case 'completed':
-        statusText = 'Đã hoàn tất';
-        statusColor = Colors.green;
-        break;
-      case 'rejected':
-        statusText = 'Đã từ chối';
-        statusColor = Colors.red;
-        break;
-      case 'cancelled':
-        statusText = 'Đã huỷ';
-        statusColor = Colors.grey;
-        break;
-      case 'no_show':
-        statusText = 'Khách bùng';
-        statusColor = Colors.black54;
-        break;
-      default:
-        statusText = request.status;
-        statusColor = Colors.grey;
-    }
+    final textTheme = Theme.of(context).textTheme;
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Món đồ: $listingTitle',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                Expanded(
                   child: Text(
-                    statusText,
-                    style: TextStyle(color: statusColor, fontSize: 12),
+                    listingTitle,
+                    style: textTheme.titleSmall,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                const SizedBox(width: 8),
+                AppStatusBadge(status: request.status),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Row(
               children: [
-                const Icon(Icons.person, size: 16, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text(
-                  receiverName,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                Icon(
+                  Icons.person_outline_rounded,
+                  size: 16,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Text(
+                    receiverName,
+                    style: textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 4),
             Text(
               'Mã đơn: ${request.code.isEmpty ? request.id : request.code} '
-              '| Số lượng: ${request.quantity}',
+              '• Số lượng: ${request.quantity}',
+              style: textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               'Lý do: ${request.reason}',
-              style: TextStyle(color: colorScheme.onSurfaceVariant),
+              style: textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               timeago.format(request.createdAt, locale: 'vi'),
-              style: TextStyle(
-                fontSize: 12,
+              style: textTheme.labelSmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
             ),
             if (request.status != 'pending' &&
                 request.status != 'rejected') ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               OutlinedButton.icon(
                 onPressed: () => openContextConversation(
                   context,
@@ -189,69 +173,95 @@ class _RequestCard extends StatelessWidget {
                   contextId: request.id,
                   groupId: groupId,
                   name: receiverName,
+                  participantUserId: request.receiverId,
                   asGroup: true,
                 ),
-                icon: const Icon(Icons.chat_bubble_outline),
+                icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
                 label: const Text('Nhắn tin người nhận'),
+                style: OutlinedButton.styleFrom(minimumSize: const Size(0, 38)),
               ),
             ],
             if (request.status == 'pending') ...[
-              const Divider(),
+              const Divider(height: 24),
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TextButton(
-                    onPressed: isProcessing ? null : () => _reject(context),
-                    child: const Text(
-                      'Từ chối',
-                      style: TextStyle(color: Colors.red),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: isProcessing ? null : () => _reject(context),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: colorScheme.error,
+                        minimumSize: const Size(0, 42),
+                      ),
+                      child: const Text('Từ chối'),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: isProcessing
-                        ? null
-                        : () {
-                            context.read<GroupRequestsCubit>().approveRequest(
-                              groupId,
-                              request.id,
-                            );
-                          },
-                    child: const Text('Duyệt'),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton(
+                      onPressed: isProcessing
+                          ? null
+                          : () {
+                              context.read<GroupRequestsCubit>().approveRequest(
+                                groupId,
+                                request.id,
+                              );
+                            },
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 42),
+                      ),
+                      child: isProcessing
+                          ? const SizedBox.square(
+                              dimension: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Duyệt đơn'),
+                    ),
                   ),
                 ],
               ),
             ] else if (request.status == 'approved' ||
                 request.status == 'scheduled') ...[
-              const Divider(),
+              const Divider(height: 24),
               Wrap(
                 spacing: 8,
+                runSpacing: 8,
                 children: [
                   if (request.status == 'approved')
                     OutlinedButton(
                       onPressed: isProcessing ? null : () => _schedule(context),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 38),
+                      ),
                       child: const Text('Hẹn lịch nhận'),
                     ),
-                  ElevatedButton(
+                  FilledButton.tonal(
                     onPressed: isProcessing ? null : () => _complete(context),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 38),
+                    ),
                     child: const Text('Đã giao xong'),
                   ),
-                  OutlinedButton(
+                  TextButton(
                     onPressed: isProcessing
                         ? null
                         : () => context
                               .read<GroupRequestsCubit>()
                               .noShowRequest(groupId, request.id),
-                    child: const Text('Không đến nhận'),
+                    child: Text(
+                      'Không đến nhận',
+                      style: TextStyle(color: colorScheme.error),
+                    ),
                   ),
                 ],
               ),
             ],
             if (request.status == 'completed') ...[
-              const Divider(),
-              TextButton(
+              const Divider(height: 24),
+              TextButton.icon(
                 onPressed: () => _confirmation(context),
-                child: const Text('Xem biên nhận'),
+                icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                label: const Text('Xem biên nhận'),
               ),
             ],
           ],
@@ -443,7 +453,6 @@ Widget _previewLine(String label, String value) => Padding(
   padding: const EdgeInsets.only(bottom: 8),
   child: RichText(
     text: TextSpan(
-      style: const TextStyle(color: Colors.black87, fontSize: 14),
       children: [
         TextSpan(
           text: '$label: ',

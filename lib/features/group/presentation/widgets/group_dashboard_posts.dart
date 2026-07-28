@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import '../../../../core/widgets/app_avatar.dart';
+import '../../../../core/widgets/app_empty_state.dart';
+import '../../../../core/widgets/app_status_badge.dart';
 import '../../../../injection_container.dart';
 import '../../data/models/group_model.dart';
 import '../../../post/domain/entities/post_entity.dart';
@@ -28,28 +31,13 @@ class _GroupDashboardPostsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
     return DefaultTabController(
       length: 2,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              'Quản lý Bài đăng',
-              style: textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          TabBar(
-            labelColor: const Color(0xFFB73A41),
-            unselectedLabelColor: colorScheme.onSurfaceVariant,
-            indicatorColor: const Color(0xFFB73A41),
-            tabs: const [
+          const TabBar(
+            tabs: [
               Tab(text: 'Chờ duyệt'),
               Tab(text: 'Đã xuất bản'),
             ],
@@ -93,20 +81,21 @@ class _GroupDashboardPostsView extends StatelessWidget {
     bool isPending,
   ) {
     if (posts.isEmpty) {
-      return Center(
-        child: Text(
-          isPending ? 'Không có bài đăng chờ duyệt' : 'Chưa có bài đăng nào',
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
+      return AppEmptyState(
+        icon: isPending
+            ? Icons.rate_review_outlined
+            : Icons.article_outlined,
+        title: isPending ? 'Không có bài chờ duyệt' : 'Chưa có bài đăng nào',
+        message: isPending
+            ? 'Bài viết của thành viên sẽ hiện ở đây khi cần kiểm duyệt.'
+            : 'Bài đã xuất bản sẽ hiện ở đây.',
       );
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(16),
       itemCount: posts.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 16),
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         return _buildPostItem(context, posts[index], isPending);
       },
@@ -115,26 +104,21 @@ class _GroupDashboardPostsView extends StatelessWidget {
 
   Widget _buildPostItem(BuildContext context, PostEntity post, bool isPending) {
     final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const CircleAvatar(child: Icon(Icons.person), radius: 20),
+              const AppAvatar(radius: 20),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -142,62 +126,52 @@ class _GroupDashboardPostsView extends StatelessWidget {
                   children: [
                     Text(
                       post.authorId,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: textTheme.titleSmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       timeago.format(post.createdAt, locale: 'vi'),
-                      style: TextStyle(
+                      style: textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
-                        fontSize: 12,
                       ),
                     ),
                   ],
                 ),
               ),
-              if (isPending)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text(
-                    'Chờ duyệt',
-                    style: TextStyle(
-                      color: Colors.orange,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+              if (isPending) const AppStatusBadge(status: 'pending'),
             ],
           ),
           const SizedBox(height: 12),
-          Text(post.content),
+          Text(
+            post.content,
+            style: textTheme.bodyMedium?.copyWith(height: 1.5),
+          ),
           if (post.imageUrls.isNotEmpty) ...[
             const SizedBox(height: 12),
             SizedBox(
-              height: 100,
+              height: 96,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: post.imageUrls.length,
                 separatorBuilder: (context, index) => const SizedBox(width: 8),
                 itemBuilder: (context, index) {
                   return ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
                     child: Image.network(
                       post.imageUrls[index],
-                      width: 100,
-                      height: 100,
+                      width: 96,
+                      height: 96,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        width: 100,
-                        height: 100,
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.image),
+                      errorBuilder: (_, _, _) => Container(
+                        width: 96,
+                        height: 96,
+                        color: colorScheme.surfaceContainerHigh,
+                        child: Icon(
+                          Icons.image_outlined,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   );
@@ -205,22 +179,23 @@ class _GroupDashboardPostsView extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           if (isPending)
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton.icon(
+                OutlinedButton.icon(
                   onPressed: () {
                     context.read<GroupDashboardPostsCubit>().rejectPost(
                       group.id,
                       post.id,
                     );
                   },
-                  icon: const Icon(Icons.close, color: Colors.red),
-                  label: const Text(
+                  icon: Icon(Icons.close_rounded,
+                      size: 18, color: colorScheme.error),
+                  label: Text(
                     'Từ chối',
-                    style: TextStyle(color: Colors.red),
+                    style: TextStyle(color: colorScheme.error),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -231,9 +206,8 @@ class _GroupDashboardPostsView extends StatelessWidget {
                       post.id,
                     );
                   },
-                  icon: const Icon(Icons.check),
+                  icon: const Icon(Icons.check_rounded, size: 18),
                   label: const Text('Phê duyệt'),
-                  style: FilledButton.styleFrom(backgroundColor: Colors.green),
                 ),
               ],
             )
@@ -241,17 +215,18 @@ class _GroupDashboardPostsView extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton.icon(
+                OutlinedButton.icon(
                   onPressed: () {
                     context.read<GroupDashboardPostsCubit>().deletePost(
                       group.id,
                       post.id,
                     );
                   },
-                  icon: const Icon(Icons.visibility_off, color: Colors.red),
-                  label: const Text(
+                  icon: Icon(Icons.visibility_off_outlined,
+                      size: 18, color: colorScheme.error),
+                  label: Text(
                     'Ẩn bài',
-                    style: TextStyle(color: Colors.red),
+                    style: TextStyle(color: colorScheme.error),
                   ),
                 ),
               ],

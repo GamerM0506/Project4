@@ -1,3 +1,7 @@
+class _Unset {
+  const _Unset();
+}
+
 class GroupModel {
   final String id;
   final String name;
@@ -65,7 +69,13 @@ class GroupModel {
     );
   }
 
-  GroupModel copyWith({String? myRole, String? myStatus}) {
+  /// Sentinel để phân biệt "không truyền" (giữ nguyên) với "truyền null" (xoá).
+  static const _unset = _Unset();
+
+  GroupModel copyWith({
+    Object? myRole = _unset,
+    Object? myStatus = _unset,
+  }) {
     return GroupModel(
       id: id,
       name: name,
@@ -84,8 +94,8 @@ class GroupModel {
       reputationScore: reputationScore,
       createdAt: createdAt,
       updatedAt: updatedAt,
-      myRole: myRole ?? this.myRole,
-      myStatus: myStatus ?? this.myStatus,
+      myRole: identical(myRole, _unset) ? this.myRole : myRole as String?,
+      myStatus: identical(myStatus, _unset) ? this.myStatus : myStatus as String?,
     );
   }
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../injection_container.dart';
 import '../../domain/entities/conversation_entity.dart';
@@ -12,8 +14,16 @@ Future<void> openContextConversation(
   required String contextId,
   required String groupId,
   required String name,
+  String? participantUserId,
   bool asGroup = false,
 }) async {
+  final userId = participantUserId ??
+      sl<SharedPreferences>().getString(AppConstants.keyUserId);
+  if (userId == null || userId.isEmpty) {
+    _showError(context, 'Không xác định được người tham gia cuộc trò chuyện.');
+    return;
+  }
+
   final result = await sl<GetConversationsUseCase>()(
     groupId: asGroup ? groupId : null,
   );
@@ -24,8 +34,7 @@ Future<void> openContextConversation(
   ) async {
     ConversationEntity? match;
     for (final conversation in conversations) {
-      if (conversation.contextType == contextType &&
-          conversation.contextId == contextId) {
+      if (conversation.groupId == groupId && conversation.userId == userId) {
         match = conversation;
         break;
       }
@@ -46,7 +55,9 @@ Future<void> openContextConversation(
       extra: {
         'conversationId': match.id,
         'groupId': match.groupId ?? groupId,
-        'name': name,
+        'name': match.title.isNotEmpty ? match.title : name,
+        'avatarUrl': match.avatarUrl,
+        'isUserSide': !asGroup,
       },
     );
   });

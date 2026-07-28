@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/router/app_routes.dart';
+import '../../../../core/widgets/app_avatar.dart';
 import '../../../../injection_container.dart';
 import '../cubit/chat_inbox_cubit.dart';
 import '../cubit/chat_inbox_state.dart';
@@ -156,8 +159,7 @@ class _ChatInboxView extends StatelessWidget {
                     itemCount: conversations.length,
                     itemBuilder: (context, index) {
                       final conv = conversations[index];
-                      final isGroup =
-                          conv.type.endsWith('_group') || conv.type == 'group';
+                      final partnerIsGroup = groupId == null;
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
@@ -174,22 +176,15 @@ class _ChatInboxView extends StatelessWidget {
                             vertical: 6,
                             horizontal: 12,
                           ),
-                          leading: CircleAvatar(
+                          leading: AppAvatar(
+                            imageUrl: conv.avatarUrl,
+                            name: conv.title,
                             radius: 24,
-                            backgroundColor: isGroup
-                                ? colorScheme.primaryContainer
-                                : colorScheme.secondaryContainer,
-                            child: Icon(
-                              isGroup ? Icons.groups : Icons.person,
-                              color: isGroup
-                                  ? colorScheme.onPrimaryContainer
-                                  : colorScheme.onSecondaryContainer,
-                            ),
                           ),
                           title: Text(
                             conv.title.isNotEmpty
                                 ? conv.title
-                                : (isGroup
+                                : (partnerIsGroup
                                       ? 'Hội nhóm thiện nguyện'
                                       : 'Người dùng'),
                             style: const TextStyle(
@@ -212,12 +207,16 @@ class _ChatInboxView extends StatelessWidget {
                           ),
                           trailing: const Icon(Icons.chevron_right, size: 20),
                           onTap: () {
+                            final currentUserId = sl<SharedPreferences>()
+                                .getString(AppConstants.keyUserId);
                             context.push(
                               AppRoutes.chatRoom,
                               extra: {
                                 'conversationId': conv.id,
                                 'groupId': conv.groupId,
                                 'name': conv.title,
+                                'avatarUrl': conv.avatarUrl,
+                                'isUserSide': conv.userId == currentUserId,
                               },
                             );
                           },

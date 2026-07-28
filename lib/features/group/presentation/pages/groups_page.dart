@@ -5,6 +5,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_routes.dart';
+import '../../../../core/widgets/app_empty_state.dart';
+import '../../../../core/widgets/app_search_bar.dart';
+import '../../../../core/widgets/app_skeleton.dart';
 import '../../../../injection_container.dart';
 import '../../../user/presentation/cubit/user_cubit.dart';
 import '../../../user/presentation/cubit/user_state.dart';
@@ -79,32 +82,60 @@ class _GroupsViewState extends State<GroupsView> {
     _searchDebounce = Timer(const Duration(milliseconds: 350), _applyFilters);
   }
 
+  Future<void> _onJoinGroup(String groupId) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await context.read<GroupCubit>().joinGroup(groupId);
+    if (!mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(result.message),
+        backgroundColor: result.success
+            ? null
+            : Theme.of(context).colorScheme.error,
+      ),
+    );
+  }
+
+  Future<void> _onCancelJoin(String groupId) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await context.read<GroupCubit>().cancelJoinRequest(groupId);
+    if (!mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(result.message),
+        backgroundColor: result.success
+            ? null
+            : Theme.of(context).colorScheme.error,
+      ),
+    );
+  }
+
   Future<void> _loadProvinces() async {
     try {
       final data = await _locationService.getProvinces();
       if (mounted) {
-        setState(() {
-          _provinces = data;
-        });
+        setState(() => _provinces = data);
       }
-    } catch (e) {
-      // Ignore errors
+    } catch (_) {
+      // Bỏ qua lỗi tải tỉnh thành
     }
   }
 
   String _getProvinceName(String? code) {
     if (code == null) return 'Việt Nam';
-    if (_provinces.isEmpty) {
-      return 'Đang tải...';
-    }
+    if (_provinces.isEmpty) return 'Đang tải...';
     try {
       final province = _provinces.firstWhere(
         (p) => p['code'].toString() == code,
       );
       return province['name'] ?? 'Việt Nam';
-    } catch (e) {
-      return code; // Fallback to code if not found
+    } catch (_) {
+      return code;
     }
+  }
+
+  Future<void> _onRefresh() async {
+    _applyFilters();
   }
 
   @override
@@ -116,244 +147,210 @@ class _GroupsViewState extends State<GroupsView> {
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: colorScheme.surface,
-        elevation: 0,
-        scrolledUnderElevation: 1,
-        title: Text(
-          'ChoSV',
-          style: textTheme.titleLarge?.copyWith(
-            color: colorScheme.primary,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
-          ),
-        ),
-        centerTitle: true,
-        leading: IconButton(
-          icon: Icon(Icons.menu, color: colorScheme.onSurface),
-          onPressed: () {},
-        ),
+        title: const Text('Hội nhóm'),
         actions: [
           IconButton(
-            icon: Icon(Icons.search, color: colorScheme.onSurface),
-            onPressed: () {},
+            icon: const Icon(Icons.add_rounded),
+            tooltip: 'Tạo nhóm',
+            onPressed: () async {
+              final shouldRefresh = await context.push(AppRoutes.createGroup);
+              if (shouldRefresh == true && context.mounted) {
+                _applyFilters();
+              }
+            },
           ),
           const SizedBox(width: 8),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final shouldRefresh = await context.push(AppRoutes.createGroup);
-          if (shouldRefresh == true && context.mounted) {
-            context.read<GroupCubit>().fetchGroups();
-          }
-        },
-        backgroundColor: colorScheme.primary,
-        child: Icon(Icons.add, color: colorScheme.onPrimary),
-      ),
-      body: CustomScrollView(
-        controller: _scrollController,
-        slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Tìm hội nhóm thiện nguyện',
-                    style: textTheme.headlineLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: colorScheme.onSurface,
+      body: RefreshIndicator(
+        onRefresh: _onRefresh,
+        color: colorScheme.primary,
+        child: CustomScrollView(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            // Header + search
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Khám phá hội nhóm\nthiện nguyện',
+                      style: textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        height: 1.25,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: colorScheme.surfaceContainerHighest
-                                .withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.search,
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: TextField(
-                                  controller: _searchController,
-                                  onChanged: _onSearchChanged,
-                                  onSubmitted: (_) {
-                                    _searchDebounce?.cancel();
-                                    _applyFilters();
-                                  },
-                                  decoration: InputDecoration(
-                                    border: InputBorder.none,
-                                    hintText: 'Tìm kiếm hội nhóm...',
-                                    hintStyle: textTheme.bodyLarge?.copyWith(
-                                      color: colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Kết nối với cộng đồng xung quanh bạn',
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
                       ),
-                      const SizedBox(width: 12),
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: colorScheme.surfaceContainerHighest.withValues(
-                            alpha: 0.4,
-                          ),
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          icon: Icon(Icons.tune, color: colorScheme.onSurface),
-                          onPressed: () {},
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ).animate().fade(duration: 400.ms).slideY(begin: -0.1),
+                    ),
+                    const SizedBox(height: 18),
+                    AppSearchBar(
+                      controller: _searchController,
+                      hintText: 'Tìm kiếm hội nhóm...',
+                      onChanged: _onSearchChanged,
+                      onSubmitted: (_) {
+                        _searchDebounce?.cancel();
+                        _applyFilters();
+                      },
+                    ),
+                  ],
+                ).animate().fade(duration: 350.ms).slideY(begin: -0.04),
+              ),
             ),
-          ),
 
-          // Filters
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 24),
-              child:
-                  GroupFilterChips(
-                        filters: const [
-                          'Tất cả',
-                          'Nhóm của tôi',
-                          'Gần đây',
-                          'Hà Nội',
-                          'TP.HCM',
-                          'Đà Nẵng',
-                        ],
-                        onFilterSelected: (filter) {
-                          _myGroups = filter == 'Nhóm của tôi';
-                          _provinceCode = switch (filter) {
-                            'Hà Nội' => '01',
-                            'TP.HCM' => '79',
-                            'Đà Nẵng' => '48',
-                            _ => null,
-                          };
-                          _applyFilters();
-                        },
-                      )
-                      .animate()
-                      .fade(delay: 100.ms, duration: 400.ms)
-                      .slideX(begin: 0.1),
+            // Filter chips
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child:
+                    GroupFilterChips(
+                          filters: const [
+                            'Tất cả',
+                            'Nhóm của tôi',
+                            'Gần đây',
+                            'Hà Nội',
+                            'TP.HCM',
+                            'Đà Nẵng',
+                          ],
+                          onFilterSelected: (filter) {
+                            _myGroups = filter == 'Nhóm của tôi';
+                            _provinceCode = switch (filter) {
+                              'Hà Nội' => '01',
+                              'TP.HCM' => '79',
+                              'Đà Nẵng' => '48',
+                              _ => null,
+                            };
+                            _applyFilters();
+                          },
+                        )
+                        .animate()
+                        .fade(delay: 80.ms, duration: 350.ms)
+                        .slideX(begin: 0.06),
+              ),
             ),
-          ),
 
-          // Group List
-          BlocBuilder<GroupCubit, GroupState>(
-            builder: (context, state) {
-              if (state is GroupLoading) {
-                return const SliverToBoxAdapter(
-                  child: Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(32),
-                      child: CircularProgressIndicator(),
-                    ),
-                  ),
-                );
-              } else if (state is GroupError) {
-                return SliverToBoxAdapter(
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Text(
-                        'Lỗi: ${state.message}',
-                        style: TextStyle(color: colorScheme.error),
-                      ),
-                    ),
-                  ),
-                );
-              } else if (state is GroupLoaded) {
-                if (state.groups.isEmpty) {
-                  return const SliverToBoxAdapter(
-                    child: Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(32),
-                        child: Text('Không tìm thấy nhóm nào.'),
+            // Danh sách
+            BlocBuilder<GroupCubit, GroupState>(
+              builder: (context, state) {
+                if (state is GroupLoading) {
+                  return SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) => const Padding(
+                          padding: EdgeInsets.only(bottom: 20),
+                          child: AppSkeletonCard(),
+                        ),
+                        childCount: 3,
                       ),
                     ),
                   );
                 }
 
-                return SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      final userState = context.watch<UserCubit>().state;
-                      String? currentUserId;
-                      if (userState is UserLoaded) {
-                        currentUserId = userState.user.id;
-                      }
+                if (state is GroupError) {
+                  return SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: AppEmptyState(
+                      icon: Icons.cloud_off_rounded,
+                      title: 'Không tải được danh sách',
+                      message: state.message,
+                      actionLabel: 'Thử lại',
+                      onAction: _applyFilters,
+                      isError: true,
+                    ),
+                  );
+                }
 
-                      final group = state.groups[index];
-                      final isOwner =
-                          currentUserId != null &&
-                          currentUserId == group.ownerId;
-                      final isMember = group.myStatus == 'approved';
+                if (state is GroupLoaded) {
+                  if (state.groups.isEmpty) {
+                    return SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: AppEmptyState(
+                        icon: Icons.groups_outlined,
+                        title: 'Chưa có hội nhóm nào',
+                        message: _myGroups
+                            ? 'Bạn chưa tham gia nhóm nào. Hãy khám phá và tham gia!'
+                            : 'Không tìm thấy nhóm phù hợp. Thử đổi bộ lọc hoặc tạo nhóm mới.',
+                        actionLabel: _myGroups ? null : 'Tạo nhóm',
+                        onAction: _myGroups
+                            ? null
+                            : () => context.push(AppRoutes.createGroup),
+                      ),
+                    );
+                  }
 
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 24),
-                        child:
-                            GroupCard(
-                                  name: group.name,
-                                  coverUrl:
-                                      group.coverUrl ??
-                                      'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=600&auto=format&fit=crop',
-                                  logoUrl:
-                                      group.avatarUrl ??
-                                      'https://ui-avatars.com/api/?name=${Uri.encodeComponent(group.name)}&background=random',
-                                  members: '${group.memberCount} Thành viên',
-                                  location: _getProvinceName(
-                                    group.provinceCode,
-                                  ),
-                                  description:
-                                      group.description ?? 'Chưa có mô tả',
-                                  isOwner: isOwner,
-                                  isMember: isMember,
-                                  onJoin: () {},
-                                  onView: () {
-                                    context.push(
-                                      '${AppRoutes.groupDetail}/${group.id}',
-                                    );
-                                  },
-                                )
-                                .animate(delay: (200 + (index % 5) * 100).ms)
-                                .fade(duration: 400.ms)
-                                .slideY(begin: 0.1),
-                      );
-                    }, childCount: state.groups.length),
-                  ),
-                );
-              }
+                  return SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final userState = context.watch<UserCubit>().state;
+                        String? currentUserId;
+                        if (userState is UserLoaded) {
+                          currentUserId = userState.user.id;
+                        }
 
-              return const SliverToBoxAdapter(child: SizedBox());
-            },
-          ),
+                        final group = state.groups[index];
+                        final isOwner =
+                            currentUserId != null &&
+                            currentUserId == group.ownerId;
+                        final isMember = group.myStatus == 'approved';
+                        final isPending = group.myStatus == 'pending';
+                        final isJoining = state.joiningIds.contains(group.id);
 
-          const SliverToBoxAdapter(
-            child: SizedBox(height: 100),
-          ), // Bottom padding
-        ],
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 20),
+                          child:
+                              GroupCard(
+                                    name: group.name,
+                                    coverUrl:
+                                        group.coverUrl ??
+                                        'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=600&auto=format&fit=crop',
+                                    logoUrl:
+                                        group.avatarUrl ??
+                                        'https://ui-avatars.com/api/?name=${Uri.encodeComponent(group.name)}&background=random',
+                                    members: '${group.memberCount} thành viên',
+                                    location: _getProvinceName(
+                                      group.provinceCode,
+                                    ),
+                                    description:
+                                        group.description ?? 'Chưa có mô tả',
+                                    isOwner: isOwner,
+                                    isMember: isMember,
+                                    isPending: isPending,
+                                    isJoining: isJoining,
+                                    onJoin: () => _onJoinGroup(group.id),
+                                    onCancel: () => _onCancelJoin(group.id),
+                                    onView: () {
+                                      context.push(
+                                        '${AppRoutes.groupDetail}/${group.id}',
+                                      );
+                                    },
+                                  )
+                                  .animate(
+                                    delay: (index % 5 * 60).ms,
+                                  )
+                                  .fade(duration: 350.ms)
+                                  .slideY(begin: 0.05),
+                        );
+                      }, childCount: state.groups.length),
+                    ),
+                  );
+                }
+
+                return const SliverToBoxAdapter(child: SizedBox.shrink());
+              },
+            ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          ],
+        ),
       ),
     );
   }

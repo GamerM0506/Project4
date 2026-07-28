@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../chat/presentation/utils/open_context_conversation.dart';
 
+import '../../../../core/widgets/app_status_badge.dart';
 import '../../../../injection_container.dart';
 import '../../../donation/data/models/donation_model.dart';
 import '../../../donation/domain/usecases/donation_usecases.dart';
@@ -18,28 +19,13 @@ class GroupDashboardInventory extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
     return DefaultTabController(
       length: 2,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              'Quản lý Vật phẩm',
-              style: textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          TabBar(
-            labelColor: const Color(0xFFB73A41),
-            unselectedLabelColor: colorScheme.onSurfaceVariant,
-            indicatorColor: const Color(0xFFB73A41),
-            tabs: const [
+          const TabBar(
+            tabs: [
               Tab(text: 'Kho đồ'),
               Tab(text: 'Yêu cầu nhận đồ'),
             ],
@@ -289,6 +275,8 @@ class _DonationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final pendingItems = donation.items
         .where((item) => item.status == 'pending')
         .toList();
@@ -298,119 +286,176 @@ class _DonationCard extends StatelessWidget {
         .where((url) => url.isNotEmpty)
         .toList();
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    donation.title,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  donation.title,
+                  style: textTheme.titleSmall,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                Chip(label: Text(_statusText(donation.status))),
-              ],
+              ),
+              const SizedBox(width: 8),
+              AppStatusBadge(status: donation.status),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${donation.code} • ${donation.items.length} vật phẩm',
+            style: textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
             ),
-            Text('${donation.code} • ${donation.items.length} vật phẩm'),
-            if (imageUrls.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              SizedBox(
-                height: 88,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: imageUrls.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 8),
-                  itemBuilder: (context, index) => ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.network(
-                      imageUrls[index],
-                      width: 88,
-                      height: 88,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => const SizedBox(
-                        width: 88,
-                        child: ColoredBox(
-                          color: Color(0xFFE0E0E0),
-                          child: Icon(Icons.broken_image_outlined),
-                        ),
+          ),
+          if (imageUrls.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 84,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: imageUrls.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (context, index) => ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.network(
+                    imageUrls[index],
+                    width: 84,
+                    height: 84,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(
+                      width: 84,
+                      height: 84,
+                      color: colorScheme.surfaceContainerHigh,
+                      child: Icon(
+                        Icons.broken_image_outlined,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),
                 ),
               ),
-            ],
-            if (donation.description?.isNotEmpty ?? false) ...[
-              const SizedBox(height: 6),
-              Text(donation.description!),
-            ],
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () => openContextConversation(
-                context,
-                contextType: 'donation',
-                contextId: donation.id,
-                groupId: groupId,
-                name: donation.title,
-                asGroup: true,
-              ),
-              icon: const Icon(Icons.chat_bubble_outline),
-              label: const Text('Nhắn tin người gửi'),
             ),
+          ],
+          if (donation.description?.isNotEmpty ?? false) ...[
             const SizedBox(height: 8),
-            if (donation.status == 'accepted')
-              Align(
-                alignment: Alignment.centerLeft,
-                child: FilledButton.tonalIcon(
-                  onPressed: () => _schedule(context),
-                  icon: const Icon(Icons.event_outlined),
-                  label: const Text('Đặt lịch tiếp nhận'),
+            Text(
+              donation.description!,
+              style: textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => openContextConversation(
+                  context,
+                  contextType: 'donation',
+                  contextId: donation.id,
+                  groupId: groupId,
+                  name: donation.title,
+                  participantUserId: donation.donorId,
+                  asGroup: true,
+                ),
+                icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+                label: const Text('Nhắn ngườі gửi'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 38),
                 ),
               ),
-            if (donation.status == 'pending')
-              Wrap(
-                spacing: 8,
-                children: [
-                  FilledButton(
+              if (donation.status == 'accepted')
+                FilledButton.tonalIcon(
+                  onPressed: () => _schedule(context),
+                  icon: const Icon(Icons.event_outlined, size: 18),
+                  label: const Text('Đặt lịch tiếp nhận'),
+                ),
+            ],
+          ),
+          if (donation.status == 'pending') ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _rejectDonation(context),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colorScheme.error,
+                      minimumSize: const Size(0, 42),
+                    ),
+                    child: const Text('Từ chối'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton(
                     onPressed: () => context.read<GroupInventoryCubit>().review(
                       groupId,
                       donation.id,
                       'accepted',
                     ),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 42),
+                    ),
                     child: const Text('Tiếp nhận đơn'),
                   ),
-                  OutlinedButton(
-                    onPressed: () => _rejectDonation(context),
-                    child: const Text('Từ chối'),
-                  ),
-                ],
-              )
-            else if (pendingItems.isNotEmpty) ...[
-              const Text(
-                'Kiểm tra vật phẩm thực tế',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 8),
-              ...pendingItems.map(
-                (item) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(item.name),
-                  subtitle: Text(
-                    'SL ${item.quantity} • Khai báo: ${_conditionText(item.conditionDeclared)}',
-                  ),
-                  trailing: FilledButton.tonal(
-                    onPressed: () => _checkItem(context, item),
-                    child: const Text('Kiểm tra'),
-                  ),
+                ),
+              ],
+            ),
+          ] else if (pendingItems.isNotEmpty) ...[
+            const Divider(height: 24),
+            Text('Kiểm tra vật phẩm thực tế', style: textTheme.titleSmall),
+            const SizedBox(height: 8),
+            ...pendingItems.map(
+              (item) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(item.name, style: textTheme.titleSmall),
+                          const SizedBox(height: 2),
+                          Text(
+                            'SL ${item.quantity} • Khai báo: ${_conditionText(item.conditionDeclared)}',
+                            style: textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    FilledButton.tonal(
+                      onPressed: () => _checkItem(context, item),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 36),
+                      ),
+                      child: const Text('Kiểm tra'),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -538,26 +583,74 @@ class _InventoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final canPublish = item.status == 'in_stock';
-    return Card(
+
+    return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        leading: const CircleAvatar(child: Icon(Icons.inventory_2_outlined)),
-        title: Text(item.name),
-        subtitle: Text(
-          '${item.code} • SL ${item.quantity} • ${_conditionText(item.condition)}',
-        ),
-        trailing: FilledButton.tonal(
-          onPressed: canPublish && !publishLocked
-              ? () => context.read<GroupInventoryCubit>().publish(groupId, item)
-              : null,
-          child: isPublishing
-              ? const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(canPublish ? 'Đăng gian hàng' : _statusText(item.status)),
-        ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.inventory_2_outlined,
+              size: 20,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.name,
+                  style: textTheme.titleSmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '${item.code} • SL ${item.quantity} • ${_conditionText(item.condition)}',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (canPublish)
+            FilledButton.tonal(
+              onPressed: publishLocked
+                  ? null
+                  : () =>
+                      context.read<GroupInventoryCubit>().publish(groupId, item),
+              style: FilledButton.styleFrom(minimumSize: const Size(0, 38)),
+              child: isPublishing
+                  ? const SizedBox.square(
+                      dimension: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Đăng tin'),
+            )
+          else
+            AppStatusBadge(status: item.status),
+        ],
       ),
     );
   }
@@ -570,10 +663,33 @@ class _EmptyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Center(child: Text(text)),
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.inbox_outlined,
+            size: 36,
+            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            text,
+            style: textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
@@ -620,21 +736,6 @@ String _conditionText(String value) {
     'good' => 'Tốt',
     'used' => 'Đã sử dụng',
     'worn' => 'Hao mòn',
-    _ => 'Không xác định',
-  };
-}
-
-String _statusText(String value) {
-  return switch (value) {
-    'pending' => 'Chờ duyệt',
-    'accepted' => 'Đã tiếp nhận',
-    'scheduled' => 'Đã hẹn',
-    'received' => 'Đang kiểm tra',
-    'completed' => 'Hoàn tất',
-    'in_stock' => 'Trong kho',
-    'listed' => 'Đã đăng',
-    'reserved' => 'Đã giữ',
-    'delivered' => 'Đã trao',
     _ => 'Không xác định',
   };
 }

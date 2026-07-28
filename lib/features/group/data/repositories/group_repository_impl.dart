@@ -180,6 +180,16 @@ class GroupRepositoryImpl implements GroupRepository {
   }
 
   @override
+  Future<Either<String, void>> cancelJoinRequest(String groupId) async {
+    try {
+      await remoteDataSource.cancelJoinRequest(groupId);
+      return const Right(null);
+    } catch (e) {
+      return Left(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  @override
   Future<Either<String, List<JoinRequestEntity>>> getJoinRequests(
     String groupId, {
     String? status,

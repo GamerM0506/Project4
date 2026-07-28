@@ -10,28 +10,13 @@ class GroupDashboardMembers extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
     return DefaultTabController(
       length: 3,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              'Cộng đồng',
-              style: textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          TabBar(
-            labelColor: const Color(0xFFB73A41),
-            unselectedLabelColor: colorScheme.onSurfaceVariant,
-            indicatorColor: const Color(0xFFB73A41),
-            tabs: const [
+          const TabBar(
+            tabs: [
               Tab(text: 'Thành viên'),
               Tab(text: 'Yêu cầu tham gia'),
               Tab(text: 'Đã cấm'),

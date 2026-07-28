@@ -45,6 +45,11 @@ abstract class MarketplaceRemoteDataSource {
   Future<void> cancelRequest(String id);
   Future<void> noShowRequest(String id);
   Future<DeliveryConfirmationModel> getDeliveryConfirmation(String id);
+  Future<DeliveryConfirmationModel> addReceiverConfirmation(
+    String id,
+    String photoUrl,
+    String? note,
+  );
   Future<Map<String, dynamic>> getStats();
 }
 

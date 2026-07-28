@@ -20,9 +20,10 @@ class _GroupFilterChipsState extends State<GroupFilterChips> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
     return SizedBox(
-      height: 48,
+      height: 40,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         scrollDirection: Axis.horizontal,
@@ -30,28 +31,36 @@ class _GroupFilterChipsState extends State<GroupFilterChips> {
         separatorBuilder: (context, index) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final isSelected = _selectedIndex == index;
-          
-          return ChoiceChip(
-            label: Text(widget.filters[index]),
-            selected: isSelected,
-            onSelected: (selected) {
-              if (selected) {
-                setState(() => _selectedIndex = index);
-                widget.onFilterSelected(widget.filters[index]);
-              }
+
+          return GestureDetector(
+            onTap: () {
+              setState(() => _selectedIndex = index);
+              widget.onFilterSelected(widget.filters[index]);
             },
-            showCheckmark: false,
-            backgroundColor: colorScheme.surface,
-            selectedColor: colorScheme.primary,
-            labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: isSelected ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-              side: BorderSide(
-                color: isSelected ? colorScheme.primary : colorScheme.outline.withValues(alpha: 0.3),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? colorScheme.primary
+                    : colorScheme.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected
+                      ? colorScheme.primary
+                      : colorScheme.outlineVariant,
+                ),
+              ),
+              child: Text(
+                widget.filters[index],
+                style: textTheme.labelLarge?.copyWith(
+                  color: isSelected
+                      ? colorScheme.onPrimary
+                      : colorScheme.onSurfaceVariant,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                ),
               ),
             ),
           );

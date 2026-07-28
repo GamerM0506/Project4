@@ -1,47 +1,102 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../core/router/app_routes.dart';
 
 class HomeQuickActions extends StatelessWidget {
   const HomeQuickActions({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildActionItem(context, Icons.storefront_outlined, 'Gian hàng'),
-        _buildActionItem(context, Icons.group_outlined, 'Tìm hội nhóm'),
-        _buildActionItem(context, Icons.my_location_outlined, 'Theo dõi'),
-        _buildActionItem(context, Icons.emoji_events_outlined, 'Xếp hạng'),
+        _ActionItem(
+          icon: Icons.storefront_rounded,
+          label: 'Gian hàng',
+          color: colorScheme.primary,
+          onTap: () => context.go(AppRoutes.marketplace),
+        ),
+        _ActionItem(
+          icon: Icons.groups_rounded,
+          label: 'Tìm hội nhóm',
+          color: colorScheme.secondary,
+          onTap: () => context.go(AppRoutes.groups),
+        ),
+        _ActionItem(
+          icon: Icons.my_location_rounded,
+          label: 'Theo dõi',
+          color: colorScheme.tertiary,
+          onTap: () => context.push(AppRoutes.activity),
+        ),
+        _ActionItem(
+          icon: Icons.emoji_events_rounded,
+          label: 'Xếp hạng',
+          color: const Color(0xFF7A5AF8),
+          onTap: () {},
+        ),
       ],
     );
   }
+}
 
-  Widget _buildActionItem(BuildContext context, IconData icon, String label) {
-    final colorScheme = Theme.of(context).colorScheme;
+class _ActionItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ActionItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = isDark ? Color.alphaBlend(Colors.white.withValues(alpha: 0.35), color) : color;
 
     return Expanded(
-      child: Column(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerLow,
-              shape: BoxShape.circle,
-              border: Border.all(color: colorScheme.surfaceContainerHighest),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(18),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Column(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: iconColor.withValues(alpha: isDark ? 0.22 : 0.12),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Icon(icon, color: iconColor, size: 26),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: Icon(icon, color: colorScheme.secondary),
           ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: textTheme.labelMedium?.copyWith(
-              color: colorScheme.onSurface,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
