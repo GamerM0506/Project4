@@ -8,6 +8,9 @@ class DeliveryConfirmationEntity extends Equatable {
   final String? photoUrl;
   final String? note;
   final DateTime? confirmedAt;
+  final String? receiverPhotoUrl;
+  final String? receiverNote;
+  final DateTime? receiverConfirmedAt;
 
   const DeliveryConfirmationEntity({
     required this.id,
@@ -17,6 +20,9 @@ class DeliveryConfirmationEntity extends Equatable {
     this.photoUrl,
     this.note,
     this.confirmedAt,
+    this.receiverPhotoUrl,
+    this.receiverNote,
+    this.receiverConfirmedAt,
   });
 
   @override
@@ -28,5 +34,8 @@ class DeliveryConfirmationEntity extends Equatable {
     photoUrl,
     note,
     confirmedAt,
+    receiverPhotoUrl,
+    receiverNote,
+    receiverConfirmedAt,
   ];
 }

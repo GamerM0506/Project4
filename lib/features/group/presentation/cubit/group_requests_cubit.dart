@@ -1,11 +1,13 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../marketplace/domain/usecases/request_usecases.dart';
 import '../../../marketplace/domain/usecases/listing_usecases.dart';
+import '../../../marketplace/domain/entities/request_entity.dart';
 import '../../domain/usecases/get_members_usecase.dart';
 import 'group_requests_state.dart';
 
 class GroupRequestsCubit extends Cubit<GroupRequestsState> {
   final GetRequestsUseCase getRequestsUseCase;
+  final GetRequestByCodeUseCase getRequestByCodeUseCase;
   final ApproveRequestUseCase approveRequestUseCase;
   final RejectRequestUseCase rejectRequestUseCase;
   final ScheduleRequestUseCase scheduleRequestUseCase;
@@ -17,6 +19,7 @@ class GroupRequestsCubit extends Cubit<GroupRequestsState> {
 
   GroupRequestsCubit({
     required this.getRequestsUseCase,
+    required this.getRequestByCodeUseCase,
     required this.approveRequestUseCase,
     required this.rejectRequestUseCase,
     required this.scheduleRequestUseCase,
@@ -97,6 +100,24 @@ class GroupRequestsCubit extends Cubit<GroupRequestsState> {
 
   Future<void> noShowRequest(String groupId, String requestId) =>
       _run(groupId, requestId, () => noShowRequestUseCase(requestId));
+
+  Future<({RequestEntity request, String title, String receiver})?>
+  lookupByCode(String groupId, String code) async {
+    final result = await getRequestByCodeUseCase(code);
+    return result.fold((_) => null, (request) {
+      if (request.groupId != groupId) return null;
+      final current = state;
+      return (
+        request: request,
+        title: current is GroupRequestsLoaded
+            ? current.listingTitles[request.listingId] ?? 'Vật phẩm'
+            : 'Vật phẩm',
+        receiver: current is GroupRequestsLoaded
+            ? current.userNames[request.receiverId] ?? 'Người nhận'
+            : 'Người nhận',
+      );
+    });
+  }
 
   Future<String> confirmation(String requestId) async {
     final result = await getDeliveryConfirmationUseCase(requestId);

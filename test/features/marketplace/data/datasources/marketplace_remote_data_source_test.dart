@@ -140,7 +140,7 @@ void main() {
       );
       await dataSource.completeRequest(
         'request-id',
-        qrToken: 'qr-token',
+        qrToken: 'REQ-2026-1234',
         photoUrl: 'https://cdn.example.com/delivery.jpg',
         note: 'Đã giao đủ',
       );
@@ -168,7 +168,7 @@ void main() {
         () => mockDio.put(
           '${AppConstants.marketplaceApiBaseUrl}/requests/request-id/complete',
           data: {
-            'qr_token': 'qr-token',
+            'qr_token': 'REQ-2026-1234',
             'photo_url': 'https://cdn.example.com/delivery.jpg',
             'note': 'Đã giao đủ',
           },

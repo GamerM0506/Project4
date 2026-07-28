@@ -39,6 +39,7 @@ abstract class MarketplaceRepository {
     int page,
     int limit,
   });
+  Future<Either<String, RequestEntity>> getRequestByCode(String code);
   Future<Either<String, void>> createRequest(
     String listingId,
     int quantity,
@@ -57,6 +58,11 @@ abstract class MarketplaceRepository {
   Future<Either<String, void>> noShowRequest(String id);
   Future<Either<String, DeliveryConfirmationEntity>> getDeliveryConfirmation(
     String id,
+  );
+  Future<Either<String, DeliveryConfirmationEntity>> addReceiverConfirmation(
+    String id,
+    String photoUrl,
+    String? note,
   );
   Future<Either<String, Map<String, dynamic>>> getStats();
 }

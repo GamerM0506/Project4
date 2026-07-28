@@ -26,6 +26,8 @@
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Ứng dụng cần quyền truy cập thư viện ảnh để bạn chọn ảnh vật phẩm.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Ứng dụng cần quyền camera để quét mã QR khi giao nhận đồ.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
