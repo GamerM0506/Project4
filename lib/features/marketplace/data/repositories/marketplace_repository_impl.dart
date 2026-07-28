@@ -144,6 +144,15 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   }
 
   @override
+  Future<Either<String, RequestEntity>> getRequestByCode(String code) async {
+    try {
+      return Right(await remoteDataSource.getRequestByCode(code));
+    } catch (e) {
+      return Left(_message(e));
+    }
+  }
+
+  @override
   Future<Either<String, void>> createRequest(
     String listingId,
     int quantity,
@@ -253,6 +262,19 @@ class MarketplaceRepositoryImpl implements MarketplaceRepository {
   ) async {
     try {
       return Right(await remoteDataSource.getDeliveryConfirmation(id));
+    } catch (e) {
+      return Left(_message(e));
+    }
+  }
+
+  @override
+  Future<Either<String, DeliveryConfirmationEntity>> addReceiverConfirmation(
+    String id,
+    String photoUrl,
+    String? note,
+  ) async {
+    try {
+      return Right(await remoteDataSource.addReceiverConfirmation(id, photoUrl, note));
     } catch (e) {
       return Left(_message(e));
     }

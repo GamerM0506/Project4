@@ -9,6 +9,9 @@ class DeliveryConfirmationModel extends DeliveryConfirmationEntity {
     super.photoUrl,
     super.note,
     super.confirmedAt,
+    super.receiverPhotoUrl,
+    super.receiverNote,
+    super.receiverConfirmedAt,
   });
 
   factory DeliveryConfirmationModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +23,11 @@ class DeliveryConfirmationModel extends DeliveryConfirmationEntity {
       photoUrl: json['photo_url']?.toString(),
       note: json['note']?.toString(),
       confirmedAt: DateTime.tryParse(json['confirmed_at']?.toString() ?? ''),
+      receiverPhotoUrl: json['receiver_photo_url']?.toString(),
+      receiverNote: json['receiver_note']?.toString(),
+      receiverConfirmedAt: DateTime.tryParse(
+        json['receiver_confirmed_at']?.toString() ?? '',
+      ),
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../../../../injection_container.dart';
@@ -295,16 +296,18 @@ class _RequestCard extends StatelessWidget {
   }
 
   Future<void> _complete(BuildContext context) async {
-    final values = await _completionDialog(context);
-    if (values != null && context.mounted) {
-      context.read<GroupRequestsCubit>().completeRequest(
-        groupId,
-        request.id,
-        values.$1,
-        photoUrl: values.$2,
-        note: values.$3,
+    final code = await _requestCodeDialog(context);
+    if (code == null || !context.mounted) return;
+    final cubit = context.read<GroupRequestsCubit>();
+    final found = await cubit.lookupByCode(groupId, code);
+    if (!context.mounted) return;
+    if (found == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không tìm thấy yêu cầu thuộc nhóm này.')),
       );
+      return;
     }
+    await _requestPreviewDialog(context, found, cubit);
   }
 
   Future<void> _confirmation(BuildContext context) async {
@@ -326,6 +329,183 @@ class _RequestCard extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<String?> _requestCodeDialog(BuildContext context) async {
+  final controller = TextEditingController();
+  final result = await showDialog<String>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Tra cứu QR nhận đồ'),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        textCapitalization: TextCapitalization.characters,
+        decoration: InputDecoration(
+          labelText: 'Mã request',
+          hintText: 'REQ-2026-1234',
+          suffixIcon: IconButton(
+            tooltip: 'Quét QR',
+            onPressed: () async {
+              final value = await Navigator.of(context).push<String>(
+                MaterialPageRoute(
+                  builder: (_) => const _RequestQrScannerPage(),
+                ),
+              );
+              if (value != null) controller.text = value;
+            },
+            icon: const Icon(Icons.qr_code_scanner),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Hủy'),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (controller.text.trim().isNotEmpty) {
+              Navigator.pop(context, controller.text.trim());
+            }
+          },
+          child: const Text('Tra cứu'),
+        ),
+      ],
+    ),
+  );
+  controller.dispose();
+  return result;
+}
+
+Future<void> _requestPreviewDialog(
+  BuildContext context,
+  ({RequestEntity request, String title, String receiver}) found,
+  GroupRequestsCubit cubit,
+) async {
+  final request = found.request;
+  final canComplete = const {'approved', 'scheduled'}.contains(request.status);
+  await showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Thông tin yêu cầu nhận đồ'),
+      content: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _previewLine('Mã yêu cầu', request.code),
+            _previewLine('Món đồ', found.title),
+            _previewLine('Người nhận', found.receiver),
+            _previewLine('Số lượng', '${request.quantity}'),
+            _previewLine('Trạng thái', _requestStatus(request.status)),
+            if (request.scheduledAt != null)
+              _previewLine(
+                'Lịch nhận',
+                request.scheduledAt!.toLocal().toString(),
+              ),
+            const SizedBox(height: 12),
+            const Text(
+              'Đã tra đúng request. Chỉ xác nhận giao sau khi đã đối chiếu người nhận và món đồ tại điểm hẹn.',
+              style: TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Đóng'),
+        ),
+        if (canComplete)
+          FilledButton.icon(
+            onPressed: () async {
+              final values = await _completionDetailsDialog(context);
+              if (values == null || !context.mounted) return;
+              Navigator.pop(context);
+              await cubit.completeRequest(
+                request.groupId,
+                request.id,
+                request.code,
+                photoUrl: values.$1,
+                note: values.$2,
+              );
+            },
+            icon: const Icon(Icons.check_circle_outline),
+            label: const Text('Xác nhận đã giao'),
+          ),
+      ],
+    ),
+  );
+}
+
+Widget _previewLine(String label, String value) => Padding(
+  padding: const EdgeInsets.only(bottom: 8),
+  child: RichText(
+    text: TextSpan(
+      style: const TextStyle(color: Colors.black87, fontSize: 14),
+      children: [
+        TextSpan(
+          text: '$label: ',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        TextSpan(text: value),
+      ],
+    ),
+  ),
+);
+
+String _requestStatus(String value) => switch (value) {
+  'pending' => 'Chờ duyệt',
+  'approved' => 'Đã duyệt',
+  'scheduled' => 'Đã hẹn',
+  'completed' => 'Đã nhận',
+  'rejected' => 'Đã từ chối',
+  'cancelled' => 'Đã hủy',
+  'no_show' => 'Không đến nhận',
+  _ => value,
+};
+
+Future<(String?, String?)?> _completionDetailsDialog(
+  BuildContext context,
+) async {
+  final photo = TextEditingController();
+  final note = TextEditingController();
+  final result = await showDialog<(String?, String?)>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Xác nhận đã giao'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: photo,
+            decoration: const InputDecoration(labelText: 'URL ảnh giao nhận'),
+          ),
+          TextField(
+            controller: note,
+            decoration: const InputDecoration(labelText: 'Ghi chú'),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Hủy'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, (
+            photo.text.trim().isEmpty ? null : photo.text.trim(),
+            note.text.trim().isEmpty ? null : note.text.trim(),
+          )),
+          child: const Text('Hoàn tất'),
+        ),
+      ],
+    ),
+  );
+  photo.dispose();
+  note.dispose();
+  return result;
 }
 
 Future<String?> _textInput(
@@ -362,56 +542,60 @@ Future<String?> _textInput(
   return result;
 }
 
-Future<(String, String?, String?)?> _completionDialog(
-  BuildContext context,
-) async {
-  final qr = TextEditingController();
-  final photo = TextEditingController();
-  final note = TextEditingController();
-  final result = await showDialog<(String, String?, String?)>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Xác nhận đã giao'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: qr,
-              decoration: const InputDecoration(labelText: 'QR token *'),
-            ),
-            TextField(
-              controller: photo,
-              decoration: const InputDecoration(labelText: 'URL ảnh giao nhận'),
-            ),
-            TextField(
-              controller: note,
-              decoration: const InputDecoration(labelText: 'Ghi chú'),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Hủy'),
-        ),
-        FilledButton(
-          onPressed: () {
-            if (qr.text.trim().isEmpty) return;
-            Navigator.pop(context, (
-              qr.text.trim(),
-              photo.text.trim().isEmpty ? null : photo.text.trim(),
-              note.text.trim().isEmpty ? null : note.text.trim(),
-            ));
+class _RequestQrScannerPage extends StatefulWidget {
+  const _RequestQrScannerPage();
+
+  @override
+  State<_RequestQrScannerPage> createState() => _RequestQrScannerPageState();
+}
+
+class _RequestQrScannerPageState extends State<_RequestQrScannerPage> {
+  bool _hasResult = false;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: Colors.black,
+    appBar: AppBar(
+      title: const Text('Quét QR nhận đồ'),
+      backgroundColor: Colors.black,
+      foregroundColor: Colors.white,
+    ),
+    body: Stack(
+      fit: StackFit.expand,
+      children: [
+        MobileScanner(
+          onDetect: (capture) {
+            if (_hasResult) return;
+            for (final barcode in capture.barcodes) {
+              final value = barcode.rawValue?.trim();
+              if (value == null || value.isEmpty) continue;
+              _hasResult = true;
+              Navigator.pop(context, value);
+              return;
+            }
           },
-          child: const Text('Hoàn tất'),
+        ),
+        Center(
+          child: Container(
+            width: 250,
+            height: 250,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.white, width: 3),
+              borderRadius: BorderRadius.circular(24),
+            ),
+          ),
+        ),
+        const Positioned(
+          left: 24,
+          right: 24,
+          bottom: 48,
+          child: Text(
+            'Đặt mã QR của người nhận vào trong khung',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white, fontSize: 16),
+          ),
         ),
       ],
     ),
   );
-  qr.dispose();
-  photo.dispose();
-  note.dispose();
-  return result;
 }

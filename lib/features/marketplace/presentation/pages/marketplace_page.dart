@@ -478,7 +478,7 @@ class _ListingCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(22),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: onTap,
+        onTap: available ? onTap : null,
         child: DecoratedBox(
           decoration: BoxDecoration(
             border: Border.all(color: colorScheme.outlineVariant),
@@ -581,8 +581,13 @@ class _ListingCard extends StatelessWidget {
                         height: 38,
                         child: FilledButton.icon(
                           onPressed: available ? onTap : null,
-                          icon: const Icon(Icons.redeem_outlined, size: 17),
-                          label: const Text('Xem món đồ'),
+                          icon: Icon(
+                            available
+                                ? Icons.redeem_outlined
+                                : Icons.block_outlined,
+                            size: 17,
+                          ),
+                          label: Text(available ? 'Xem món đồ' : 'Đã hết hàng'),
                           style: FilledButton.styleFrom(
                             backgroundColor: colorScheme.secondary,
                             foregroundColor: colorScheme.onSecondary,

@@ -37,6 +37,15 @@ class CreateRequestUseCase {
   ) => repository.createRequest(listingId, quantity, reason);
 }
 
+class GetRequestByCodeUseCase {
+  final MarketplaceRepository repository;
+  GetRequestByCodeUseCase(this.repository);
+
+  Future<Either<String, RequestEntity>> call(String code) {
+    return repository.getRequestByCode(code);
+  }
+}
+
 class ApproveRequestUseCase {
   final MarketplaceRepository repository;
   ApproveRequestUseCase(this.repository);
@@ -85,4 +94,15 @@ class GetDeliveryConfirmationUseCase {
   GetDeliveryConfirmationUseCase(this.repository);
   Future<Either<String, DeliveryConfirmationEntity>> call(String id) =>
       repository.getDeliveryConfirmation(id);
+}
+
+class AddReceiverConfirmationUseCase {
+  final MarketplaceRepository repository;
+  AddReceiverConfirmationUseCase(this.repository);
+
+  Future<Either<String, DeliveryConfirmationEntity>> call(
+    String id,
+    String photoUrl,
+    String? note,
+  ) => repository.addReceiverConfirmation(id, photoUrl, note);
 }

@@ -211,6 +211,7 @@ Future<void> initDependencies({SharedPreferences? preferences}) async {
   sl.registerLazySingleton(() => GetListingDetailUseCase(sl()));
   sl.registerLazySingleton(() => CreateListingUseCase(sl()));
   sl.registerLazySingleton(() => GetRequestsUseCase(sl()));
+  sl.registerLazySingleton(() => GetRequestByCodeUseCase(sl()));
   sl.registerLazySingleton(() => CreateRequestUseCase(sl()));
   sl.registerLazySingleton(() => ApproveRequestUseCase(sl()));
   sl.registerLazySingleton(() => RejectRequestUseCase(sl()));
@@ -288,6 +289,8 @@ Future<void> initDependencies({SharedPreferences? preferences}) async {
       cancelRequestUseCase: sl(),
       getListingDetailUseCase: sl(),
       prefs: sl(),
+      addReceiverConfirmationUseCase: sl(),
+      mediaService: sl(),
     ),
   );
   sl.registerFactory(
@@ -328,6 +331,7 @@ Future<void> initDependencies({SharedPreferences? preferences}) async {
   sl.registerFactory(
     () => GroupRequestsCubit(
       getRequestsUseCase: sl(),
+      getRequestByCodeUseCase: sl(),
       approveRequestUseCase: sl(),
       rejectRequestUseCase: sl(),
       scheduleRequestUseCase: sl(),

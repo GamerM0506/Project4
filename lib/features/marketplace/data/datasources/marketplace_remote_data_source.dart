@@ -31,6 +31,7 @@ abstract class MarketplaceRemoteDataSource {
     int page = 1,
     int limit = 20,
   });
+  Future<RequestModel> getRequestByCode(String code);
   Future<void> createRequest(Map<String, dynamic> data);
   Future<void> approveRequest(String id);
   Future<void> rejectRequest(String id, String reason);
@@ -227,6 +228,23 @@ class MarketplaceRemoteDataSourceImpl implements MarketplaceRemoteDataSource {
   }
 
   @override
+  Future<RequestModel> getRequestByCode(String code) async {
+    try {
+      final response = await apiClient.dio.get(
+        '$_baseUrl/requests/by-code/${Uri.encodeComponent(code.trim())}',
+      );
+      final data = response.data is Map
+          ? (response.data['data'] ?? response.data)
+          : response.data;
+      return RequestModel.fromJson(Map<String, dynamic>.from(data as Map));
+    } catch (error) {
+      throw Exception(
+        apiErrorMessage(error, fallback: 'Không thể tra cứu yêu cầu nhận đồ.'),
+      );
+    }
+  }
+
+  @override
   Future<void> approveRequest(String id) => _put(
     '$_baseUrl/requests/$id/approve',
     data: const <String, dynamic>{},
@@ -289,6 +307,31 @@ class MarketplaceRemoteDataSourceImpl implements MarketplaceRemoteDataSource {
     } catch (error) {
       throw Exception(
         apiErrorMessage(error, fallback: 'Không thể tải biên nhận giao đồ.'),
+      );
+    }
+  }
+
+  @override
+  Future<DeliveryConfirmationModel> addReceiverConfirmation(
+    String id,
+    String photoUrl,
+    String? note,
+  ) async {
+    try {
+      final response = await apiClient.dio.put(
+        '$_baseUrl/requests/$id/receiver-confirmation',
+        data: {
+          'photo_url': photoUrl,
+          if (note?.trim().isNotEmpty ?? false) 'note': note!.trim(),
+        },
+      );
+      final data = response.data is Map
+          ? (response.data['data'] ?? response.data)
+          : response.data;
+      return DeliveryConfirmationModel.fromJson(Map<String, dynamic>.from(data as Map));
+    } catch (error) {
+      throw Exception(
+        apiErrorMessage(error, fallback: 'Không thể xác nhận đã nhận đồ.'),
       );
     }
   }

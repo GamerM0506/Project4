@@ -55,7 +55,12 @@ class MarketplaceCubit extends Cubit<MarketplaceState> {
       ),
       (page) => emit(
         MarketplaceState(
-          listings: page.items,
+          listings: page.items
+              .where(
+                (listing) =>
+                    listing.status == 'active' && listing.quantityAvailable > 0,
+              )
+              .toList(),
           categories: categories,
           hasMore: page.hasMore,
         ),
@@ -81,9 +86,15 @@ class MarketplaceCubit extends Cubit<MarketplaceState> {
       (error) => emit(state.copyWith(isLoadingMore: false, error: error)),
       (page) {
         _page = nextPage;
+        final availableItems = page.items
+            .where(
+              (listing) =>
+                  listing.status == 'active' && listing.quantityAvailable > 0,
+            )
+            .toList();
         emit(
           state.copyWith(
-            listings: [...state.listings, ...page.items],
+            listings: [...state.listings, ...availableItems],
             isLoadingMore: false,
             hasMore: page.hasMore,
             clearError: true,
