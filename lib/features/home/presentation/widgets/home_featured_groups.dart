@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/app_routes.dart';
+import '../../../../core/widgets/app_avatar.dart';
 import '../../data/models/group_model.dart';
 
 class HomeFeaturedGroups extends StatelessWidget {
@@ -82,16 +83,10 @@ class _GroupCard extends StatelessWidget {
                     color: colorScheme.surface,
                   ),
                   padding: const EdgeInsets.all(2),
-                  child: ClipOval(
-                    child: Image.network(
-                      group.imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Icon(
-                        Icons.groups_rounded,
-                        color: colorScheme.primary,
-                        size: 28,
-                      ),
-                    ),
+                  child: AppAvatar(
+                    imageUrl: group.imageUrl,
+                    name: group.name,
+                    radius: 28,
                   ),
                 ),
               ),

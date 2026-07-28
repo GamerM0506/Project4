@@ -23,9 +23,10 @@ abstract class ChatRemoteDataSource {
 class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
   final ApiClient apiClient;
 
-  final Map<String, Future<({String name, String? avatarUrl})>>
-  _profileCache = {};
-  final Map<String, Future<({String name, String? avatarUrl})>> _groupCache = {};
+  final Map<String, Future<({String name, String? avatarUrl})>> _profileCache =
+      {};
+  final Map<String, Future<({String name, String? avatarUrl})>> _groupCache =
+      {};
 
   ChatRemoteDataSourceImpl({required this.apiClient});
 
@@ -62,9 +63,19 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
     final data = response.data is List
         ? response.data as List
         : (response.data['data'] as List? ?? []);
-    final conversations = data
+    var conversations = data
         .map((e) => ConversationModel.fromJson(Map<String, dynamic>.from(e)))
         .toList();
+
+    if (groupId == null) {
+      conversations = conversations
+          .where(
+            (conversation) =>
+                conversation.groupId != null &&
+                managedGroupIds.contains(conversation.groupId),
+          )
+          .toList();
+    }
 
     if (conversations.isEmpty) return [];
 
@@ -103,24 +114,23 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
         .toSet();
     final profileMap = await _publicProfileBatch(userIdsForUsers);
 
-    return conversations
-        .map((c) {
-          if (c.userId == currentUserId) {
-            return c.withDisplay(
-              title: groupMap[c.groupId]?.name ?? 'Hội nhóm',
-              avatarUrl: groupMap[c.groupId]?.avatarUrl,
-            );
-          }
-          return c.withDisplay(
-            title: profileMap[c.userId]?.name ?? 'Người dùng',
-            avatarUrl: profileMap[c.userId]?.avatarUrl,
-          );
-        })
-        .toList();
+    return conversations.map((c) {
+      if (c.userId == currentUserId) {
+        return c.withDisplay(
+          title: groupMap[c.groupId]?.name ?? 'Hội nhóm',
+          avatarUrl: groupMap[c.groupId]?.avatarUrl,
+        );
+      }
+      return c.withDisplay(
+        title: profileMap[c.userId]?.name ?? 'Người dùng',
+        avatarUrl: profileMap[c.userId]?.avatarUrl,
+      );
+    }).toList();
   }
 
-  Future<Map<String, ({String name, String? avatarUrl})>>
-  _publicProfileBatch(Iterable<String> userIds) async {
+  Future<Map<String, ({String name, String? avatarUrl})>> _publicProfileBatch(
+    Iterable<String> userIds,
+  ) async {
     final ids = userIds.where((id) => id.isNotEmpty).toSet();
     if (ids.isEmpty) return {};
 
@@ -173,8 +183,9 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
     return result;
   }
 
-  Future<Map<String, ({String name, String? avatarUrl})>>
-  _publicGroupBatch(Iterable<String> groupIds) async {
+  Future<Map<String, ({String name, String? avatarUrl})>> _publicGroupBatch(
+    Iterable<String> groupIds,
+  ) async {
     final ids = groupIds.where((id) => id.isNotEmpty).toSet();
     if (ids.isEmpty) return {};
 
@@ -249,29 +260,25 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
         .toSet();
     final profileMap = await _publicProfileBatch(senderIds);
 
-    final messages = rawMessages
-        .map(
-          (e) {
-            final senderId = e['sender_id']?.toString() ?? '';
-            final profile = profileMap[senderId];
-            return ChatMessage(
-              id: e['id']?.toString() ?? '',
-              content: e['content']?.toString() ?? '',
-              senderId: senderId,
-              senderName: profile?.name,
-              senderAvatar: profile?.avatarUrl,
-              createdAt:
-                  DateTime.tryParse(e['created_at']?.toString() ?? '') ??
-                  DateTime.now(),
-              isMine: currentUserId != null && senderId == currentUserId,
-              type: e['type']?.toString() ?? 'text',
-              metadata: e['metadata'] != null
-                  ? Map<String, dynamic>.from(e['metadata'] as Map)
-                  : null,
-            );
-          },
-        )
-        .toList();
+    final messages = rawMessages.map((e) {
+      final senderId = e['sender_id']?.toString() ?? '';
+      final profile = profileMap[senderId];
+      return ChatMessage(
+        id: e['id']?.toString() ?? '',
+        content: e['content']?.toString() ?? '',
+        senderId: senderId,
+        senderName: profile?.name,
+        senderAvatar: profile?.avatarUrl,
+        createdAt:
+            DateTime.tryParse(e['created_at']?.toString() ?? '') ??
+            DateTime.now(),
+        isMine: currentUserId != null && senderId == currentUserId,
+        type: e['type']?.toString() ?? 'text',
+        metadata: e['metadata'] != null
+            ? Map<String, dynamic>.from(e['metadata'] as Map)
+            : null,
+      );
+    }).toList();
     messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
     return messages;
   }

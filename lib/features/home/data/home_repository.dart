@@ -11,13 +11,19 @@ class HomeRepository {
   Future<List<GroupModel>> getFeaturedGroups({int limit = 5}) async {
     final response = await apiClient.dio.get(
       '${AppConstants.communityApiBaseUrl}/groups',
-      queryParameters: {'limit': limit},
+      queryParameters: {'limit': 100, 'status': 'active'},
     );
     final body = response.data;
     final List data = body is Map && body['data'] is Map
         ? (body['data']['items'] as List? ?? const [])
         : const [];
-    return data.map((json) => GroupModel.fromJson(json)).toList();
+    final groups = data.map((json) => GroupModel.fromJson(json)).toList();
+    groups.sort((a, b) {
+      final aHasImage = a.imageUrl != null ? 1 : 0;
+      final bHasImage = b.imageUrl != null ? 1 : 0;
+      return bHasImage.compareTo(aHasImage);
+    });
+    return groups.take(limit).toList();
   }
 
   Future<List<ListingModel>> getRecentItems({int limit = 5}) async {
