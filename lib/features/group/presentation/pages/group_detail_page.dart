@@ -424,6 +424,8 @@ class _GroupDetailViewState extends State<GroupDetailView>
                                       extra: {
                                         'groupId': group.id,
                                         'name': group.name,
+                                        'avatarUrl': group.avatarUrl,
+                                        'isUserSide': true,
                                       },
                                     );
                                   },

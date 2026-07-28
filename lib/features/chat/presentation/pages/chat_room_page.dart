@@ -8,18 +8,23 @@ import '../widgets/donation_bottom_sheet.dart';
 import '../widgets/listing_message_bubble.dart';
 import '../cubit/chat_cubit.dart';
 import '../cubit/chat_state.dart';
+import '../../../../core/widgets/app_avatar.dart';
 import '../../../../injection_container.dart';
 
 class ChatRoomPage extends StatefulWidget {
   final String? conversationId;
   final String? groupId;
   final String name;
+  final String? avatarUrl;
+  final bool isUserSide;
 
   const ChatRoomPage({
     super.key,
     this.conversationId,
     this.groupId,
     required this.name,
+    this.avatarUrl,
+    this.isUserSide = true,
   });
 
   @override
@@ -59,10 +64,20 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       return;
     }
 
-    final result = await sl<GetConversationsUseCase>()(groupId: groupId);
+    final currentUserId = sl<SharedPreferences>().getString(
+      AppConstants.keyUserId,
+    );
+    if (currentUserId == null || currentUserId.isEmpty) {
+      _chatCubit.setError('Không xác định được tài khoản hiện tại.');
+      return;
+    }
+    final result = await sl<GetConversationsUseCase>()();
     result.fold(_chatCubit.setError, (conversations) {
       final matches = conversations
-          .where((item) => item.groupId == groupId)
+          .where(
+            (item) =>
+                item.groupId == groupId && item.userId == currentUserId,
+          )
           .toList();
       if (matches.isEmpty) {
         _chatCubit.setError(
@@ -70,14 +85,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         );
         return;
       }
-      final currentUserId = sl<SharedPreferences>().getString(
-        AppConstants.keyUserId,
-      );
-      final ownMatches = matches
-          .where((item) => item.userId == currentUserId)
-          .toList();
-      final selected = ownMatches.isNotEmpty ? ownMatches.first : matches.first;
-      _chatCubit.connect(selected.id);
+      _chatCubit.connect(matches.first.id);
     });
   }
 
@@ -137,19 +145,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               children: [
                 Stack(
                   children: [
-                    CircleAvatar(
+                    AppAvatar(
+                      imageUrl: widget.avatarUrl,
+                      name: widget.name,
                       radius: 18,
-                      backgroundColor: colorScheme.primaryContainer,
-                      child: Text(
-                        widget.name.isNotEmpty
-                            ? widget.name[0].toUpperCase()
-                            : '?',
-                        style: TextStyle(
-                          color: colorScheme.onPrimaryContainer,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
                     ),
                     Positioned(
                       bottom: 0,
@@ -198,82 +197,58 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               ],
             ),
           ),
-          actions: [
-            // Nút "🎁 Gửi đồ AI" nổi bật trên AppBar
-            Padding(
-              padding: const EdgeInsets.only(right: 12.0),
-              child: FilledButton.icon(
-                onPressed: _openDonateFormWithAI,
-                icon: const Icon(Icons.card_giftcard, size: 16),
-                label: const Text(
-                  'Gửi đồ quyên góp',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: colorScheme.primaryContainer,
-                  foregroundColor: colorScheme.onPrimaryContainer,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-              ),
-            ),
-          ],
+          actions: const [],
         ),
         body: Column(
           children: [
-            // Quick Banner for AI Donation
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: colorScheme.secondaryContainer.withOpacity(0.4),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.auto_awesome,
-                    color: colorScheme.secondary,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Bạn có đồ muốn gửi cho ${widget.name}? Dùng AI để điền nhanh biểu mẫu quyên góp!',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: colorScheme.onSecondaryContainer,
-                        fontWeight: FontWeight.w500,
-                      ),
+            if (widget.isUserSide)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: colorScheme.secondaryContainer.withOpacity(0.4),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.auto_awesome,
+                      color: colorScheme.secondary,
+                      size: 18,
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  InkWell(
-                    onTap: _openDonateFormWithAI,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.secondary,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                    const SizedBox(width: 8),
+                    Expanded(
                       child: Text(
-                        'Điền AI',
+                        'Bạn có đồ muốn gửi cho ${widget.name}? Dùng AI để điền nhanh biểu mẫu quyên góp!',
                         style: TextStyle(
                           fontSize: 12,
-                          color: colorScheme.onSecondary,
-                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSecondaryContainer,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: _openDonateFormWithAI,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.secondary,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          'Bắt đầu',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colorScheme.onSecondary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
             Expanded(
               child: BlocConsumer<ChatCubit, ChatState>(
                 listener: (context, state) {

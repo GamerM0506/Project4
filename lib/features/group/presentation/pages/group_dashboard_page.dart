@@ -1,123 +1,65 @@
 import 'package:flutter/material.dart';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../injection_container.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../../core/router/app_routes.dart';
-import '../cubit/group_detail_cubit.dart';
-import '../../data/models/group_model.dart';
-import '../widgets/group_dashboard_inventory.dart';
-import '../widgets/group_dashboard_posts.dart';
-import '../widgets/group_dashboard_members.dart';
-import '../widgets/group_dashboard_settings.dart';
+import '../../../../core/widgets/app_avatar.dart';
+import '../../../../core/widgets/app_empty_state.dart';
+import '../../../../injection_container.dart';
 import '../../../user/presentation/cubit/user_cubit.dart';
 import '../../../user/presentation/cubit/user_state.dart';
+import '../../data/models/group_model.dart';
+import '../cubit/group_detail_cubit.dart';
+import '../widgets/group_dashboard_inventory.dart';
+import '../widgets/group_dashboard_members.dart';
+import '../widgets/group_dashboard_posts.dart';
+import '../widgets/group_dashboard_settings.dart';
 
-class GroupDashboardPage extends StatefulWidget {
+class GroupDashboardPage extends StatelessWidget {
   final String groupId;
 
   const GroupDashboardPage({super.key, required this.groupId});
 
-  @override
-  State<GroupDashboardPage> createState() => _GroupDashboardPageState();
-}
-
-class _GroupDashboardPageState extends State<GroupDashboardPage> {
-  Future<Map<String, int>>? _statsFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _statsFuture = _fetchStatsFromApi();
-  }
-
-  // Simulate API call for stats
-  Future<Map<String, int>> _fetchStatsFromApi() async {
-    try {
-      // TODO: Connect this to actual backend API when the endpoints are implemented
-      // e.g. await sl<GroupRemoteDataSource>().getGroupStats(widget.groupId);
-      await Future.delayed(
-        const Duration(milliseconds: 800),
-      ); // Mock network delay
-
-      // Return mocked API response data for now
-      return {'items': 45, 'pending_posts': 12, 'helped': 128};
-    } catch (e) {
-      return {'items': 0, 'pending_posts': 0, 'helped': 0};
-    }
-  }
-
-  final List<_DashboardTab> _tabs = [
-    _DashboardTab(
-      icon: Icons.dashboard_outlined,
-      activeIcon: Icons.dashboard,
-      label: 'Tổng quan',
-    ),
-    _DashboardTab(
-      icon: Icons.inventory_2_outlined,
-      activeIcon: Icons.inventory_2,
-      label: 'Kho đồ',
-    ),
-    _DashboardTab(
-      icon: Icons.article_outlined,
-      activeIcon: Icons.article,
-      label: 'Bài đăng',
-    ),
-    _DashboardTab(
-      icon: Icons.people_outline,
-      activeIcon: Icons.people,
-      label: 'Thành viên',
-    ),
-    _DashboardTab(
-      icon: Icons.settings_outlined,
-      activeIcon: Icons.settings,
-      label: 'Cài đặt',
-    ),
+  static const _tabs = [
+    (icon: Icons.dashboard_outlined, label: 'Tổng quan'),
+    (icon: Icons.inventory_2_outlined, label: 'Kho đồ'),
+    (icon: Icons.article_outlined, label: 'Bài đăng'),
+    (icon: Icons.people_outline, label: 'Thành viên'),
+    (icon: Icons.settings_outlined, label: 'Cài đặt'),
   ];
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<GroupDetailCubit>()..fetchGroupDetail(widget.groupId),
+      create: (_) => sl<GroupDetailCubit>()..fetchGroupDetail(groupId),
       child: BlocBuilder<GroupDetailCubit, GroupDetailState>(
         builder: (context, state) {
-          String groupName = 'Quản lý nhóm';
-          GroupModel? currentGroup;
-          if (state is GroupDetailLoaded) {
-            groupName = state.group.name;
-            currentGroup = state.group;
-          }
-
-          if (currentGroup == null) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
+          if (state is! GroupDetailLoaded) {
+            return Scaffold(
+              appBar: AppBar(title: const Text('Quản lý nhóm')),
+              body: const Center(child: CircularProgressIndicator()),
             );
           }
 
+          final group = state.group;
           final userState = context.watch<UserCubit>().state;
-          final currentUserId = userState is UserLoaded
-              ? userState.user.id
-              : null;
+          final currentUserId =
+              userState is UserLoaded ? userState.user.id : null;
           final canModerate =
-              (currentGroup.myStatus == 'approved' &&
-                  (currentGroup.myRole == 'owner' ||
-                      currentGroup.myRole == 'moderator')) ||
-              (currentUserId != null && currentUserId == currentGroup.ownerId);
+              (group.myStatus == 'approved' &&
+                  (group.myRole == 'owner' || group.myRole == 'moderator')) ||
+              currentUserId == group.ownerId;
+
           if (!canModerate) {
             return Scaffold(
               appBar: AppBar(title: const Text('Quản lý nhóm')),
-              body: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Bạn không có quyền truy cập trang này.'),
-                    const SizedBox(height: 12),
-                    FilledButton(
-                      onPressed: () => context.pop(),
-                      child: const Text('Quay lại'),
-                    ),
-                  ],
-                ),
+              body: AppEmptyState(
+                icon: Icons.lock_outline_rounded,
+                title: 'Không có quyền truy cập',
+                message:
+                    'Chỉ chủ nhóm và kiểm duyệt viên mới vào được trang này.',
+                actionLabel: 'Quay lại',
+                onAction: () => context.pop(),
               ),
             );
           }
@@ -126,31 +68,29 @@ class _GroupDashboardPageState extends State<GroupDashboardPage> {
             length: _tabs.length,
             child: Scaffold(
               appBar: AppBar(
-                title: Text(
-                  groupName,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                centerTitle: true,
+                title: const Text('Quản lý nhóm'),
                 bottom: TabBar(
                   isScrollable: true,
-                  tabAlignment: TabAlignment.center,
-                  labelColor: const Color(0xFFB73A41),
-                  unselectedLabelColor: Theme.of(
-                    context,
-                  ).colorScheme.onSurfaceVariant,
-                  indicatorColor: const Color(0xFFB73A41),
+                  tabAlignment: TabAlignment.start,
                   tabs: _tabs
-                      .map((t) => Tab(icon: Icon(t.icon), text: t.label))
+                      .map(
+                        (tab) => Tab(
+                          icon: Icon(tab.icon, size: 20),
+                          text: tab.label,
+                          height: 56,
+                          iconMargin: const EdgeInsets.only(bottom: 2),
+                        ),
+                      )
                       .toList(),
                 ),
               ),
               body: TabBarView(
                 children: [
-                  _buildOverviewTab(context, currentGroup),
-                  _buildInventoryTab(context, currentGroup),
-                  _buildPostsTab(context, currentGroup),
-                  _buildMembersTab(context, currentGroup),
-                  _buildSettingsTab(context, currentGroup),
+                  _OverviewTab(group: group),
+                  GroupDashboardInventory(group: group),
+                  GroupDashboardPosts(group: group),
+                  GroupDashboardMembers(group: group),
+                  GroupDashboardSettings(group: group),
                 ],
               ),
             ),
@@ -159,213 +99,389 @@ class _GroupDashboardPageState extends State<GroupDashboardPage> {
       ),
     );
   }
+}
 
-  Widget _buildOverviewTab(BuildContext context, GroupModel group) {
-    final colorScheme = Theme.of(context).colorScheme;
+class _OverviewTab extends StatelessWidget {
+  final GroupModel group;
+
+  const _OverviewTab({required this.group});
+
+  @override
+  Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Tổng quan nhóm',
-            style: textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Thống kê hoạt động của ${group.name}',
-            style: textTheme.bodyLarge?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 32),
-
-          FutureBuilder<Map<String, int>>(
-            future: _statsFuture,
-            builder: (context, snapshot) {
-              final stats =
-                  snapshot.data ??
-                  {'items': 0, 'pending_posts': 0, 'helped': 0};
-              final isLoading =
-                  snapshot.connectionState == ConnectionState.waiting;
-
-              return LayoutBuilder(
-                builder: (context, constraints) {
-                  int crossAxisCount = constraints.maxWidth > 600 ? 4 : 2;
-                  return GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: crossAxisCount,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 1.5,
-                    children: [
-                      _buildStatCard(
-                        context,
-                        'Thành viên',
-                        '${group.memberCount}',
-                        Icons.people,
-                        colorScheme.primary,
-                      ),
-                      _buildStatCard(
-                        context,
-                        'Vật phẩm',
-                        isLoading ? '...' : '${stats['items']}',
-                        Icons.inventory_2,
-                        Colors.orange,
-                      ),
-                      _buildStatCard(
-                        context,
-                        'Bài viết chờ duyệt',
-                        isLoading ? '...' : '${stats['pending_posts']}',
-                        Icons.article,
-                        Colors.red,
-                      ),
-                      _buildStatCard(
-                        context,
-                        'Đã giúp',
-                        isLoading ? '...' : '${stats['helped']}',
-                        Icons.volunteer_activism,
-                        Colors.teal,
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
-          ),
-          const SizedBox(height: 32),
-          Text(
-            'Hành động nhanh',
-            style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-          ),
+          _AdminHeader(group: group),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: [
-              ActionChip(
-                avatar: const Icon(Icons.chat),
-                label: const Text('Trò chuyện nhóm'),
-                onPressed: () {
-                  context.push(
-                    AppRoutes.chatInbox,
-                    extra: {'groupId': group.id, 'name': group.name},
-                  );
-                },
-              ),
-              ActionChip(
-                avatar: const Icon(Icons.add_box),
-                label: const Text('Thêm vật phẩm'),
-                onPressed: () {
-                  DefaultTabController.of(context).animateTo(1);
-                },
-              ),
-              ActionChip(
-                avatar: const Icon(Icons.person_add),
-                label: const Text('Duyệt thành viên'),
-                onPressed: () {
-                  DefaultTabController.of(context).animateTo(3);
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(
-    BuildContext context,
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
+          _CommunitySummary(group: group),
+          const SizedBox(height: 28),
+          Text('Công cụ quản lý', style: textTheme.titleMedium),
+          const SizedBox(height: 4),
           Text(
-            value,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w900,
-              color: colorScheme.onSurface,
+            'Đi thẳng đến công việc bạn cần xử lý',
+            style: textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
+          const SizedBox(height: 12),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1.35,
+            children: [
+              _ManagementCard(
+                icon: Icons.inventory_2_outlined,
+                title: 'Kho đồ',
+                subtitle: 'Tiếp nhận và đăng vật phẩm',
+                onTap: () => DefaultTabController.of(context).animateTo(1),
+              ),
+              _ManagementCard(
+                icon: Icons.rate_review_outlined,
+                title: 'Bài đăng',
+                subtitle: 'Duyệt nội dung thành viên',
+                onTap: () => DefaultTabController.of(context).animateTo(2),
+              ),
+              _ManagementCard(
+                icon: Icons.group_outlined,
+                title: 'Thành viên',
+                subtitle: 'Vai trò và yêu cầu tham gia',
+                onTap: () => DefaultTabController.of(context).animateTo(3),
+              ),
+              _ManagementCard(
+                icon: Icons.tune_rounded,
+                title: 'Thiết lập',
+                subtitle: 'Thông tin và quyền đăng bài',
+                onTap: () => DefaultTabController.of(context).animateTo(4),
+              ),
+            ],
+          ),
+          const SizedBox(height: 28),
+          Text('Trạng thái nhóm', style: textTheme.titleMedium),
+          const SizedBox(height: 12),
+          _ConfigurationCard(group: group),
         ],
       ),
     );
-  }
-
-  Widget _buildInventoryTab(BuildContext context, GroupModel group) {
-    return GroupDashboardInventory(group: group);
-  }
-
-  Widget _buildPostsTab(BuildContext context, GroupModel group) {
-    return GroupDashboardPosts(group: group);
-  }
-
-  Widget _buildMembersTab(BuildContext context, GroupModel group) {
-    return GroupDashboardMembers(group: group);
-  }
-
-  Widget _buildSettingsTab(BuildContext context, GroupModel group) {
-    return GroupDashboardSettings(group: group);
   }
 }
 
-class _DashboardTab {
-  final IconData icon;
-  final IconData activeIcon;
-  final String label;
+class _AdminHeader extends StatelessWidget {
+  final GroupModel group;
 
-  _DashboardTab({
+  const _AdminHeader({required this.group});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final roleLabel = group.myRole == 'moderator'
+        ? 'Kiểm duyệt viên'
+        : 'Chủ nhóm';
+
+    return Material(
+      color: colorScheme.surfaceContainerLowest,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: () => context.push('${AppRoutes.groupDetail}/${group.id}'),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: colorScheme.outlineVariant),
+          ),
+          child: Row(
+            children: [
+              AppAvatar(
+                imageUrl: group.avatarUrl,
+                name: group.name,
+                radius: 28,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'BẢNG ĐIỀU KHIỂN',
+                      style: textTheme.labelSmall?.copyWith(
+                        color: colorScheme.primary,
+                        letterSpacing: 0.8,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      group.name,
+                      style: textTheme.titleMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      roleLabel,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.open_in_new_rounded,
+                  size: 18,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CommunitySummary extends StatelessWidget {
+  final GroupModel group;
+
+  const _CommunitySummary({required this.group});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colorScheme.primary,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${group.memberCount}',
+                  style: textTheme.displaySmall?.copyWith(
+                    color: colorScheme.onPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  'thành viên đang kết nối',
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onPrimary.withValues(alpha: 0.8),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                FilledButton.tonalIcon(
+                  onPressed: () {
+                    context.push(
+                      AppRoutes.chatInbox,
+                      extra: {'groupId': group.id, 'name': group.name},
+                    );
+                  },
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+                  label: const Text('Mở trò chuyện'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 40),
+                    backgroundColor: colorScheme.onPrimary,
+                    foregroundColor: colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.groups_rounded,
+            size: 76,
+            color: colorScheme.onPrimary.withValues(alpha: 0.16),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ManagementCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _ManagementCard({
     required this.icon,
-    required this.activeIcon,
-    required this.label,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
   });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Material(
+      color: colorScheme.surfaceContainerLowest,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: colorScheme.outlineVariant),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, size: 19, color: colorScheme.primary),
+                  ),
+                  Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 17,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Text(title, style: textTheme.titleSmall),
+              const SizedBox(height: 3),
+              Text(
+                subtitle,
+                style: textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ConfigurationCard extends StatelessWidget {
+  final GroupModel group;
+
+  const _ConfigurationCard({required this.group});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        children: [
+          _ConfigRow(
+            icon: Icons.circle,
+            iconColor: group.status == 'active'
+                ? const Color(0xFF1B8A5A)
+                : colorScheme.error,
+            title: 'Trạng thái nhóm',
+            value: group.status == 'active' ? 'Đang hoạt động' : 'Tạm dừng',
+          ),
+          Divider(
+            height: 1,
+            indent: 16,
+            endIndent: 16,
+            color: colorScheme.outlineVariant,
+          ),
+          _ConfigRow(
+            icon: Icons.edit_note_rounded,
+            title: 'Thành viên đăng bài',
+            value: group.allowMemberPost ? 'Được phép' : 'Đã tắt',
+          ),
+          Divider(
+            height: 1,
+            indent: 16,
+            endIndent: 16,
+            color: colorScheme.outlineVariant,
+          ),
+          _ConfigRow(
+            icon: Icons.fact_check_outlined,
+            title: 'Kiểm duyệt bài viết',
+            value: group.requirePostReview ? 'Bắt buộc' : 'Không yêu cầu',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConfigRow extends StatelessWidget {
+  final IconData icon;
+  final Color? iconColor;
+  final String title;
+  final String value;
+
+  const _ConfigRow({
+    required this.icon,
+    this.iconColor,
+    required this.title,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: icon == Icons.circle ? 10 : 19,
+            color: iconColor ?? colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Text(title, style: textTheme.bodyMedium)),
+          Text(
+            value,
+            style: textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

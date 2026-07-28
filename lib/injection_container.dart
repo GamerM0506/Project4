@@ -42,6 +42,7 @@ import 'features/group/domain/usecases/get_groups_usecase.dart';
 import 'features/group/domain/usecases/get_my_groups_usecase.dart';
 import 'features/group/domain/usecases/create_group_usecase.dart';
 import 'features/group/domain/usecases/get_group_detail_usecase.dart';
+import 'features/group/domain/usecases/cancel_join_request_usecase.dart';
 import 'features/group/domain/usecases/join_group_usecase.dart';
 import 'features/group/domain/usecases/get_join_requests_usecase.dart';
 import 'features/group/domain/usecases/approve_join_usecase.dart';
@@ -188,6 +189,7 @@ Future<void> initDependencies({SharedPreferences? preferences}) async {
   sl.registerLazySingleton(() => CreateGroupUseCase(sl()));
   sl.registerLazySingleton(() => GetGroupDetailUseCase(sl()));
   sl.registerLazySingleton(() => JoinGroupUseCase(sl()));
+  sl.registerLazySingleton(() => CancelJoinRequestUseCase(sl()));
   sl.registerLazySingleton(() => GetJoinRequestsUseCase(sl()));
   sl.registerLazySingleton(() => ApproveJoinUseCase(sl()));
   sl.registerLazySingleton(() => RejectJoinUseCase(sl()));
@@ -308,7 +310,12 @@ Future<void> initDependencies({SharedPreferences? preferences}) async {
   sl.registerFactory(() => ActivityCubit(getActivitiesUseCase: sl()));
 
   sl.registerFactory(
-    () => GroupCubit(getGroupsUseCase: sl(), getMyGroupsUseCase: sl()),
+    () => GroupCubit(
+      getGroupsUseCase: sl(),
+      getMyGroupsUseCase: sl(),
+      joinGroupUseCase: sl(),
+      cancelJoinRequestUseCase: sl(),
+    ),
   );
   sl.registerFactory(
     () => GroupDetailCubit(getGroupDetailUseCase: sl(), joinGroupUseCase: sl()),

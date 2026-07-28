@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/widgets/app_button.dart';
 import '../../../../injection_container.dart';
 import '../cubit/update_group_cubit.dart';
 import '../cubit/group_detail_cubit.dart';
@@ -77,7 +78,7 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
           });
         }
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         setState(() {
           _isLoadingProvinces = false;
@@ -101,9 +102,8 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
     );
 
     if (province != null && province['districts'] != null) {
-      final districtsList = province['districts'] as List<dynamic>;
       setState(() {
-        _districts = districtsList;
+        _districts = province['districts'] as List<dynamic>;
       });
     }
   }
@@ -152,12 +152,8 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
         listener: (context, state) {
           if (state is UpdateGroupSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: Colors.green,
-              ),
+              SnackBar(content: Text(state.message)),
             );
-            // Refresh group detail
             context.read<GroupDetailCubit>().fetchGroupDetail(widget.group.id);
           } else if (state is UpdateGroupError) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -170,329 +166,185 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
         },
         builder: (context, state) {
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  'Cài đặt nhóm',
-                  style: textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Chỉnh sửa thông tin cơ bản và tùy chọn nâng cao.',
-                  style: textTheme.bodyLarge?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // Name Field
-                _buildModernTextField(
+                // ---- Thông tin cơ bản ----
+                Text('Thông tin cơ bản', style: textTheme.titleMedium),
+                const SizedBox(height: 12),
+                TextField(
                   controller: _nameController,
-                  label: 'Tên nhóm',
-                  icon: Icons.groups_outlined,
-                  colorScheme: colorScheme,
-                  textTheme: textTheme,
-                ),
-                const SizedBox(height: 16),
-
-                // Description Field
-                _buildModernTextField(
-                  controller: _descriptionController,
-                  label: 'Mô tả chi tiết',
-                  icon: Icons.description_outlined,
-                  maxLines: 4,
-                  colorScheme: colorScheme,
-                  textTheme: textTheme,
-                ),
-                const SizedBox(height: 16),
-
-                // Location Dropdowns Row
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildModernDropdown(
-                        label: 'Tỉnh / Thành phố',
-                        icon: Icons.location_on_outlined,
-                        value: _selectedProvinceId,
-                        items: _provinces.map((p) {
-                          return DropdownMenuItem<String>(
-                            value: p['code'].toString(),
-                            child: Text(
-                              p['name']?.toString() ?? '',
-                              style: textTheme.bodyLarge?.copyWith(
-                                fontWeight: FontWeight.w500,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: _onProvinceChanged,
-                        isLoading: _isLoadingProvinces,
-                        colorScheme: colorScheme,
-                        textTheme: textTheme,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildModernDropdown(
-                        label: 'Quận / Huyện',
-                        icon: Icons.map_outlined,
-                        value: _selectedDistrictId,
-                        items: _districts.map((d) {
-                          return DropdownMenuItem<String>(
-                            value: d['code'].toString(),
-                            child: Text(
-                              d['name']?.toString() ?? '',
-                              style: textTheme.bodyLarge?.copyWith(
-                                fontWeight: FontWeight.w500,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          setState(() {
-                            _selectedDistrictId = val;
-                          });
-                        },
-                        isLoading: false,
-                        colorScheme: colorScheme,
-                        textTheme: textTheme,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Address Field
-                _buildModernTextField(
-                  controller: _addressController,
-                  label: 'Địa chỉ cụ thể (Tòa nhà, số nhà, v.v...)',
-                  icon: Icons.home_outlined,
-                  colorScheme: colorScheme,
-                  textTheme: textTheme,
-                ),
-                const SizedBox(height: 32),
-
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Cho phép thành viên đăng bài'),
-                  value: _allowMemberPost,
-                  onChanged: (value) =>
-                      setState(() => _allowMemberPost = value),
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Bài viết cần được kiểm duyệt'),
-                  value: _requirePostReview,
-                  onChanged: (value) =>
-                      setState(() => _requirePostReview = value),
-                ),
-                const SizedBox(height: 16),
-
-                Text(
-                  'Hình ảnh hiển thị',
-                  style: textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.primary,
+                  decoration: const InputDecoration(
+                    labelText: 'Tên nhóm',
+                    prefixIcon: Icon(Icons.groups_outlined),
                   ),
                 ),
-                const SizedBox(height: 16),
-
-                // Avatar Picker
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _descriptionController,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Mô tả chi tiết',
+                    alignLabelWithHint: true,
+                  ),
+                ),
+                const SizedBox(height: 12),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    ImagePickerWidget(
-                      label: 'Ảnh biểu trưng',
-                      isAvatar: true,
-                      initialUrl: _avatarUrl,
-                      onImageUploaded: (url) {
-                        setState(() {
-                          _avatarUrl = url;
-                        });
-                      },
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _selectedProvinceId,
+                        items: _provinces
+                            .map(
+                              (p) => DropdownMenuItem<String>(
+                                value: p['code'].toString(),
+                                child: Text(
+                                  p['name']?.toString() ?? '',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: _onProvinceChanged,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: 'Tỉnh / Thành phố',
+                          prefixIcon: _isLoadingProvinces
+                              ? const Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                )
+                              : const Icon(Icons.location_on_outlined),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _selectedDistrictId,
+                        items: _districts
+                            .map(
+                              (d) => DropdownMenuItem<String>(
+                                value: d['code'].toString(),
+                                child: Text(
+                                  d['name']?.toString() ?? '',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) {
+                          setState(() => _selectedDistrictId = val);
+                        },
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Quận / Huyện',
+                          prefixIcon: Icon(Icons.map_outlined),
+                        ),
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _addressController,
+                  decoration: const InputDecoration(
+                    labelText: 'Địa chỉ cụ thể',
+                    hintText: 'Tòa nhà, số nhà, đường...',
+                    prefixIcon: Icon(Icons.home_outlined),
+                  ),
+                ),
+                const SizedBox(height: 28),
 
-                // Cover Picker
+                // ---- Quyền đăng bài ----
+                Text('Quyền đăng bài', style: textTheme.titleMedium),
+                const SizedBox(height: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: colorScheme.outlineVariant),
+                  ),
+                  child: Column(
+                    children: [
+                      SwitchListTile(
+                        secondary: Icon(
+                          Icons.edit_note_rounded,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        title: const Text('Thành viên được đăng bài'),
+                        subtitle: const Text(
+                          'Cho phép thành viên tạo bài viết trong nhóm',
+                        ),
+                        value: _allowMemberPost,
+                        onChanged: (value) =>
+                            setState(() => _allowMemberPost = value),
+                      ),
+                      Divider(
+                        height: 1,
+                        indent: 16,
+                        endIndent: 16,
+                        color: colorScheme.outlineVariant,
+                      ),
+                      SwitchListTile(
+                        secondary: Icon(
+                          Icons.fact_check_outlined,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        title: const Text('Kiểm duyệt bài viết'),
+                        subtitle: const Text(
+                          'Bài viết cần được duyệt trước khi hiển thị',
+                        ),
+                        value: _requirePostReview,
+                        onChanged: (value) =>
+                            setState(() => _requirePostReview = value),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 28),
+
+                // ---- Hình ảnh ----
+                Text('Hình ảnh hiển thị', style: textTheme.titleMedium),
+                const SizedBox(height: 16),
+                Center(
+                  child: ImagePickerWidget(
+                    label: 'Ảnh biểu trưng',
+                    isAvatar: true,
+                    initialUrl: _avatarUrl,
+                    onImageUploaded: (url) {
+                      setState(() => _avatarUrl = url);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 20),
                 ImagePickerWidget(
                   label: 'Ảnh bìa',
                   initialUrl: _coverUrl,
                   onImageUploaded: (url) {
-                    setState(() {
-                      _coverUrl = url;
-                    });
+                    setState(() => _coverUrl = url);
                   },
                 ),
-                const SizedBox(height: 48),
+                const SizedBox(height: 36),
 
-                // Save Button
-                ElevatedButton(
-                  onPressed: state is UpdateGroupLoading
-                      ? null
-                      : () => _submit(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFB73A41),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: state is UpdateGroupLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2.5,
-                          ),
-                        )
-                      : const Text(
-                          'Lưu Thay Đổi',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                AppButton(
+                  label: 'Lưu thay đổi',
+                  icon: Icons.save_rounded,
+                  loading: state is UpdateGroupLoading,
+                  onPressed: () => _submit(context),
                 ),
+                const SizedBox(height: 16),
               ],
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildModernTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    int maxLines = 1,
-    required ColorScheme colorScheme,
-    required TextTheme textTheme,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: TextField(
-        controller: controller,
-        maxLines: maxLines,
-        style: textTheme.bodyLarge?.copyWith(
-          color: colorScheme.onSurface,
-          fontWeight: FontWeight.w500,
-        ),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: textTheme.bodyLarge?.copyWith(
-            color: colorScheme.onSurfaceVariant.withOpacity(0.8),
-          ),
-          prefixIcon: maxLines == 1
-              ? Icon(
-                  icon,
-                  color: colorScheme.onSurfaceVariant.withOpacity(0.7),
-                  size: 22,
-                )
-              : Padding(
-                  padding: const EdgeInsets.only(
-                    bottom: 60,
-                  ), // Align top for multiline
-                  child: Icon(
-                    icon,
-                    color: colorScheme.onSurfaceVariant.withOpacity(0.7),
-                    size: 22,
-                  ),
-                ),
-          filled: true,
-          fillColor: Colors.transparent,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 18,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: colorScheme.secondary, width: 1.5),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildModernDropdown({
-    required String label,
-    required IconData icon,
-    required String? value,
-    required List<DropdownMenuItem<String>> items,
-    required void Function(String?) onChanged,
-    required bool isLoading,
-    required ColorScheme colorScheme,
-    required TextTheme textTheme,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: DropdownButtonFormField<String>(
-        value: value,
-        items: items,
-        onChanged: onChanged,
-        isExpanded: true, // Fix for overflowing text in dropdowns
-        icon: isLoading
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Icon(Icons.arrow_drop_down),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: textTheme.bodyLarge?.copyWith(
-            color: colorScheme.onSurfaceVariant.withOpacity(0.8),
-            overflow: TextOverflow.ellipsis,
-          ),
-          prefixIcon: Icon(
-            icon,
-            color: colorScheme.onSurfaceVariant.withOpacity(0.7),
-            size: 22,
-          ),
-          filled: true,
-          fillColor: Colors.transparent,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 18,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: colorScheme.secondary, width: 1.5),
-          ),
-        ),
       ),
     );
   }

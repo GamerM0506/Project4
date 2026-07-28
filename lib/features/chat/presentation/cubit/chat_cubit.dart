@@ -87,16 +87,25 @@ class ChatCubit extends Cubit<ChatState> {
     _socket?.on('new_message', (data) {
       if (data is Map) {
         final payload = Map<String, dynamic>.from(data);
+        final senderId = payload['sender_id']?.toString() ?? '';
+        final existing = state.messages
+            .cast<ChatMessage?>()
+            .firstWhere(
+              (m) => m?.senderId == senderId,
+              orElse: () => null,
+            );
         final newMessage = ChatMessage(
           id: payload['id']?.toString() ?? const Uuid().v4(),
           content: payload['content']?.toString() ?? '',
-          senderId: payload['sender_id']?.toString() ?? '',
-          senderName: payload['sender_name']?.toString(),
-          senderAvatar: payload['sender_avatar']?.toString(),
+          senderId: senderId,
+          senderName:
+              payload['sender_name']?.toString() ?? existing?.senderName,
+          senderAvatar:
+              payload['sender_avatar']?.toString() ?? existing?.senderAvatar,
           createdAt:
               DateTime.tryParse(payload['created_at']?.toString() ?? '') ??
               DateTime.now(),
-          isMine: payload['sender_id']?.toString() == _currentUserId,
+          isMine: senderId == _currentUserId,
           type: payload['type']?.toString() ?? 'text',
           metadata: payload['metadata'] != null
               ? Map<String, dynamic>.from(payload['metadata'])

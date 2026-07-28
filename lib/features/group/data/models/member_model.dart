@@ -18,12 +18,32 @@ class MemberModel extends MemberEntity {
       id: json['id'] as String,
       groupId: json['group_id'] as String,
       userId: json['user_id'] as String,
-      userName: json['user_name'] as String? ?? (json['user'] != null ? json['user']['name'] ?? json['user']['full_name'] : null),
-      userAvatar: json['user_avatar'] as String? ?? (json['user'] != null ? json['user']['avatar_url'] : null),
+      userName:
+          json['user_name'] as String? ??
+          (json['user'] != null
+              ? json['user']['name'] ?? json['user']['full_name']
+              : null),
+      userAvatar:
+          json['user_avatar'] as String? ??
+          (json['user'] != null ? json['user']['avatar_url'] : null),
       role: json['role'] as String,
       status: json['status'] as String,
       joinedAt: json['joined_at'] != null ? DateTime.parse(json['joined_at'] as String) : null,
       createdAt: DateTime.parse(json['created_at'] as String),
+    );
+  }
+
+  MemberModel withProfile({String? name, String? avatarUrl}) {
+    return MemberModel(
+      id: id,
+      groupId: groupId,
+      userId: userId,
+      userName: name ?? userName,
+      userAvatar: avatarUrl ?? userAvatar,
+      role: role,
+      status: status,
+      joinedAt: joinedAt,
+      createdAt: createdAt,
     );
   }
 }

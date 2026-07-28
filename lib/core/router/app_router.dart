@@ -344,10 +344,14 @@ final GoRouter appRouter = GoRouter(
         final conversationId = extraArgs?['conversationId'] as String?;
         final groupId = extraArgs?['groupId'] as String?;
         final name = extraArgs?['name'] as String? ?? 'Hội nhóm';
+        final avatarUrl = extraArgs?['avatarUrl'] as String?;
+        final isUserSide = extraArgs?['isUserSide'] as bool? ?? true;
         return ChatRoomPage(
           conversationId: conversationId,
           groupId: groupId,
           name: name,
+          avatarUrl: avatarUrl,
+          isUserSide: isUserSide,
         );
       },
     ),

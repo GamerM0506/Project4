@@ -42,6 +42,7 @@ abstract class GroupRepository {
     String groupId, {
     String? message,
   });
+  Future<Either<String, void>> cancelJoinRequest(String groupId);
   Future<Either<String, List<JoinRequestEntity>>> getJoinRequests(
     String groupId, {
     String? status,

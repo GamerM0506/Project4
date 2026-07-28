@@ -40,6 +40,7 @@ abstract class GroupRemoteDataSource {
     String? districtCode,
   });
   Future<JoinRequestModel> joinGroup(String groupId, {String? message});
+  Future<void> cancelJoinRequest(String groupId);
   Future<List<JoinRequestModel>> getJoinRequests(
     String groupId, {
     String? status,
@@ -65,6 +66,14 @@ abstract class GroupRemoteDataSource {
 class GroupRemoteDataSourceImpl implements GroupRemoteDataSource {
   final ApiClient apiClient;
   static const _pendingGroupsKeyPrefix = 'PENDING_GROUP_IDS_';
+
+  /// Community chỉ lưu user_id. Cache Future để nhiều danh sách cùng cần một
+  /// user vẫn chỉ gọi public profile đúng một lần trong vòng đời data source.
+  final Map<
+    String,
+    Future<({String? name, String? avatarUrl})>
+  >
+  _memberProfileCache = {};
 
   GroupRemoteDataSourceImpl(this.apiClient);
 
@@ -230,6 +239,18 @@ class GroupRemoteDataSourceImpl implements GroupRemoteDataSource {
     }
   }
 
+  @override
+  Future<void> cancelJoinRequest(String groupId) async {
+    try {
+      await apiClient.dio.delete(
+        '${AppConstants.communityApiBaseUrl}/groups/$groupId/join',
+      );
+      await _setPendingJoin(groupId, false);
+    } on DioException catch (e) {
+      throw Exception(_communityError(e, 'Lỗi khi huỷ yêu cầu tham gia'));
+    }
+  }
+
   String? get _pendingGroupsKey {
     final userId = apiClient.sharedPreferences.getString(
       AppConstants.keyUserId,
@@ -278,7 +299,30 @@ class GroupRemoteDataSourceImpl implements GroupRemoteDataSource {
         },
       );
       final data = response.data['data']['items'] as List<dynamic>;
-      return data.map((e) => JoinRequestModel.fromJson(e)).toList();
+      final requests = data
+          .map((e) => JoinRequestModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      final userIds = requests
+          .where(
+            (r) =>
+                r.userName?.trim().isNotEmpty != true ||
+                r.userAvatar == null,
+          )
+          .map((r) => r.userId)
+          .toSet();
+      final profileMap = await _memberProfileBatch(userIds);
+
+      return requests
+          .map((request) {
+            final profile = profileMap[request.userId];
+            if (profile == null) return request;
+            return request.withProfile(
+              name: profile.name,
+              avatarUrl: profile.avatarUrl,
+            );
+          })
+          .toList();
     } on DioException catch (e) {
       throw Exception(_communityError(e, 'Lỗi tải danh sách yêu cầu'));
     }
@@ -331,10 +375,86 @@ class GroupRemoteDataSourceImpl implements GroupRemoteDataSource {
         },
       );
       final data = response.data['data']['items'] as List<dynamic>;
-      return data.map((e) => MemberModel.fromJson(e)).toList();
+      final members = data
+          .map((e) => MemberModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      final userIds = members
+          .where(
+            (m) =>
+                m.userName?.trim().isNotEmpty != true ||
+                m.userAvatar == null,
+          )
+          .map((m) => m.userId)
+          .toSet();
+      final profileMap = await _memberProfileBatch(userIds);
+
+      return members
+          .map((member) {
+            final profile = profileMap[member.userId];
+            if (profile == null) return member;
+            return member.withProfile(
+              name: profile.name,
+              avatarUrl: profile.avatarUrl,
+            );
+          })
+          .toList();
     } on DioException catch (e) {
       throw Exception(_communityError(e, 'Lỗi tải danh sách thành viên'));
     }
+  }
+
+  Future<Map<String, ({String? name, String? avatarUrl})>> _memberProfileBatch(
+    Iterable<String> userIds,
+  ) async {
+    final ids = userIds.where((id) => id.isNotEmpty).toSet();
+    if (ids.isEmpty) return {};
+
+    final result = <String, ({String? name, String? avatarUrl})>{};
+    final uncached = <String>[];
+    for (final id in ids) {
+      final cached = _memberProfileCache[id];
+      if (cached != null) {
+        result[id] = await cached;
+      } else {
+        uncached.add(id);
+      }
+    }
+    if (uncached.isEmpty) return result;
+
+    try {
+      final response = await apiClient.dio.get(
+        '${AppConstants.authApiBaseUrl}/profile/batch',
+        queryParameters: {'ids': uncached.join(',')},
+      );
+      final envelope = response.data as Map<String, dynamic>;
+      final list = envelope['data'] as List? ?? [];
+      for (final item in list) {
+        final m = Map<String, dynamic>.from(item as Map);
+        final id = m['id']?.toString() ?? '';
+        if (id.isEmpty) continue;
+        final fullName = m['full_name']?.toString().trim();
+        final username = m['username']?.toString().trim();
+        final profile = (
+          name: fullName?.isNotEmpty == true ? fullName : username,
+          avatarUrl: m['avatar_url']?.toString(),
+        );
+        _memberProfileCache[id] = Future.value(profile);
+        result[id] = profile;
+      }
+      for (final id in uncached) {
+        if (!result.containsKey(id)) {
+          final fallback = (name: null, avatarUrl: null);
+          _memberProfileCache[id] = Future.value(fallback);
+          result[id] = fallback;
+        }
+      }
+    } catch (_) {
+      for (final id in uncached) {
+        result[id] = (name: null, avatarUrl: null);
+      }
+    }
+    return result;
   }
 
   @override

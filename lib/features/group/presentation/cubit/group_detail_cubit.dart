@@ -54,28 +54,12 @@ class GroupDetailCubit extends Cubit<GroupDetailState> {
         emit(GroupDetailError(failure));
         emit(GroupDetailLoaded(currentGroup, isJoining: false));
       }, (request) {
-        final updatedGroup = GroupModel(
-          id: currentGroup.id,
-          name: currentGroup.name,
-          slug: currentGroup.slug,
-          description: currentGroup.description,
-          avatarUrl: currentGroup.avatarUrl,
-          coverUrl: currentGroup.coverUrl,
-          address: currentGroup.address,
-          provinceCode: currentGroup.provinceCode,
-          districtCode: currentGroup.districtCode,
-          ownerId: currentGroup.ownerId,
-          allowMemberPost: currentGroup.allowMemberPost,
-          requirePostReview: currentGroup.requirePostReview,
-          memberCount: currentGroup.memberCount,
-          reputationScore: currentGroup.reputationScore,
-          status: currentGroup.status,
-          myRole: currentGroup.myRole,
-          myStatus: 'pending',
-          createdAt: currentGroup.createdAt,
-          updatedAt: currentGroup.updatedAt,
+        emit(
+          GroupDetailLoaded(
+            currentGroup.copyWith(myStatus: request.status),
+            isJoining: false,
+          ),
         );
-        emit(GroupDetailLoaded(updatedGroup, isJoining: false));
       });
     }
   }

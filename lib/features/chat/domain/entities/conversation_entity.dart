@@ -4,6 +4,7 @@ class ConversationEntity extends Equatable {
   final String id;
   final String type;
   final String title;
+  final String? avatarUrl;
   final String? groupId;
   final String? userId;
   final String? contextType;
@@ -15,6 +16,7 @@ class ConversationEntity extends Equatable {
     required this.id,
     required this.type,
     required this.title,
+    this.avatarUrl,
     this.groupId,
     this.userId,
     this.contextType,
@@ -28,6 +30,7 @@ class ConversationEntity extends Equatable {
     id,
     type,
     title,
+    avatarUrl,
     groupId,
     userId,
     contextType,
