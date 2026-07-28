@@ -420,13 +420,8 @@ class _GroupDetailViewState extends State<GroupDetailView>
                                 FilledButton.icon(
                                   onPressed: () {
                                     context.push(
-                                      AppRoutes.chatRoom,
-                                      extra: {
-                                        'groupId': group.id,
-                                        'name': group.name,
-                                        'avatarUrl': group.avatarUrl,
-                                        'isUserSide': true,
-                                      },
+                                      '${AppRoutes.marketplace}/create',
+                                      extra: {'groupId': group.id},
                                     );
                                   },
                                   icon: const Icon(Icons.favorite),
@@ -451,6 +446,32 @@ class _GroupDetailViewState extends State<GroupDetailView>
                                   ),
                                 ),
                                 const SizedBox(height: 12),
+                                if (isMember) ...[
+                                  OutlinedButton.icon(
+                                    onPressed: () {
+                                      context.push(
+                                        AppRoutes.chatRoom,
+                                        extra: {
+                                          'groupId': group.id,
+                                          'name': group.name,
+                                          'avatarUrl': group.avatarUrl,
+                                          'isUserSide': true,
+                                        },
+                                      );
+                                    },
+                                    icon: const Icon(
+                                      Icons.chat_bubble_outline_rounded,
+                                    ),
+                                    label: const Text('Nhắn tin với nhóm'),
+                                    style: OutlinedButton.styleFrom(
+                                      minimumSize: const Size(
+                                        double.infinity,
+                                        48,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                ],
                                 // Secondary Actions Row
                                 Row(
                                   children: [

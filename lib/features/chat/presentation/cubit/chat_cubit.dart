@@ -88,12 +88,10 @@ class ChatCubit extends Cubit<ChatState> {
       if (data is Map) {
         final payload = Map<String, dynamic>.from(data);
         final senderId = payload['sender_id']?.toString() ?? '';
-        final existing = state.messages
-            .cast<ChatMessage?>()
-            .firstWhere(
-              (m) => m?.senderId == senderId,
-              orElse: () => null,
-            );
+        final existing = state.messages.cast<ChatMessage?>().firstWhere(
+          (m) => m?.senderId == senderId,
+          orElse: () => null,
+        );
         final newMessage = ChatMessage(
           id: payload['id']?.toString() ?? const Uuid().v4(),
           content: payload['content']?.toString() ?? '',
@@ -211,14 +209,14 @@ class ChatCubit extends Cubit<ChatState> {
     _markReadInFlight = false;
   }
 
-  Future<void> sendMessage(
+  Future<ChatMessage?> sendMessage(
     String content, {
     String type = 'text',
     Map<String, dynamic>? metadata,
   }) async {
-    if (content.trim().isEmpty && type == 'text') return;
+    if (content.trim().isEmpty && type == 'text') return null;
     final convId = state.activeConversationId;
-    if (convId == null) return;
+    if (convId == null) return null;
 
     final tempMsg = ChatMessage(
       id: const Uuid().v4(),
@@ -234,7 +232,7 @@ class ChatCubit extends Cubit<ChatState> {
 
     if (sendMessageUseCase != null) {
       final result = await sendMessageUseCase!(convId, content, type: type);
-      result.fold(
+      return result.fold(
         (failure) {
           emit(
             state.copyWith(
@@ -244,6 +242,7 @@ class ChatCubit extends Cubit<ChatState> {
               error: failure,
             ),
           );
+          return null;
         },
         (actualMsg) {
           final messages =
@@ -256,6 +255,7 @@ class ChatCubit extends Cubit<ChatState> {
                 ..add(actualMsg);
           messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
           emit(state.copyWith(messages: messages));
+          return actualMsg;
         },
       );
     } else {
@@ -268,6 +268,7 @@ class ChatCubit extends Cubit<ChatState> {
         data['metadata'] = metadata;
       }
       _socket?.emit('send_message', data);
+      return null;
     }
   }
 

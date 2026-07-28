@@ -69,10 +69,7 @@ class GroupRemoteDataSourceImpl implements GroupRemoteDataSource {
 
   /// Community chỉ lưu user_id. Cache Future để nhiều danh sách cùng cần một
   /// user vẫn chỉ gọi public profile đúng một lần trong vòng đời data source.
-  final Map<
-    String,
-    Future<({String? name, String? avatarUrl})>
-  >
+  final Map<String, Future<({String? name, String? avatarUrl})>>
   _memberProfileCache = {};
 
   GroupRemoteDataSourceImpl(this.apiClient);
@@ -113,7 +110,26 @@ class GroupRemoteDataSourceImpl implements GroupRemoteDataSource {
     );
 
     if (response.statusCode == 200) {
-      return GroupModel.fromJson(response.data['data']);
+      final group = GroupModel.fromJson(response.data['data']);
+      for (final status in const ['approved', 'pending']) {
+        try {
+          final membershipResponse = await apiClient.dio.get(
+            '${AppConstants.communityApiBaseUrl}/groups/me',
+            queryParameters: {'limit': 100, 'member_status': status},
+          );
+          final items = membershipResponse.data['data']['items'] as List? ?? [];
+          for (final item in items) {
+            final membership = GroupModel.fromJson(item);
+            if (membership.id == groupId) {
+              return group.copyWith(
+                myRole: membership.myRole,
+                myStatus: membership.myStatus,
+              );
+            }
+          }
+        } catch (_) {}
+      }
+      return group;
     } else {
       throw Exception('Failed to load group detail');
     }
@@ -306,23 +322,20 @@ class GroupRemoteDataSourceImpl implements GroupRemoteDataSource {
       final userIds = requests
           .where(
             (r) =>
-                r.userName?.trim().isNotEmpty != true ||
-                r.userAvatar == null,
+                r.userName?.trim().isNotEmpty != true || r.userAvatar == null,
           )
           .map((r) => r.userId)
           .toSet();
       final profileMap = await _memberProfileBatch(userIds);
 
-      return requests
-          .map((request) {
-            final profile = profileMap[request.userId];
-            if (profile == null) return request;
-            return request.withProfile(
-              name: profile.name,
-              avatarUrl: profile.avatarUrl,
-            );
-          })
-          .toList();
+      return requests.map((request) {
+        final profile = profileMap[request.userId];
+        if (profile == null) return request;
+        return request.withProfile(
+          name: profile.name,
+          avatarUrl: profile.avatarUrl,
+        );
+      }).toList();
     } on DioException catch (e) {
       throw Exception(_communityError(e, 'Lỗi tải danh sách yêu cầu'));
     }
@@ -382,23 +395,20 @@ class GroupRemoteDataSourceImpl implements GroupRemoteDataSource {
       final userIds = members
           .where(
             (m) =>
-                m.userName?.trim().isNotEmpty != true ||
-                m.userAvatar == null,
+                m.userName?.trim().isNotEmpty != true || m.userAvatar == null,
           )
           .map((m) => m.userId)
           .toSet();
       final profileMap = await _memberProfileBatch(userIds);
 
-      return members
-          .map((member) {
-            final profile = profileMap[member.userId];
-            if (profile == null) return member;
-            return member.withProfile(
-              name: profile.name,
-              avatarUrl: profile.avatarUrl,
-            );
-          })
-          .toList();
+      return members.map((member) {
+        final profile = profileMap[member.userId];
+        if (profile == null) return member;
+        return member.withProfile(
+          name: profile.name,
+          avatarUrl: profile.avatarUrl,
+        );
+      }).toList();
     } on DioException catch (e) {
       throw Exception(_communityError(e, 'Lỗi tải danh sách thành viên'));
     }

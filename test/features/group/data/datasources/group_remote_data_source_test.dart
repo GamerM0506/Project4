@@ -90,6 +90,40 @@ void main() {
     expect(groups.single.myStatus, 'approved');
   });
 
+  test('enriches group detail with approved membership', () async {
+    const groupId = '11111111-1111-1111-1111-111111111111';
+    when(
+      () => dio.get('${AppConstants.communityApiBaseUrl}/groups/$groupId'),
+    ).thenAnswer(
+      (_) async => Response(
+        data: {'data': _groupJson()},
+        statusCode: 200,
+        requestOptions: RequestOptions(path: ''),
+      ),
+    );
+    when(
+      () => dio.get(
+        '${AppConstants.communityApiBaseUrl}/groups/me',
+        queryParameters: any(named: 'queryParameters'),
+      ),
+    ).thenAnswer(
+      (_) async => Response(
+        data: {
+          'data': {
+            'items': [_groupJson(myRole: 'member', myStatus: 'approved')],
+          },
+        },
+        statusCode: 200,
+        requestOptions: RequestOptions(path: ''),
+      ),
+    );
+
+    final group = await dataSource.getGroupDetail(groupId);
+
+    expect(group.myRole, 'member');
+    expect(group.myStatus, 'approved');
+  });
+
   test('sends all backend-supported group update fields', () async {
     when(() => dio.patch(any(), data: any(named: 'data'))).thenAnswer(
       (_) async => Response(
