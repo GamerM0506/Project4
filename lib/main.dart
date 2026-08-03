@@ -1,3 +1,6 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,13 +16,36 @@ import 'features/auth/presentation/cubit/auth_cubit.dart';
 import 'features/auth/presentation/cubit/auth_state.dart';
 import 'features/user/presentation/cubit/user_cubit.dart';
 import 'core/theme/theme_cubit.dart';
+import 'features/notification/application/push_notification_service.dart';
+
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  try {
+    await Firebase.initializeApp();
+  } catch (_) {
+    // Native Firebase client configuration may not be installed yet.
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  var firebaseReady = false;
+  if (!kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS)) {
+    try {
+      await Firebase.initializeApp();
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+      firebaseReady = true;
+    } catch (error) {
+      debugPrint('Firebase is not configured: $error');
+    }
+  }
   timeago.setLocaleMessages('vi', timeago.ViMessages());
   final preferences = await SharedPreferences.getInstance();
   await SessionBootstrap.clearNonPersistentSession(preferences);
   await initDependencies(preferences: preferences);
+  await sl<PushNotificationService>().initialize(firebaseReady: firebaseReady);
   runApp(const MyApp());
 }
 
@@ -43,8 +69,12 @@ class MyApp extends StatelessWidget {
         BlocProvider(create: (_) => sl<ThemeCubit>()),
       ],
       child: BlocListener<AuthCubit, AuthState>(
-        listener: (context, state) {
-          if (state is AuthUnauthenticated) {
+        listener: (context, state) async {
+          if (state is AuthSuccess) {
+            await sl<PushNotificationService>().onAuthenticated();
+          } else if (state is AuthUnauthenticated) {
+            await sl<PushNotificationService>().onSessionEnded();
+            if (!context.mounted) return;
             context.read<UserCubit>().clear();
             appRouter.go(AppRoutes.login);
           }

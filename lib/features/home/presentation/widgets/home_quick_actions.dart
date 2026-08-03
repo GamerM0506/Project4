@@ -14,10 +14,10 @@ class HomeQuickActions extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _ActionItem(
-          icon: Icons.storefront_rounded,
-          label: 'Gian hàng',
+          icon: Icons.volunteer_activism_rounded,
+          label: 'Đợt quyên góp',
           color: colorScheme.primary,
-          onTap: () => context.go(AppRoutes.marketplace),
+          onTap: () => context.go(AppRoutes.campaigns),
         ),
         _ActionItem(
           icon: Icons.groups_rounded,
@@ -32,10 +32,10 @@ class HomeQuickActions extends StatelessWidget {
           onTap: () => context.push(AppRoutes.activity),
         ),
         _ActionItem(
-          icon: Icons.emoji_events_rounded,
-          label: 'Xếp hạng',
-          color: const Color(0xFF7A5AF8),
-          onTap: () {},
+          icon: Icons.card_giftcard_rounded,
+          label: 'Đóng góp',
+          color: colorScheme.error,
+          onTap: () => context.push(AppRoutes.myItems),
         ),
       ],
     );
@@ -59,7 +59,9 @@ class _ActionItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final iconColor = isDark ? Color.alphaBlend(Colors.white.withValues(alpha: 0.35), color) : color;
+    final iconColor = isDark
+        ? Color.alphaBlend(Colors.white.withValues(alpha: 0.35), color)
+        : color;
 
     return Expanded(
       child: Padding(

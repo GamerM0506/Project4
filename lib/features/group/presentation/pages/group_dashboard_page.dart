@@ -10,7 +10,7 @@ import '../../../user/presentation/cubit/user_cubit.dart';
 import '../../../user/presentation/cubit/user_state.dart';
 import '../../data/models/group_model.dart';
 import '../cubit/group_detail_cubit.dart';
-import '../widgets/group_dashboard_inventory.dart';
+import '../widgets/group_campaigns_tab.dart';
 import '../widgets/group_dashboard_members.dart';
 import '../widgets/group_dashboard_posts.dart';
 import '../widgets/group_dashboard_settings.dart';
@@ -22,7 +22,7 @@ class GroupDashboardPage extends StatelessWidget {
 
   static const _tabs = [
     (icon: Icons.dashboard_outlined, label: 'Tổng quan'),
-    (icon: Icons.inventory_2_outlined, label: 'Kho đồ'),
+    (icon: Icons.volunteer_activism_outlined, label: 'Đợt quyên góp'),
     (icon: Icons.article_outlined, label: 'Bài đăng'),
     (icon: Icons.people_outline, label: 'Thành viên'),
     (icon: Icons.settings_outlined, label: 'Cài đặt'),
@@ -43,8 +43,9 @@ class GroupDashboardPage extends StatelessWidget {
 
           final group = state.group;
           final userState = context.watch<UserCubit>().state;
-          final currentUserId =
-              userState is UserLoaded ? userState.user.id : null;
+          final currentUserId = userState is UserLoaded
+              ? userState.user.id
+              : null;
           final canModerate =
               (group.myStatus == 'approved' &&
                   (group.myRole == 'owner' || group.myRole == 'moderator')) ||
@@ -87,7 +88,7 @@ class GroupDashboardPage extends StatelessWidget {
               body: TabBarView(
                 children: [
                   _OverviewTab(group: group),
-                  GroupDashboardInventory(group: group),
+                  GroupCampaignsTab(group: group),
                   GroupDashboardPosts(group: group),
                   GroupDashboardMembers(group: group),
                   GroupDashboardSettings(group: group),
@@ -137,9 +138,9 @@ class _OverviewTab extends StatelessWidget {
             childAspectRatio: 1.35,
             children: [
               _ManagementCard(
-                icon: Icons.inventory_2_outlined,
-                title: 'Kho đồ',
-                subtitle: 'Tiếp nhận và đăng vật phẩm',
+                icon: Icons.volunteer_activism_outlined,
+                title: 'Đợt quyên góp',
+                subtitle: 'Theo dõi nhu cầu và tiến độ',
                 onTap: () => DefaultTabController.of(context).animateTo(1),
               ),
               _ManagementCard(

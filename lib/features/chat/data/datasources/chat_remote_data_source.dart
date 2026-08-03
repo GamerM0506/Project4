@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/session_token.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../models/conversation_model.dart';
 import '../../presentation/cubit/chat_state.dart';
@@ -10,12 +11,16 @@ abstract class ChatRemoteDataSource {
     String conversationId, {
     int limit = 50,
     int offset = 0,
+
+    /// true = đang xem với tư cách user seat; false = admin/mod phía group.
+    bool asUserSide = true,
   });
   Future<ChatMessage> sendMessage(
     String conversationId,
     String content, {
     String type = 'text',
     Map<String, dynamic>? metadata,
+    bool asGroup = false,
   });
   Future<void> markAsRead(String conversationId);
 }
@@ -36,8 +41,7 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
     String? currentUserId;
 
     if (groupId == null) {
-      final prefs = await SharedPreferences.getInstance();
-      currentUserId = prefs.getString(AppConstants.keyUserId);
+      currentUserId = _currentUserId();
       try {
         final groupsResponse = await apiClient.dio.get(
           '${AppConstants.communityApiBaseUrl}/groups/me',
@@ -96,10 +100,10 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
     }
 
     final userSideConv = conversations
-        .where((c) => c.userId == currentUserId)
+        .where((c) => sameUserId(c.userId, currentUserId))
         .toList();
     final groupSideConv = conversations
-        .where((c) => c.userId != currentUserId)
+        .where((c) => !sameUserId(c.userId, currentUserId))
         .toList();
 
     final groupIdsForGroups = userSideConv
@@ -115,15 +119,17 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
     final profileMap = await _publicProfileBatch(userIdsForUsers);
 
     return conversations.map((c) {
-      if (c.userId == currentUserId) {
+      if (sameUserId(c.userId, currentUserId)) {
         return c.withDisplay(
           title: groupMap[c.groupId]?.name ?? 'Hội nhóm',
           avatarUrl: groupMap[c.groupId]?.avatarUrl,
         );
       }
+      final peerId = normalizeUserId(c.userId);
       return c.withDisplay(
-        title: profileMap[c.userId]?.name ?? 'Người dùng',
-        avatarUrl: profileMap[c.userId]?.avatarUrl,
+        title:
+            (peerId != null ? profileMap[peerId]?.name : null) ?? 'Người dùng',
+        avatarUrl: peerId != null ? profileMap[peerId]?.avatarUrl : null,
       );
     }).toList();
   }
@@ -131,7 +137,11 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
   Future<Map<String, ({String name, String? avatarUrl})>> _publicProfileBatch(
     Iterable<String> userIds,
   ) async {
-    final ids = userIds.where((id) => id.isNotEmpty).toSet();
+    final ids = userIds
+        .map(normalizeUserId)
+        .whereType<String>()
+        .where((id) => id.isNotEmpty)
+        .toSet();
     if (ids.isEmpty) return {};
 
     final result = <String, ({String name, String? avatarUrl})>{};
@@ -155,7 +165,7 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
       final list = envelope['data'] as List? ?? [];
       for (final item in list) {
         final m = Map<String, dynamic>.from(item as Map);
-        final id = m['id']?.toString() ?? '';
+        final id = normalizeUserId(m['id']?.toString()) ?? '';
         if (id.isEmpty) continue;
         final fullName = m['full_name']?.toString().trim();
         final username = m['username']?.toString().trim();
@@ -169,10 +179,11 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
         result[id] = profile;
       }
       for (final id in uncached) {
-        if (!result.containsKey(id)) {
+        final key = normalizeUserId(id) ?? id;
+        if (!result.containsKey(key)) {
           final fallback = (name: 'Người dùng', avatarUrl: null);
-          _profileCache[id] = Future.value(fallback);
-          result[id] = fallback;
+          _profileCache[key] = Future.value(fallback);
+          result[key] = fallback;
         }
       }
     } catch (_) {
@@ -235,14 +246,35 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
     return result;
   }
 
+  SharedPreferences get _prefs => apiClient.sharedPreferences;
+
+  String? _currentUserId() => resolveCurrentUserId(_prefs);
+
+  /// Tin "của mình" theo phía đang xem: user seat ↔ group seat.
+  static bool isMessageMine({
+    required String type,
+    required String? senderSide,
+    required String senderId,
+    required String? currentUserId,
+    required bool asUserSide,
+  }) {
+    if (type == 'system') return false;
+    final side = (senderSide ?? '').toLowerCase().trim();
+    if (side == 'group' || side == 'user') {
+      return asUserSide ? side == 'user' : side == 'group';
+    }
+    // Fallback cũ nếu backend thiếu sender_side
+    return sameUserId(senderId, currentUserId);
+  }
+
   @override
   Future<List<ChatMessage>> getMessages(
     String conversationId, {
     int limit = 50,
     int offset = 0,
+    bool asUserSide = true,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final currentUserId = prefs.getString(AppConstants.keyUserId);
+    final currentUserId = _currentUserId();
     final response = await apiClient.dio.get(
       '${AppConstants.chatApiBaseUrl}/conversations/$conversationId/messages',
       queryParameters: {'limit': limit, 'offset': offset},
@@ -255,25 +287,34 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
         .toList();
 
     final senderIds = rawMessages
-        .map((e) => e['sender_id']?.toString() ?? '')
-        .where((id) => id.isNotEmpty && id != currentUserId)
+        .map((e) => normalizeUserId(e['sender_id']?.toString()) ?? '')
+        .where((id) => id.isNotEmpty && !sameUserId(id, currentUserId))
         .toSet();
     final profileMap = await _publicProfileBatch(senderIds);
 
     final messages = rawMessages.map((e) {
-      final senderId = e['sender_id']?.toString() ?? '';
+      final senderId = normalizeUserId(e['sender_id']?.toString()) ?? '';
+      final senderSide = e['sender_side']?.toString();
       final profile = profileMap[senderId];
+      final type = e['type']?.toString() ?? 'text';
       return ChatMessage(
         id: e['id']?.toString() ?? '',
         content: e['content']?.toString() ?? '',
         senderId: senderId,
+        senderSide: senderSide,
         senderName: profile?.name,
         senderAvatar: profile?.avatarUrl,
         createdAt:
             DateTime.tryParse(e['created_at']?.toString() ?? '') ??
             DateTime.now(),
-        isMine: currentUserId != null && senderId == currentUserId,
-        type: e['type']?.toString() ?? 'text',
+        isMine: isMessageMine(
+          type: type,
+          senderSide: senderSide,
+          senderId: senderId,
+          currentUserId: currentUserId,
+          asUserSide: asUserSide,
+        ),
+        type: type,
         metadata: e['metadata'] != null
             ? Map<String, dynamic>.from(e['metadata'] as Map)
             : null,
@@ -289,27 +330,39 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
     String content, {
     String type = 'text',
     Map<String, dynamic>? metadata,
+    bool asGroup = false,
   }) async {
     final response = await apiClient.dio.post(
       '${AppConstants.chatApiBaseUrl}/conversations/$conversationId/messages',
-      data: {'content': content, 'type': type},
+      data: {'content': content, 'type': type, 'asGroup': asGroup},
     );
     final e = response.data is Map
         ? Map<String, dynamic>.from(response.data['data'] ?? response.data)
         : <String, dynamic>{};
-    final prefs = await SharedPreferences.getInstance();
-    final currentUserId = prefs.getString(AppConstants.keyUserId) ?? '';
+    final currentUserId = _currentUserId() ?? '';
+    final senderId =
+        normalizeUserId(e['sender_id']?.toString()) ?? currentUserId;
+    final senderSide =
+        e['sender_side']?.toString() ?? (asGroup ? 'group' : 'user');
+    final msgType = e['type']?.toString() ?? type;
     return ChatMessage(
       id: e['id']?.toString() ?? '',
       content: e['content']?.toString() ?? content,
-      senderId: e['sender_id']?.toString() ?? currentUserId,
+      senderId: senderId,
+      senderSide: senderSide,
       senderName: e['sender_name']?.toString(),
       senderAvatar: e['sender_avatar']?.toString(),
       createdAt:
           DateTime.tryParse(e['created_at']?.toString() ?? '') ??
           DateTime.now(),
-      isMine: true,
-      type: e['type']?.toString() ?? type,
+      isMine: isMessageMine(
+        type: msgType,
+        senderSide: senderSide,
+        senderId: senderId,
+        currentUserId: currentUserId,
+        asUserSide: !asGroup,
+      ),
+      type: msgType,
     );
   }
 

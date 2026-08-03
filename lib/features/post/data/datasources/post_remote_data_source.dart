@@ -18,6 +18,7 @@ abstract class PostRemoteDataSource {
   );
   Future<void> deletePost(String postId);
   Future<PostModel> updatePostStatus(String postId, String status);
+  Future<PostModel> setPostPinned(String postId, bool isPinned);
   Future<PostModel> getPostDetail(String postId);
   Future<void> likePost(String postId);
   Future<void> unlikePost(String postId);
@@ -26,7 +27,7 @@ abstract class PostRemoteDataSource {
     int limit = 20,
     int offset = 0,
   });
-  Future<CommentModel> addComment(String postId, String content);
+  Future<CommentModel> addComment(String postId, String content, {String? parentId});
 }
 
 class PostRemoteDataSourceImpl implements PostRemoteDataSource {
@@ -138,6 +139,27 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
   }
 
   @override
+  Future<PostModel> setPostPinned(String postId, bool isPinned) async {
+    try {
+      final response = await apiClient.dio.patch(
+        '${AppConstants.communityApiBaseUrl}/posts/$postId',
+        data: {'is_pinned': isPinned},
+      );
+      final dataEnvelope = response.data as Map<String, dynamic>;
+      return PostModel.fromJson(dataEnvelope['data']);
+    } on DioException catch (e) {
+      throw Exception(
+        _communityError(
+          e,
+          isPinned ? 'Lỗi khi ghim bài đăng' : 'Lỗi khi bỏ ghim bài đăng',
+        ),
+      );
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  @override
   Future<PostModel> getPostDetail(String postId) async {
     try {
       final response = await apiClient.dio.get(
@@ -216,11 +238,19 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
   }
 
   @override
-  Future<CommentModel> addComment(String postId, String content) async {
+  Future<CommentModel> addComment(
+    String postId,
+    String content, {
+    String? parentId,
+  }) async {
     try {
       final response = await apiClient.dio.post(
         '${AppConstants.communityApiBaseUrl}/posts/$postId/comments',
-        data: {'content': content},
+        data: {
+          'content': content,
+          if (parentId != null && parentId.trim().isNotEmpty)
+            'parent_id': parentId.trim(),
+        },
       );
       return CommentModel.fromJson(response.data['data']);
     } on DioException catch (e) {

@@ -31,12 +31,14 @@ class ChatRepositoryImpl implements ChatRepository {
     String conversationId, {
     int limit = 50,
     int offset = 0,
+    bool asUserSide = true,
   }) async {
     try {
       final messages = await remoteDataSource.getMessages(
         conversationId,
         limit: limit,
         offset: offset,
+        asUserSide: asUserSide,
       );
       return Right(messages);
     } on DioException catch (e) {
@@ -52,6 +54,7 @@ class ChatRepositoryImpl implements ChatRepository {
     String content, {
     String type = 'text',
     Map<String, dynamic>? metadata,
+    bool asGroup = false,
   }) async {
     try {
       final msg = await remoteDataSource.sendMessage(
@@ -59,6 +62,7 @@ class ChatRepositoryImpl implements ChatRepository {
         content,
         type: type,
         metadata: metadata,
+        asGroup: asGroup,
       );
       return Right(msg);
     } on DioException catch (e) {

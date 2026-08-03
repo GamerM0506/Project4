@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_routes.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/widgets/app_empty_state.dart';
+import '../../../../core/widgets/app_hero_banner.dart';
+import '../../../../core/widgets/app_surface.dart';
 import '../../../../core/widgets/app_search_bar.dart';
 import '../../../../core/widgets/app_skeleton.dart';
 import '../../../../injection_container.dart';
@@ -15,6 +17,10 @@ import '../cubit/group_cubit.dart';
 import '../widgets/group_card.dart';
 import '../widgets/group_filter_chips.dart';
 import '../../../../core/network/location_service.dart';
+
+/// Chieu cao banner khi mo rong va thanh tim kiem duoi banner.
+const double _kBannerHeight = 214;
+const double _kSearchBarHeight = 72;
 
 class GroupsPage extends StatelessWidget {
   const GroupsPage({super.key});
@@ -36,10 +42,10 @@ class GroupsView extends StatefulWidget {
 }
 
 class _GroupsViewState extends State<GroupsView> {
-  final LocationService _locationService = LocationService();
+  final LocationService _locationService = sl<LocationService>();
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
-  List<dynamic> _provinces = [];
+  List<Map<String, dynamic>> _provinces = [];
   Timer? _searchDebounce;
   String? _provinceCode;
   bool _myGroups = false;
@@ -83,85 +89,74 @@ class _GroupsViewState extends State<GroupsView> {
   }
 
   Future<void> _onJoinGroup(String groupId) async {
-    final messenger = ScaffoldMessenger.of(context);
     final result = await context.read<GroupCubit>().joinGroup(groupId);
     if (!mounted) return;
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(result.message),
-        backgroundColor: result.success
-            ? null
-            : Theme.of(context).colorScheme.error,
-      ),
-    );
+    if (result.success) {
+      context.showSuccessSnack(result.message);
+    } else {
+      context.showErrorSnack(result.message);
+    }
   }
 
   Future<void> _onCancelJoin(String groupId) async {
-    final messenger = ScaffoldMessenger.of(context);
     final result = await context.read<GroupCubit>().cancelJoinRequest(groupId);
     if (!mounted) return;
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(result.message),
-        backgroundColor: result.success
-            ? null
-            : Theme.of(context).colorScheme.error,
-      ),
-    );
+    if (result.success) {
+      context.showSnack(result.message);
+    } else {
+      context.showErrorSnack(result.message);
+    }
   }
 
   Future<void> _loadProvinces() async {
     try {
       final data = await _locationService.getProvinces();
       if (mounted) {
-        setState(() => _provinces = data);
+        setState(
+          () => _provinces = data
+              .whereType<Map>()
+              .map((p) => Map<String, dynamic>.from(p))
+              .toList(),
+        );
       }
     } catch (_) {
-      // Bỏ qua lỗi tải tỉnh thành
+      // Bỏ qua lỗi tải tỉnh thành: danh sách nhóm vẫn xem được.
     }
   }
 
   String _getProvinceName(String? code) {
-    if (code == null) return 'Việt Nam';
+    if (code == null || code.isEmpty) return 'Việt Nam';
     if (_provinces.isEmpty) return 'Đang tải...';
-    try {
-      final province = _provinces.firstWhere(
-        (p) => p['code'].toString() == code,
-      );
-      return province['name'] ?? 'Việt Nam';
-    } catch (_) {
-      return code;
+    for (final province in _provinces) {
+      if (province['code']?.toString() == code) {
+        return province['name']?.toString() ?? 'Việt Nam';
+      }
     }
+    return code;
   }
 
   Future<void> _onRefresh() async {
     _applyFilters();
   }
 
+  /// Số liệu tổng quan trên banner, đọc từ state hiện tại của cubit.
+  List<AppHeroStat> _statsOf() {
+    final state = context.read<GroupCubit>().state;
+    if (state is! GroupLoaded || state.groups.isEmpty) return const [];
+    final joined = state.groups.where((g) => g.myStatus == 'approved').length;
+    return [
+      AppHeroStat(value: '${state.groups.length}', label: 'hội nhóm'),
+      if (joined > 0) AppHeroStat(value: '$joined', label: 'đã tham gia'),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final textTheme = theme.textTheme;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
-      appBar: AppBar(
-        title: const Text('Hội nhóm'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_rounded),
-            tooltip: 'Tạo nhóm',
-            onPressed: () async {
-              final shouldRefresh = await context.push(AppRoutes.createGroup);
-              if (shouldRefresh == true && context.mounted) {
-                _applyFilters();
-              }
-            },
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
       body: RefreshIndicator(
         onRefresh: _onRefresh,
         color: colorScheme.primary,
@@ -169,70 +164,88 @@ class _GroupsViewState extends State<GroupsView> {
           controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            // Header + search
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Khám phá hội nhóm\nthiện nguyện',
-                      style: textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        height: 1.25,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Kết nối với cộng đồng xung quanh bạn',
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    AppSearchBar(
-                      controller: _searchController,
-                      hintText: 'Tìm kiếm hội nhóm...',
-                      onChanged: _onSearchChanged,
-                      onSubmitted: (_) {
-                        _searchDebounce?.cancel();
-                        _applyFilters();
-                      },
-                    ),
-                  ],
-                ).animate().fade(duration: 350.ms).slideY(begin: -0.04),
+            // Cùng khuôn banner với trang Đợt quyên góp để hai tab không nhìn
+            // như hai ứng dụng khác nhau.
+            SliverAppBar(
+              expandedHeight: _kBannerHeight,
+              pinned: true,
+              stretch: true,
+              foregroundColor: Colors.white,
+              backgroundColor: colorScheme.primary,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.add_rounded),
+                  tooltip: 'Tạo nhóm',
+                  onPressed: () async {
+                    final shouldRefresh = await context.push(
+                      AppRoutes.createGroup,
+                    );
+                    if (shouldRefresh == true && context.mounted) {
+                      _applyFilters();
+                    }
+                  },
+                ),
+                const SizedBox(width: AppSpacing.sm),
+              ],
+              flexibleSpace: AppHeroBanner(
+                title: 'Tìm hội nhóm gần bạn',
+                subtitle:
+                    'Tham gia để quyên góp và theo dõi hoạt động thiện nguyện.',
+                collapsedTitle: 'Hội nhóm',
+                icon: Icons.groups_rounded,
+                expandedHeight: _kBannerHeight,
+                bottomBarHeight: _kSearchBarHeight,
+                stats: _statsOf(),
+              ),
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(_kSearchBarHeight),
+                child: Container(
+                  color: colorScheme.surface,
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    AppSpacing.sm,
+                    AppSpacing.lg,
+                    AppSpacing.md,
+                  ),
+                  child: AppSearchBar(
+                    controller: _searchController,
+                    hintText: 'Tìm kiếm hội nhóm...',
+                    onChanged: _onSearchChanged,
+                    onSubmitted: (_) {
+                      _searchDebounce?.cancel();
+                      _applyFilters();
+                    },
+                  ),
+                ),
               ),
             ),
 
-            // Filter chips
+            // Bộ lọc
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.only(bottom: 20),
-                child:
-                    GroupFilterChips(
-                          filters: const [
-                            'Tất cả',
-                            'Nhóm của tôi',
-                            'Gần đây',
-                            'Hà Nội',
-                            'TP.HCM',
-                            'Đà Nẵng',
-                          ],
-                          onFilterSelected: (filter) {
-                            _myGroups = filter == 'Nhóm của tôi';
-                            _provinceCode = switch (filter) {
-                              'Hà Nội' => '01',
-                              'TP.HCM' => '79',
-                              'Đà Nẵng' => '48',
-                              _ => null,
-                            };
-                            _applyFilters();
-                          },
-                        )
-                        .animate()
-                        .fade(delay: 80.ms, duration: 350.ms)
-                        .slideX(begin: 0.06),
+                padding: const EdgeInsets.only(
+                  top: AppSpacing.md,
+                  bottom: AppSpacing.lg,
+                ),
+                child: GroupFilterChips(
+                  filters: const [
+                    'Tất cả',
+                    'Nhóm của tôi',
+                    'Hà Nội',
+                    'TP.HCM',
+                    'Đà Nẵng',
+                  ],
+                  onFilterSelected: (filter) {
+                    _myGroups = filter == 'Nhóm của tôi';
+                    _provinceCode = switch (filter) {
+                      'Hà Nội' => '01',
+                      'TP.HCM' => '79',
+                      'Đà Nẵng' => '48',
+                      _ => null,
+                    };
+                    _applyFilters();
+                  },
+                ),
               ),
             ),
 
@@ -306,38 +319,29 @@ class _GroupsViewState extends State<GroupsView> {
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 20),
-                          child:
-                              GroupCard(
-                                    name: group.name,
-                                    coverUrl:
-                                        group.coverUrl ??
-                                        'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=600&auto=format&fit=crop',
-                                    logoUrl:
-                                        group.avatarUrl ??
-                                        'https://ui-avatars.com/api/?name=${Uri.encodeComponent(group.name)}&background=random',
-                                    members: '${group.memberCount} thành viên',
-                                    location: _getProvinceName(
-                                      group.provinceCode,
-                                    ),
-                                    description:
-                                        group.description ?? 'Chưa có mô tả',
-                                    isOwner: isOwner,
-                                    isMember: isMember,
-                                    isPending: isPending,
-                                    isJoining: isJoining,
-                                    onJoin: () => _onJoinGroup(group.id),
-                                    onCancel: () => _onCancelJoin(group.id),
-                                    onView: () {
-                                      context.push(
-                                        '${AppRoutes.groupDetail}/${group.id}',
-                                      );
-                                    },
-                                  )
-                                  .animate(
-                                    delay: (index % 5 * 60).ms,
-                                  )
-                                  .fade(duration: 350.ms)
-                                  .slideY(begin: 0.05),
+                          child: GroupCard(
+                            name: group.name,
+                            // Để null khi nhóm chưa có ảnh: GroupCard tự vẽ
+                            // nền thay thế. Trước đây chèn ảnh Unsplash cố
+                            // định nên mọi nhóm trông giống hệt nhau và phụ
+                            // thuộc dịch vụ ngoài.
+                            coverUrl: group.coverUrl,
+                            logoUrl: group.avatarUrl,
+                            members: '${group.memberCount} thành viên',
+                            location: _getProvinceName(group.provinceCode),
+                            description: group.description ?? 'Chưa có mô tả',
+                            isOwner: isOwner,
+                            isMember: isMember,
+                            isPending: isPending,
+                            isJoining: isJoining,
+                            onJoin: () => _onJoinGroup(group.id),
+                            onCancel: () => _onCancelJoin(group.id),
+                            onView: () {
+                              context.push(
+                                '${AppRoutes.groupDetail}/${group.id}',
+                              );
+                            },
+                          ),
                         );
                       }, childCount: state.groups.length),
                     ),

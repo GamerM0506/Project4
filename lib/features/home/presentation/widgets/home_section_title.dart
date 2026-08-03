@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 
 class HomeSectionTitle extends StatelessWidget {
   final String title;
-  final String action;
+
+  /// Nhãn hành động bên phải; bỏ trống thì chỉ hiện tiêu đề.
+  final String? action;
   final VoidCallback? onActionTap;
 
   const HomeSectionTitle({
     super.key,
     required this.title,
-    required this.action,
+    this.action,
     this.onActionTap,
   });
 
@@ -40,30 +42,31 @@ class HomeSectionTitle extends StatelessWidget {
             ),
           ],
         ),
-        InkWell(
-          onTap: onActionTap,
-          borderRadius: BorderRadius.circular(999),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  action,
-                  style: textTheme.labelLarge?.copyWith(
+        if (action != null)
+          InkWell(
+            onTap: onActionTap,
+            borderRadius: BorderRadius.circular(999),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    action!,
+                    style: textTheme.labelLarge?.copyWith(
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 16,
                     color: colorScheme.primary,
                   ),
-                ),
-                const SizedBox(width: 2),
-                Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 16,
-                  color: colorScheme.primary,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
       ],
     );
   }

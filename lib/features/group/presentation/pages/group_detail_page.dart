@@ -14,9 +14,7 @@ import '../../../post/presentation/cubit/group_feed_state.dart';
 import '../../../post/presentation/widgets/post_card_widget.dart';
 import '../../../post/presentation/widgets/create_post_widget.dart';
 import '../../../../core/network/location_service.dart';
-import '../../../marketplace/presentation/cubit/marketplace_cubit.dart';
-import '../../../marketplace/presentation/cubit/marketplace_state.dart';
-import '../../../marketplace/presentation/widgets/product_card.dart';
+import '../widgets/group_campaigns_tab.dart';
 import '../../../post/domain/entities/post_entity.dart';
 import '../widgets/group_members_tab.dart';
 
@@ -33,9 +31,6 @@ class GroupDetailPage extends StatelessWidget {
           create: (_) => sl<GroupDetailCubit>()..fetchGroupDetail(groupId),
         ),
         BlocProvider(create: (_) => sl<GroupFeedCubit>()..fetchPosts(groupId)),
-        BlocProvider(
-          create: (_) => sl<MarketplaceCubit>()..loadCatalog(groupId: groupId),
-        ),
       ],
       child: const GroupDetailView(),
     );
@@ -133,7 +128,7 @@ class _GroupDetailViewState extends State<GroupDetailView>
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F3F2), // surface-container-low
+      backgroundColor: colorScheme.surfaceContainer,
       body: BlocConsumer<GroupDetailCubit, GroupDetailState>(
         listener: (context, state) {
           if (state is GroupDetailError) {
@@ -188,7 +183,7 @@ class _GroupDetailViewState extends State<GroupDetailView>
                         child: BackdropFilter(
                           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                           child: Container(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             child: IconButton(
                               icon: const Icon(
                                 Icons.arrow_back,
@@ -208,7 +203,7 @@ class _GroupDetailViewState extends State<GroupDetailView>
                           child: BackdropFilter(
                             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                             child: Container(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               child: IconButton(
                                 icon: const Icon(
                                   Icons.share,
@@ -236,22 +231,32 @@ class _GroupDetailViewState extends State<GroupDetailView>
                             left: 0,
                             right: 0,
                             bottom: 48,
-                            child: Image.network(
-                              group.coverUrl ??
-                                  'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=600&auto=format&fit=crop',
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  color: Colors.grey[300],
-                                  child: const Center(
+                            child: group.coverUrl == null ||
+                                    group.coverUrl!.isEmpty
+                                ? Container(
+                                    color:
+                                        colorScheme.surfaceContainerHighest,
                                     child: Icon(
-                                      Icons.broken_image,
-                                      color: Colors.grey,
+                                      Icons.groups_rounded,
+                                      size: 56,
+                                      color: colorScheme.onSurfaceVariant,
                                     ),
+                                  )
+                                : Image.network(
+                                    group.coverUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        color: colorScheme
+                                            .surfaceContainerHighest,
+                                        child: Icon(
+                                          Icons.broken_image,
+                                          size: 56,
+                                          color: colorScheme.onSurfaceVariant,
+                                        ),
+                                      );
+                                    },
                                   ),
-                                );
-                              },
-                            ),
                           ),
                           // Gradient Overlay
                           Positioned(
@@ -287,7 +292,7 @@ class _GroupDetailViewState extends State<GroupDetailView>
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.08),
+                                    color: Colors.black.withValues(alpha: 0.08),
                                     blurRadius: 16,
                                     offset: const Offset(0, -4),
                                   ),
@@ -311,28 +316,42 @@ class _GroupDetailViewState extends State<GroupDetailView>
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
+                                    color: Colors.black.withValues(alpha: 0.1),
                                     blurRadius: 8,
                                     offset: const Offset(0, 4),
                                   ),
                                 ],
                               ),
                               child: ClipOval(
-                                child: Image.network(
-                                  group.avatarUrl ??
-                                      'https://ui-avatars.com/api/?name=${Uri.encodeComponent(group.name)}&background=random',
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      color: Colors.grey[200],
-                                      child: const Icon(
-                                        Icons.group,
-                                        color: Colors.grey,
-                                        size: 40,
+                                child: group.avatarUrl == null ||
+                                        group.avatarUrl!.isEmpty
+                                    ? Container(
+                                        color:
+                                            colorScheme.primaryContainer,
+                                        child: Icon(
+                                          Icons.group,
+                                          color:
+                                              colorScheme.onPrimaryContainer,
+                                          size: 40,
+                                        ),
+                                      )
+                                    : Image.network(
+                                        group.avatarUrl!,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                              return Container(
+                                                color: colorScheme
+                                                    .primaryContainer,
+                                                child: Icon(
+                                                  Icons.group,
+                                                  color: colorScheme
+                                                      .onPrimaryContainer,
+                                                  size: 40,
+                                                ),
+                                              );
+                                            },
                                       ),
-                                    );
-                                  },
-                                ),
                               ),
                             ),
                           ),
@@ -361,11 +380,9 @@ class _GroupDetailViewState extends State<GroupDetailView>
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                const Icon(
+                                Icon(
                                   Icons.verified,
-                                  color: Color(
-                                    0xFF006A65,
-                                  ), // Secondary color from design
+                                  color: colorScheme.secondary,
                                   size: 24,
                                 ),
                               ],
@@ -420,7 +437,7 @@ class _GroupDetailViewState extends State<GroupDetailView>
                                 FilledButton.icon(
                                   onPressed: () {
                                     context.push(
-                                      '${AppRoutes.marketplace}/create',
+                                      AppRoutes.donate,
                                       extra: {'groupId': group.id},
                                     );
                                   },
@@ -437,12 +454,9 @@ class _GroupDetailViewState extends State<GroupDetailView>
                                       double.infinity,
                                       56,
                                     ),
-                                    backgroundColor: const Color(0xFFAE2F34),
-                                    foregroundColor: Colors.white,
                                     elevation: 4,
-                                    shadowColor: const Color(
-                                      0xFFAE2F34,
-                                    ).withOpacity(0.4),
+                                    shadowColor: colorScheme.primary
+                                        .withValues(alpha: 0.4),
                                   ),
                                 ),
                                 const SizedBox(height: 12),
@@ -567,13 +581,14 @@ class _GroupDetailViewState extends State<GroupDetailView>
                     delegate: _SliverAppBarDelegate(
                       TabBar(
                         controller: _tabController,
-                        labelColor: const Color(0xFFAE2F34),
+                        labelColor: colorScheme.primary,
                         unselectedLabelColor: colorScheme.onSurfaceVariant,
-                        indicatorColor: const Color(0xFFAE2F34),
+                        indicatorColor: colorScheme.primary,
                         indicatorWeight: 3,
-                        labelStyle: const TextStyle(
+                        labelStyle: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
+                          color: colorScheme.primary,
                         ),
                         unselectedLabelStyle: const TextStyle(
                           fontWeight: FontWeight.w500,
@@ -592,11 +607,9 @@ class _GroupDetailViewState extends State<GroupDetailView>
                   ),
                 ];
               },
-              body: Container(
-                color: const Color(
-                  0xFFF6F3F2,
-                ), // surface-container-low from design
-                child: TabBarView(
+                              body: Container(
+                                color: colorScheme.surfaceContainer,
+                                child: TabBarView(
                   controller: _tabController,
                   children: [
                     _buildFeedTab(group, colorScheme, textTheme),
@@ -710,65 +723,14 @@ class _GroupDetailViewState extends State<GroupDetailView>
     );
   }
 
+  /// Tab đợt quyên góp của nhóm. Trước đây là gian hàng theo mô hình
+  /// marketplace, nay thay bằng luồng campaign.
   Widget _buildStoreTab(
     GroupModel group,
     ColorScheme colorScheme,
     TextTheme textTheme,
   ) {
-    return BlocBuilder<MarketplaceCubit, MarketplaceState>(
-      builder: (context, state) {
-        if (state.isLoading && state.listings.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (state.error != null && state.listings.isEmpty) {
-          return Center(child: Text(state.error!));
-        } else {
-          final listings = state.listings;
-          if (listings.isEmpty) {
-            return Center(
-              child: Text(
-                'Chưa có vật phẩm nào trong nhóm.',
-                style: textTheme.bodyLarge?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-            );
-          }
-          return RefreshIndicator(
-            onRefresh: () =>
-                context.read<MarketplaceCubit>().loadCatalog(groupId: group.id),
-            child: GridView.builder(
-              padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.65,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-              ),
-              itemCount: listings.length,
-              itemBuilder: (context, index) {
-                final item = listings[index];
-                return GestureDetector(
-                  onTap: () {
-                    context.push('/marketplace/detail/${item.id}');
-                  },
-                  child: ProductCard(
-                    title: item.title,
-                    imageUrl: item.imageUrl ?? '',
-                    isNew: item.condition.toLowerCase() == 'new',
-                    providerName: 'ChoSV',
-                    providerLogo: '',
-                    location: 'Hà Nội',
-                    onReceive: () {
-                      context.push('/marketplace/detail/${item.id}');
-                    },
-                  ),
-                );
-              },
-            ),
-          );
-        }
-      },
-    );
+    return GroupCampaignsTab(group: group);
   }
 
   Widget _buildAboutTab(GroupModel group, TextTheme textTheme) {

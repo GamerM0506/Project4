@@ -12,9 +12,10 @@ abstract class PostRepository {
   );
   Future<Either<String, void>> deletePost(String postId);
   Future<Either<String, PostEntity>> updatePostStatus(String postId, String status);
+  Future<Either<String, PostEntity>> setPostPinned(String postId, bool isPinned);
   Future<Either<String, PostEntity>> getPostDetail(String postId);
   Future<Either<String, void>> likePost(String postId);
   Future<Either<String, void>> unlikePost(String postId);
   Future<Either<String, List<CommentEntity>>> getComments(String postId, {int limit = 20, int offset = 0});
-  Future<Either<String, CommentEntity>> addComment(String postId, String content);
+  Future<Either<String, CommentEntity>> addComment(String postId, String content, {String? parentId});
 }

@@ -22,9 +22,14 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
   late TextEditingController _descriptionController;
   late TextEditingController _addressController;
 
-  final LocationService _locationService = LocationService();
-  List<dynamic> _provinces = [];
-  List<dynamic> _districts = [];
+  /// Tạo một lần trong initState, không tạo trong build: mỗi setState (bật
+  /// switch, đổi tỉnh, chọn ảnh) sẽ dựng lại cubit và làm mất state đang có,
+  /// khiến kết quả lưu không bao giờ tới listener.
+  late final UpdateGroupCubit _updateCubit;
+
+  final LocationService _locationService = sl<LocationService>();
+  List<Map<String, dynamic>> _provinces = [];
+  List<Map<String, dynamic>> _districts = [];
 
   String? _selectedProvinceId;
   String? _selectedDistrictId;
@@ -38,6 +43,7 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
   @override
   void initState() {
     super.initState();
+    _updateCubit = sl<UpdateGroupCubit>();
     _nameController = TextEditingController(text: widget.group.name);
     _descriptionController = TextEditingController(
       text: widget.group.description,
@@ -54,58 +60,53 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
     _loadProvinces();
   }
 
+  /// Đọc danh sách tỉnh và nạp sẵn quận/huyện của tỉnh đang chọn.
   Future<void> _loadProvinces() async {
     try {
       final data = await _locationService.getProvinces();
       if (!mounted) return;
+      final provinces = _asMapList(data);
       setState(() {
-        _provinces = data;
+        _provinces = provinces;
         _isLoadingProvinces = false;
+        _districts = _districtsOf(_selectedProvinceId);
+        // Mã quận cũ không còn thuộc tỉnh đang chọn thì bỏ, tránh
+        // DropdownButton ném lỗi vì value không có trong items.
+        if (!_districts.any(
+          (d) => d['code']?.toString() == _selectedDistrictId,
+        )) {
+          _selectedDistrictId = null;
+        }
       });
-
-      if (_selectedProvinceId != null) {
-        Map<String, dynamic>? province;
-        for (final p in _provinces) {
-          if (p is Map && p['code']?.toString() == _selectedProvinceId) {
-            province = Map<String, dynamic>.from(p);
-            break;
-          }
-        }
-        if (province != null && province['districts'] != null) {
-          final districtsList = province['districts'] as List<dynamic>;
-          setState(() {
-            _districts = districtsList;
-          });
-        }
-      }
     } catch (_) {
-      if (mounted) {
-        setState(() {
-          _isLoadingProvinces = false;
-        });
+      if (mounted) setState(() => _isLoadingProvinces = false);
+    }
+  }
+
+  List<Map<String, dynamic>> _asMapList(List<dynamic> raw) => raw
+      .whereType<Map>()
+      .map((item) => Map<String, dynamic>.from(item))
+      .toList();
+
+  /// Quận/huyện của một tỉnh; trả rỗng nếu không tìm thấy.
+  List<Map<String, dynamic>> _districtsOf(String? provinceCode) {
+    if (provinceCode == null || provinceCode.isEmpty) return const [];
+    for (final province in _provinces) {
+      if (province['code']?.toString() == provinceCode) {
+        final districts = province['districts'];
+        return districts is List ? _asMapList(districts) : const [];
       }
     }
+    return const [];
   }
 
   void _onProvinceChanged(String? provinceCode) {
     if (provinceCode == null) return;
-
     setState(() {
       _selectedProvinceId = provinceCode;
       _selectedDistrictId = null;
-      _districts = [];
+      _districts = _districtsOf(provinceCode);
     });
-
-    final province = _provinces.firstWhere(
-      (p) => p['code'].toString() == provinceCode,
-      orElse: () => null,
-    );
-
-    if (province != null && province['districts'] != null) {
-      setState(() {
-        _districts = province['districts'] as List<dynamic>;
-      });
-    }
   }
 
   @override
@@ -113,10 +114,11 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
     _nameController.dispose();
     _descriptionController.dispose();
     _addressController.dispose();
+    _updateCubit.close();
     super.dispose();
   }
 
-  void _submit(BuildContext context) {
+  void _submit() {
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -127,7 +129,7 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
       return;
     }
 
-    context.read<UpdateGroupCubit>().updateGroup(
+    _updateCubit.updateGroup(
       widget.group.id,
       name: _nameController.text.trim(),
       description: _descriptionController.text.trim(),
@@ -146,9 +148,10 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return BlocProvider(
-      create: (_) => sl<UpdateGroupCubit>(),
+    return BlocProvider.value(
+      value: _updateCubit,
       child: BlocConsumer<UpdateGroupCubit, UpdateGroupState>(
+        bloc: _updateCubit,
         listener: (context, state) {
           if (state is UpdateGroupSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -194,11 +197,16 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        initialValue: _selectedProvinceId,
+                        initialValue: _provinces.any(
+                              (p) =>
+                                  p['code']?.toString() == _selectedProvinceId,
+                            )
+                            ? _selectedProvinceId
+                            : null,
                         items: _provinces
                             .map(
                               (p) => DropdownMenuItem<String>(
-                                value: p['code'].toString(),
+                                value: p['code']?.toString() ?? '',
                                 child: Text(
                                   p['name']?.toString() ?? '',
                                   overflow: TextOverflow.ellipsis,
@@ -228,11 +236,16 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        initialValue: _selectedDistrictId,
+                        initialValue: _districts.any(
+                              (d) =>
+                                  d['code']?.toString() == _selectedDistrictId,
+                            )
+                            ? _selectedDistrictId
+                            : null,
                         items: _districts
                             .map(
                               (d) => DropdownMenuItem<String>(
-                                value: d['code'].toString(),
+                                value: d['code']?.toString() ?? '',
                                 child: Text(
                                   d['name']?.toString() ?? '',
                                   overflow: TextOverflow.ellipsis,
@@ -244,9 +257,12 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
                           setState(() => _selectedDistrictId = val);
                         },
                         isExpanded: true,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Quận / Huyện',
-                          prefixIcon: Icon(Icons.map_outlined),
+                          prefixIcon: const Icon(Icons.map_outlined),
+                          helperText: _selectedProvinceId == null
+                              ? 'Chọn tỉnh trước'
+                              : null,
                         ),
                       ),
                     ),
@@ -319,6 +335,8 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
                     label: 'Ảnh biểu trưng',
                     isAvatar: true,
                     initialUrl: _avatarUrl,
+                    refType: 'avatar',
+                    refId: widget.group.id,
                     onImageUploaded: (url) {
                       setState(() => _avatarUrl = url);
                     },
@@ -328,6 +346,8 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
                 ImagePickerWidget(
                   label: 'Ảnh bìa',
                   initialUrl: _coverUrl,
+                  refType: 'avatar',
+                  refId: widget.group.id,
                   onImageUploaded: (url) {
                     setState(() => _coverUrl = url);
                   },
@@ -338,7 +358,7 @@ class _GroupDashboardSettingsState extends State<GroupDashboardSettings> {
                   label: 'Lưu thay đổi',
                   icon: Icons.save_rounded,
                   loading: state is UpdateGroupLoading,
-                  onPressed: () => _submit(context),
+                  onPressed: _submit,
                 ),
                 const SizedBox(height: 16),
               ],

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
+import '../../../../core/router/app_routes.dart';
 import '../../../../injection_container.dart';
 import '../cubit/post_comments_cubit.dart';
 
@@ -117,20 +119,33 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                             );
                           }
                           final comment = comments[index];
+                          void openAuthor() {
+                            if (comment.authorId.trim().isEmpty) return;
+                            Navigator.pop(context);
+                            context.push(
+                              '${AppRoutes.publicProfile}/${comment.authorId}',
+                              extra: {'name': comment.authorName},
+                            );
+                          }
+
                           return Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              CircleAvatar(
-                                backgroundColor: colorScheme.primaryContainer,
-                                child: Text(
-                                  comment.authorName != null
-                                      ? comment.authorName![0].toUpperCase()
-                                      : comment.authorId
-                                            .substring(0, 2)
-                                            .toUpperCase(),
-                                  style: TextStyle(
-                                    color: colorScheme.onPrimaryContainer,
-                                    fontSize: 12,
+                              InkWell(
+                                onTap: openAuthor,
+                                customBorder: const CircleBorder(),
+                                child: CircleAvatar(
+                                  backgroundColor: colorScheme.primaryContainer,
+                                  child: Text(
+                                    comment.authorName != null
+                                        ? comment.authorName![0].toUpperCase()
+                                        : comment.authorId
+                                              .substring(0, 2)
+                                              .toUpperCase(),
+                                    style: TextStyle(
+                                      color: colorScheme.onPrimaryContainer,
+                                      fontSize: 12,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -151,12 +166,15 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          Text(
-                                            comment.authorName ??
-                                                'Người dùng ${comment.authorId.substring(0, 4)}',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 13,
+                                          InkWell(
+                                            onTap: openAuthor,
+                                            child: Text(
+                                              comment.authorName ??
+                                                  'Người dùng ${comment.authorId.substring(0, 4)}',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                              ),
                                             ),
                                           ),
                                           const SizedBox(height: 4),

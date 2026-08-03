@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
-import '../../../../core/router/app_routes.dart';
 import '../../../../injection_container.dart';
+import '../../application/notification_navigator.dart';
 import '../../domain/entities/notification_entity.dart';
 import '../cubit/notification_cubit.dart';
 import '../cubit/notification_state.dart';
@@ -146,26 +145,15 @@ class _NotificationViewState extends State<_NotificationView> {
     await context.read<NotificationCubit>().markAsRead(notification.id);
     if (!context.mounted) return;
 
-    final refId = notification.refId;
-    switch (notification.refType) {
-      case 'conversation' when refId != null && refId.isNotEmpty:
-        await context.push(
-          AppRoutes.chatRoom,
-          extra: {'conversationId': refId, 'name': notification.title},
-        );
-      case 'group' when refId != null && refId.isNotEmpty:
-        await context.push('${AppRoutes.groupDetail}/$refId');
-      case 'listing' when refId != null && refId.isNotEmpty:
-        await context.push('${AppRoutes.marketplace}/detail/$refId');
-      case 'request':
-      case 'donation':
-        await context.push(AppRoutes.myRequests);
-      default:
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Thông báo này không có nội dung để mở.'),
-          ),
-        );
+    final opened = await sl<NotificationNavigator>().open(
+      refType: notification.refType,
+      refId: notification.refId,
+      title: notification.title,
+    );
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Thông báo này không có nội dung để mở.')),
+      );
     }
   }
 }
@@ -226,7 +214,9 @@ class _NotificationTile extends StatelessWidget {
     'conversation' => Icons.chat_bubble_outline,
     'group' => Icons.groups_outlined,
     'listing' => Icons.inventory_2_outlined,
-    'donation' => Icons.volunteer_activism_outlined,
+    'donation' ||
+    'contribution' ||
+    'campaign' => Icons.volunteer_activism_outlined,
     'request' => Icons.assignment_outlined,
     _ => Icons.notifications_outlined,
   };

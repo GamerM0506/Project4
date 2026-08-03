@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_tokens.dart';
+
+/// Dải chip lọc nhóm.
+///
+/// Dùng [FilterChip] theo `chipTheme` thay vì tự dựng `Container`: trước đây
+/// chip ở trang này bo góc 12 và cao 40, còn chip ở trang Đợt quyên góp lại
+/// theo theme — hai trang nhìn lệch nhau rõ rệt.
 class GroupFilterChips extends StatefulWidget {
   final List<String> filters;
-  final Function(String) onFilterSelected;
+  final ValueChanged<String> onFilterSelected;
 
   const GroupFilterChips({
     super.key,
@@ -19,49 +26,31 @@ class _GroupFilterChipsState extends State<GroupFilterChips> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
     return SizedBox(
-      height: 40,
+      height: 44,
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
         scrollDirection: Axis.horizontal,
         itemCount: widget.filters.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
         itemBuilder: (context, index) {
-          final isSelected = _selectedIndex == index;
-
-          return GestureDetector(
-            onTap: () {
-              setState(() => _selectedIndex = index);
-              widget.onFilterSelected(widget.filters[index]);
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? colorScheme.primary
-                    : colorScheme.surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isSelected
-                      ? colorScheme.primary
-                      : colorScheme.outlineVariant,
-                ),
-              ),
-              child: Text(
+          return Center(
+            child: FilterChip(
+              label: Text(
                 widget.filters[index],
-                style: textTheme.labelLarge?.copyWith(
-                  color: isSelected
-                      ? colorScheme.onPrimary
-                      : colorScheme.onSurfaceVariant,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                ),
+                style: _selectedIndex == index
+                    ? TextStyle(
+                        color: Theme.of(context).colorScheme.onPrimary,
+                        fontWeight: FontWeight.w700,
+                      )
+                    : null,
               ),
+              selected: _selectedIndex == index,
+              showCheckmark: false,
+              onSelected: (_) {
+                setState(() => _selectedIndex = index);
+                widget.onFilterSelected(widget.filters[index]);
+              },
             ),
           );
         },

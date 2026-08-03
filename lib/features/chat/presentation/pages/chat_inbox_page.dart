@@ -50,7 +50,9 @@ class _ChatInboxView extends StatelessWidget {
                 hintText: 'Tìm kiếm tin nhắn...',
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
-                fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                fillColor: colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.5,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide: BorderSide.none,
@@ -99,8 +101,8 @@ class _ChatInboxView extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.all(24),
                               decoration: BoxDecoration(
-                                color: colorScheme.primaryContainer.withOpacity(
-                                  0.4,
+                                color: colorScheme.primaryContainer.withValues(
+                                  alpha: 0.4,
                                 ),
                                 shape: BoxShape.circle,
                               ),
@@ -168,7 +170,9 @@ class _ChatInboxView extends StatelessWidget {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                           side: BorderSide(
-                            color: colorScheme.outlineVariant.withOpacity(0.3),
+                            color: colorScheme.outlineVariant.withValues(
+                              alpha: 0.3,
+                            ),
                           ),
                         ),
                         child: ListTile(

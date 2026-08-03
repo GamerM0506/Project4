@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+
+import '../../../../core/router/app_routes.dart';
+import '../../../../core/widgets/app_empty_state.dart';
+import '../../../../core/widgets/app_status_badge.dart';
 import '../../../../injection_container.dart';
-import '../../../chat/presentation/utils/open_context_conversation.dart';
-import '../../../donation/data/models/donation_model.dart';
-import '../../../donation/domain/usecases/donation_usecases.dart';
+import '../../../donation/data/campaign_error.dart';
+import '../../../donation/data/datasources/campaign_remote_data_source.dart';
+import '../../../donation/data/donation_labels.dart';
+import '../../../donation/data/models/campaign_item_input.dart';
+import '../../../donation/data/models/contribution_model.dart';
+import '../../../donation/presentation/widgets/donation_photo_picker.dart';
 
 class MyItemsPage extends StatefulWidget {
   const MyItemsPage({super.key});
@@ -14,380 +20,365 @@ class MyItemsPage extends StatefulWidget {
 }
 
 class _MyItemsPageState extends State<MyItemsPage> {
-  late Future<_MyItemsData> _future;
+  late Future<List<ContributionModel>> _future;
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    _reload();
   }
 
-  Future<_MyItemsData> _load() async {
-    final results = await Future.wait([
-      sl<GetDonationsUseCase>()(mine: true, limit: 20),
-      sl<GetInventoryUseCase>()(mine: true, limit: 20),
-    ]);
-    final donations = results[0] as dynamic;
-    final inventory = results[1] as dynamic;
-    String? error;
-    List<DonationModel> donationItems = [];
-    List<InventoryItemModel> inventoryItems = [];
-    donations.fold((value) => error = value, (value) => donationItems = value);
-    inventory.fold(
-      (value) => error ??= value,
-      (value) => inventoryItems = value,
-    );
-    if (error != null) throw Exception(error);
-    return _MyItemsData(donationItems, inventoryItems);
+  void _reload() {
+    // Backend trả kèm items ngay trong danh sách nên không cần gọi chi tiết
+    // cho từng đóng góp nữa.
+    _future = sl<CampaignRemoteDataSource>().getContributions(mine: true);
+  }
+
+  Future<void> _refresh() async {
+    setState(_reload);
+    await _future;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Vật phẩm của tôi'),
-        centerTitle: true,
+        title: const Text('Đóng góp của tôi'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+          onPressed: context.pop,
+          icon: const Icon(Icons.arrow_back_rounded),
         ),
       ),
-      body: FutureBuilder<_MyItemsData>(
+      body: FutureBuilder<List<ContributionModel>>(
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return _MessageState(
-              message: snapshot.error.toString().replaceFirst(
-                'Exception: ',
-                '',
+            return AppEmptyState(
+              icon: Icons.cloud_off_rounded,
+              title: 'Không tải được đóng góp',
+              message: campaignErrorMessage(
+                snapshot.error!,
+                fallback: 'Vui lòng thử lại.',
               ),
-              onRetry: () => setState(() => _future = _load()),
+              isError: true,
+              actionLabel: 'Tải lại',
+              onAction: () => setState(_reload),
             );
           }
-          final data = snapshot.data!;
-          if (data.donations.isEmpty && data.inventory.isEmpty) {
-            return const _MessageState(
-              message: 'Bạn chưa có đơn quyên góp hoặc vật phẩm trong kho.',
+          final contributions = snapshot.data ?? const [];
+          if (contributions.isEmpty) {
+            return RefreshIndicator(
+              onRefresh: _refresh,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: AppEmptyState(
+                      icon: Icons.volunteer_activism_outlined,
+                      title: 'Chưa có đóng góp nào',
+                      message:
+                          'Chọn một đợt quyên góp đang mở để gửi vật phẩm đầu tiên.',
+                      actionLabel: 'Xem các đợt quyên góp',
+                      onAction: () => context.go(AppRoutes.campaigns),
+                    ),
+                  ),
+                ],
+              ),
             );
           }
           return RefreshIndicator(
-            onRefresh: () async => setState(() => _future = _load()),
-            child: ListView(
+            onRefresh: _refresh,
+            child: ListView.separated(
               padding: const EdgeInsets.all(16),
-              children: [
-                const _SectionTitle('Đơn quyên góp của tôi'),
-                if (data.donations.isEmpty)
-                  const _EmptyText('Chưa có đơn quyên góp')
-                else
-                  ...data.donations.map((d) => _DonationTile(donation: d)),
-                const SizedBox(height: 20),
-                const _SectionTitle('Vật phẩm đã nhập kho'),
-                if (data.inventory.isEmpty)
-                  const _EmptyText('Chưa có vật phẩm được nhập kho')
-                else
-                  ...data.inventory.map((item) => _InventoryTile(item: item)),
-              ],
+              itemCount: contributions.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final contribution = contributions[index];
+                return _ContributionCard(
+                  contribution: contribution,
+                  onCancel: canCancelContribution(contribution.status)
+                      ? () => _cancel(contribution)
+                      : null,
+                  onOpenCampaign: contribution.campaignId.isEmpty
+                      ? null
+                      : () => context.push(
+                          '${AppRoutes.campaigns}/detail/${contribution.campaignId}',
+                        ),
+                );
+              },
             ),
           );
         },
       ),
     );
   }
-}
 
-class _MyItemsData {
-  final List<DonationModel> donations;
-  final List<InventoryItemModel> inventory;
-  const _MyItemsData(this.donations, this.inventory);
-}
-
-class _SectionTitle extends StatelessWidget {
-  final String text;
-  const _SectionTitle(this.text);
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 10),
-    child: Text(
-      text,
-      style: Theme.of(
-        context,
-      ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-    ),
-  );
-}
-
-class _EmptyText extends StatelessWidget {
-  final String text;
-  const _EmptyText(this.text);
-  @override
-  Widget build(BuildContext context) =>
-      Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(text));
-}
-
-class _MessageState extends StatelessWidget {
-  final String message;
-  final VoidCallback? onRetry;
-  const _MessageState({required this.message, this.onRetry});
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(message, textAlign: TextAlign.center),
-          if (onRetry != null) ...[
-            const SizedBox(height: 12),
-            OutlinedButton(onPressed: onRetry, child: const Text('Thử lại')),
-          ],
-        ],
-      ),
-    ),
-  );
-}
-
-class _DonationTile extends StatelessWidget {
-  final DonationModel donation;
-  const _DonationTile({required this.donation});
-  @override
-  Widget build(BuildContext context) => Card(
-    child: ListTile(
-      leading: const CircleAvatar(
-        child: Icon(Icons.volunteer_activism_outlined),
-      ),
-      title: Text(donation.title),
-      subtitle: Text('${donation.code} • ${_status(donation.status)}'),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () => showDialog(
-        context: context,
-        builder: (_) => _DonationDialog(donation: donation),
-      ),
-    ),
-  );
-}
-
-class _InventoryTile extends StatelessWidget {
-  final InventoryItemModel item;
-  const _InventoryTile({required this.item});
-  @override
-  Widget build(BuildContext context) => Card(
-    child: ListTile(
-      leading: const CircleAvatar(child: Icon(Icons.inventory_2_outlined)),
-      title: Text(item.name),
-      subtitle: Text(
-        '${item.code} • SL ${item.quantity} • ${_status(item.status)}',
-      ),
-      trailing: const Icon(Icons.history),
-      onTap: () => showDialog(
-        context: context,
-        builder: (_) => _InventoryDialog(item: item),
-      ),
-    ),
-  );
-}
-
-class _DonationDialog extends StatefulWidget {
-  final DonationModel donation;
-  const _DonationDialog({required this.donation});
-  @override
-  State<_DonationDialog> createState() => _DonationDialogState();
-}
-
-class _DonationDialogState extends State<_DonationDialog> {
-  late Future<List<dynamic>> _timeline;
-  @override
-  void initState() {
-    super.initState();
-    _timeline = sl<GetDonationTimelineUseCase>()(
-      widget.donation.id,
-    ).then((r) => r.fold((e) => throw Exception(e), (v) => v));
-  }
-
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: Text(widget.donation.title),
-    content: SizedBox(
-      width: 420,
-      child: FutureBuilder<List<dynamic>>(
-        future: _timeline,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting)
-            return const Center(child: CircularProgressIndicator());
-          if (snapshot.hasError)
-            return Text(
-              snapshot.error.toString().replaceFirst('Exception: ', ''),
-            );
-          final events = snapshot.data!;
-          return SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: events
-                  .map(
-                    (e) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.check_circle_outline),
-                      title: Text(_status(e.event)),
-                      subtitle: Text(
-                        '${e.at.toLocal()}${e.note == null ? '' : '\n${e.note}'}',
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          );
-        },
-      ),
-    ),
-    actions: [
-      TextButton.icon(
-        onPressed: widget.donation.code.trim().isEmpty
-            ? null
-            : () => _showDonationQr(context, widget.donation),
-        icon: const Icon(Icons.qr_code_2),
-        label: const Text('Mã QR'),
-      ),
-      TextButton.icon(
-        onPressed: () => openContextConversation(
-          context,
-          contextType: 'donation',
-          contextId: widget.donation.id,
-          groupId: widget.donation.groupId,
-          name: widget.donation.title,
-        ),
-        icon: const Icon(Icons.chat_bubble_outline),
-        label: const Text('Nhắn tin với nhóm'),
-      ),
-      if (!{
-        'completed',
-        'cancelled',
-        'rejected',
-      }.contains(widget.donation.status))
-        TextButton(onPressed: _cancel, child: const Text('Hủy đơn')),
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('Đóng'),
-      ),
-    ],
-  );
-
-  Future<void> _showDonationQr(
-    BuildContext context,
-    DonationModel donation,
-  ) async {
-    await showDialog<void>(
+  Future<void> _cancel(ContributionModel contribution) async {
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Mã đơn quyên góp'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            QrImageView(
-              data: donation.code,
-              version: QrVersions.auto,
-              size: 220,
-              semanticsLabel: 'Mã QR đơn ${donation.code}',
-            ),
-            const SizedBox(height: 16),
-            SelectableText(
-              donation.code,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Đưa mã này cho người tiếp nhận tại hội nhóm.',
-              textAlign: TextAlign.center,
-            ),
-          ],
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hủy đóng góp?'),
+        content: Text(
+          'Đơn ${contribution.code} sẽ được gỡ khỏi danh sách chờ của hội nhóm. '
+          'Thao tác này không thể hoàn tác.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Đóng'),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Giữ lại'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Hủy đóng góp'),
           ),
         ],
       ),
     );
-  }
+    if (confirmed != true) return;
 
-  Future<void> _cancel() async {
-    final result = await sl<CancelDonationUseCase>()(widget.donation.id);
-    if (!mounted) return;
-    result.fold((e) => _showError(e), (_) => Navigator.pop(context));
+    try {
+      await sl<CampaignRemoteDataSource>().cancelContribution(contribution.id);
+      if (mounted) await _refresh();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            campaignErrorMessage(
+              error,
+              fallback: 'Không hủy được đóng góp.',
+            ),
+          ),
+        ),
+      );
+    }
   }
-
-  void _showError(String message) => ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text(message)));
 }
 
-class _InventoryDialog extends StatelessWidget {
-  final InventoryItemModel item;
-  const _InventoryDialog({required this.item});
+class _ContributionCard extends StatelessWidget {
+  const _ContributionCard({
+    required this.contribution,
+    this.onCancel,
+    this.onOpenCampaign,
+  });
+
+  final ContributionModel contribution;
+  final VoidCallback? onCancel;
+  final VoidCallback? onOpenCampaign;
+
   @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: Text(item.name),
-    content: FutureBuilder<dynamic>(
-      future: sl<GetInventoryHistoryUseCase>()(
-        item.id,
-      ).then((r) => r.fold((e) => throw Exception(e), (v) => v)),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
-          return const CircularProgressIndicator();
-        if (snapshot.hasError)
-          return Text(
-            snapshot.error.toString().replaceFirst('Exception: ', ''),
-          );
-        final history = snapshot.data as List<InventoryHistoryModel>;
-        return SizedBox(
-          width: 420,
-          child: history.isEmpty
-              ? const Text('Chưa có lịch sử trạng thái.')
-              : SingleChildScrollView(
-                  child: Column(
-                    children: history
-                        .map(
-                          (h) => ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(
-                              '${_status(h.fromStatus ?? 'mới')} → ${_status(h.toStatus)}',
-                            ),
-                            subtitle: Text(
-                              '${h.createdAt.toLocal()}${h.note == null ? '' : '\n${h.note}'}',
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final done = contribution.status == 'completed';
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: onOpenCampaign,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          contribution.code,
+                          style: textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      AppStatusBadge(status: contribution.status),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${pickupMethodLabel(contribution.pickupMethod)} · '
+                    '${contribution.totalQuantity} món',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                  // Sau khi kiểm tra xong, người quyên góp cần thấy ngay kết
+                  // quả: bao nhiêu món đạt, bao nhiêu món không.
+                  if (done) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.verified_outlined,
+                          size: 16,
+                          color: colors.primary,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            '${contribution.acceptedItemCount}/${contribution.items.length} món đã được tiếp nhận'
+                            '${contribution.rejectedItemCount > 0 ? ', ${contribution.rejectedItemCount} món không đạt' : ''}',
+                            style: textTheme.bodySmall?.copyWith(
+                              color: colors.primary,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                        )
-                        .toList(),
-                  ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (contribution.rejectedReason?.isNotEmpty == true) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Lý do: ${contribution.rejectedReason}',
+                      style: textTheme.bodySmall?.copyWith(color: colors.error),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          Divider(
+            height: 1,
+            color: colors.outlineVariant.withValues(alpha: 0.5),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Column(
+              children: contribution.items
+                  .map((item) => _ItemTile(item: item))
+                  .toList(),
+            ),
+          ),
+          if (onCancel != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: onCancel,
+                  icon: const Icon(Icons.close_rounded, size: 16),
+                  label: const Text('Hủy đóng góp'),
+                  style: TextButton.styleFrom(foregroundColor: colors.error),
                 ),
-        );
-      },
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('Đóng'),
+              ),
+            ),
+        ],
       ),
-    ],
-  );
+    );
+  }
 }
 
-String _status(String value) => switch (value) {
-  'pending' => 'Chờ xử lý',
-  'accepted' => 'Đã tiếp nhận',
-  'scheduled' => 'Đã đặt lịch',
-  'received' => 'Đã nhận',
-  'completed' => 'Hoàn tất',
-  'cancelled' => 'Đã hủy',
-  'in_stock' => 'Trong kho',
-  'listed' => 'Đã đăng',
-  'reserved' => 'Đã giữ',
-  'delivered' => 'Đã trao',
-  _ => value,
-};
+/// Một vật phẩm kèm kết quả kiểm tra của hội nhóm (nếu đã có).
+class _ItemTile extends StatelessWidget {
+  const _ItemTile({required this.item});
+
+  final ContributionItemModel item;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final actualImages = item.actualCheckImages;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                item.isRejected
+                    ? Icons.cancel_outlined
+                    : item.isAccepted
+                    ? Icons.check_circle_outline
+                    : Icons.inventory_2_outlined,
+                size: 18,
+                color: item.isRejected
+                    ? colors.error
+                    : item.isAccepted
+                    ? colors.primary
+                    : colors.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${item.name} × ${item.quantity}',
+                      style: textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      '${itemConditionLabel(item.conditionDeclared)}'
+                      ' · ${contributionItemStatusLabel(item.status)}',
+                      style: textTheme.labelSmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                    if (item.conditionMismatch)
+                      Text(
+                        'Hội nhóm ghi nhận: ${itemConditionLabel(item.conditionActual)}',
+                        style: textTheme.labelSmall?.copyWith(
+                          color: colors.tertiary,
+                        ),
+                      ),
+                    if (item.checkNote?.isNotEmpty == true)
+                      Text(
+                        'Ghi chú: ${item.checkNote}',
+                        style: textTheme.labelSmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    if (item.rejectReason?.isNotEmpty == true)
+                      Text(
+                        'Không đạt: ${item.rejectReason}',
+                        style: textTheme.labelSmall?.copyWith(
+                          color: colors.error,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (actualImages.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.only(left: 26),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ảnh hội nhóm chụp khi kiểm tra',
+                    style: textTheme.labelSmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  RemotePhotoStrip(
+                    imageUrls: actualImages
+                        .map((image) => image.imageUrl)
+                        .toList(),
+                    height: 62,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}

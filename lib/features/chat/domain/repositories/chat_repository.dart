@@ -10,12 +10,14 @@ abstract class ChatRepository {
     String conversationId, {
     int limit = 50,
     int offset = 0,
+    bool asUserSide = true,
   });
   Future<Either<String, ChatMessage>> sendMessage(
     String conversationId,
     String content, {
     String type = 'text',
     Map<String, dynamic>? metadata,
+    bool asGroup = false,
   });
   Future<Either<String, void>> markAsRead(String conversationId);
 }

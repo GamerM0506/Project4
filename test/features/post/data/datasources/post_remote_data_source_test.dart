@@ -123,9 +123,69 @@ void main() {
       isFalse,
     );
   });
+  test('pins a post through the backend patch contract', () async {
+    when(() => dio.patch(any(), data: any(named: 'data'))).thenAnswer(
+      (_) async => Response(
+        data: {'data': _postJson(status: 'active', isPinned: true)},
+        statusCode: 200,
+        requestOptions: RequestOptions(path: ''),
+      ),
+    );
+
+    final post = await dataSource.setPostPinned('post-id', true);
+
+    verify(
+      () => dio.patch(
+        '${AppConstants.communityApiBaseUrl}/posts/post-id',
+        data: {'is_pinned': true},
+      ),
+    ).called(1);
+    expect(post.isPinned, isTrue);
+  });
+
+  test('unpins a post through the backend patch contract', () async {
+    when(() => dio.patch(any(), data: any(named: 'data'))).thenAnswer(
+      (_) async => Response(
+        data: {'data': _postJson(status: 'active')},
+        statusCode: 200,
+        requestOptions: RequestOptions(path: ''),
+      ),
+    );
+
+    final post = await dataSource.setPostPinned('post-id', false);
+
+    verify(
+      () => dio.patch(
+        '${AppConstants.communityApiBaseUrl}/posts/post-id',
+        data: {'is_pinned': false},
+      ),
+    ).called(1);
+    expect(post.isPinned, isFalse);
+  });
+
+  test('reads the post detail envelope', () async {
+    when(() => dio.get(any())).thenAnswer(
+      (_) async => Response(
+        data: {'data': _postJson(status: 'active', isPinned: true)},
+        statusCode: 200,
+        requestOptions: RequestOptions(path: ''),
+      ),
+    );
+
+    final post = await dataSource.getPostDetail('post-id');
+
+    verify(
+      () => dio.get('${AppConstants.communityApiBaseUrl}/posts/post-id'),
+    ).called(1);
+    expect(post.id, '11111111-1111-1111-1111-111111111111');
+    expect(post.isPinned, isTrue);
+  });
 }
 
-Map<String, dynamic> _postJson({required String status}) => {
+Map<String, dynamic> _postJson({
+  required String status,
+  bool isPinned = false,
+}) => {
   'id': '11111111-1111-1111-1111-111111111111',
   'group_id': '22222222-2222-2222-2222-222222222222',
   'author_id': '33333333-3333-3333-3333-333333333333',
@@ -133,7 +193,7 @@ Map<String, dynamic> _postJson({required String status}) => {
   'type': 'normal',
   'ref_id': null,
   'status': status,
-  'is_pinned': false,
+  'is_pinned': isPinned,
   'like_count': 0,
   'comment_count': 0,
   'images': [],

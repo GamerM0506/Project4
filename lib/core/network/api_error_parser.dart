@@ -19,7 +19,10 @@ String parseApiError(DioException exception, String fallback) {
   }
   if (exception.type == DioExceptionType.connectionTimeout ||
       exception.type == DioExceptionType.receiveTimeout ||
-      exception.type == DioExceptionType.connectionError) {
+      exception.type == DioExceptionType.sendTimeout) {
+    return 'Máy chủ phản hồi quá lâu. Vui lòng thử lại sau.';
+  }
+  if (exception.type == DioExceptionType.connectionError) {
     return 'Không kết nối được máy chủ. Kiểm tra mạng và thử lại.';
   }
   return fallback;

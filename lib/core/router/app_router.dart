@@ -18,16 +18,12 @@ import '../../features/auth/presentation/pages/two_factor_page.dart';
 import '../../features/auth/presentation/pages/login_two_factor_page.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/home/presentation/pages/home_page.dart';
-import '../../features/marketplace/presentation/pages/marketplace_page.dart';
-import '../../features/marketplace/presentation/pages/create_listing_page.dart';
-import '../../features/marketplace/presentation/pages/listing_detail_page.dart';
+import '../../features/donation/presentation/pages/campaigns_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/group/presentation/pages/groups_page.dart';
 import '../../features/group/presentation/pages/group_detail_page.dart';
 import '../../features/group/presentation/pages/create_group_page.dart';
 import '../../features/group/presentation/pages/group_dashboard_page.dart';
-import '../../features/group/presentation/pages/edit_group_page.dart';
-import '../../features/group/data/models/group_model.dart';
 import '../../features/chat/presentation/pages/chat_inbox_page.dart';
 import '../../features/chat/presentation/pages/chat_room_page.dart';
 import '../../features/user/presentation/pages/profile_page.dart';
@@ -35,14 +31,17 @@ import '../../features/user/presentation/pages/edit_profile_page.dart';
 import '../../features/user/presentation/pages/settings_page.dart';
 import '../../features/user/presentation/pages/support_page.dart';
 import '../../features/user/presentation/pages/my_items_page.dart';
-import '../../features/user/presentation/pages/my_requests_page.dart';
-import '../../features/user/presentation/pages/saved_groups_page.dart';
 import '../../features/user/presentation/pages/activity_page.dart';
+import '../../features/user/presentation/pages/public_profile_page.dart';
+import '../../features/post/presentation/pages/post_detail_page.dart';
 import '../../features/notification/presentation/pages/notification_page.dart';
+import '../../features/donation/presentation/pages/campaign_detail_page.dart';
+import '../../features/donation/presentation/pages/create_contribution_page.dart';
 
-final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'root',
 );
+final GlobalKey<NavigatorState> _rootNavigatorKey = rootNavigatorKey;
 final GlobalKey<NavigatorState> _shellHomeKey = GlobalKey<NavigatorState>(
   debugLabel: 'shellHome',
 );
@@ -87,7 +86,7 @@ CustomTransitionPage _buildPageWithAnimation(
 }
 
 final GoRouter appRouter = GoRouter(
-  navigatorKey: _rootNavigatorKey,
+  navigatorKey: rootNavigatorKey,
   initialLocation: AppRoutes.splash,
   redirect: (context, state) {
     final prefs = sl<SharedPreferences>();
@@ -141,25 +140,14 @@ final GoRouter appRouter = GoRouter(
           navigatorKey: _shellMarketplaceKey,
           routes: [
             GoRoute(
-              path: AppRoutes.marketplace,
-              builder: (context, state) => const MarketplacePage(),
+              path: AppRoutes.campaigns,
+              builder: (context, state) => const CampaignsPage(),
               routes: [
                 GoRoute(
                   path: 'detail/:id',
                   builder: (context, state) {
                     final id = state.pathParameters['id']!;
-                    return ListingDetailPage(listingId: id);
-                  },
-                ),
-                GoRoute(
-                  path: 'create',
-                  parentNavigatorKey: _rootNavigatorKey,
-                  builder: (context, state) {
-                    final extra = state.extra as Map<String, dynamic>?;
-                    final groupId =
-                        extra?['groupId'] as String? ??
-                        state.uri.queryParameters['groupId'];
-                    return CreateListingPage(groupId: groupId);
+                    return CampaignDetailPage(campaignId: id);
                   },
                 ),
               ],
@@ -190,13 +178,6 @@ final GoRouter appRouter = GoRouter(
                   builder: (context, state) {
                     final id = state.pathParameters['id']!;
                     return GroupDashboardPage(groupId: id);
-                  },
-                ),
-                GoRoute(
-                  path: 'edit',
-                  builder: (context, state) {
-                    final group = state.extra as GroupModel;
-                    return EditGroupPage(group: group);
                   },
                 ),
               ],
@@ -234,20 +215,6 @@ final GoRouter appRouter = GoRouter(
                   _buildPageWithAnimation(const MyItemsPage(), slideUp: false),
             ),
             GoRoute(
-              path: AppRoutes.myRequests,
-              pageBuilder: (context, state) => _buildPageWithAnimation(
-                const MyRequestsPage(),
-                slideUp: false,
-              ),
-            ),
-            GoRoute(
-              path: AppRoutes.savedGroups,
-              pageBuilder: (context, state) => _buildPageWithAnimation(
-                const SavedGroupsPage(),
-                slideUp: false,
-              ),
-            ),
-            GoRoute(
               path: AppRoutes.activity,
               pageBuilder: (context, state) =>
                   _buildPageWithAnimation(const ActivityPage(), slideUp: false),
@@ -258,6 +225,24 @@ final GoRouter appRouter = GoRouter(
     ),
 
     // Standalone full-screen routes on _rootNavigatorKey
+    GoRoute(
+      path: AppRoutes.donate,
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return CreateContributionPage(
+          campaignId:
+              extra?['campaignId'] as String? ??
+              state.uri.queryParameters['campaignId'],
+          campaignItemId:
+              extra?['campaignItemId'] as String? ??
+              state.uri.queryParameters['campaignItemId'],
+          groupId:
+              extra?['groupId'] as String? ??
+              state.uri.queryParameters['groupId'],
+        );
+      },
+    ),
     GoRoute(
       path: AppRoutes.splash,
       parentNavigatorKey: _rootNavigatorKey,
@@ -359,6 +344,26 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.notifications,
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const NotificationPage(),
+    ),
+    GoRoute(
+      path: '${AppRoutes.publicProfile}/:id',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) {
+        final extraArgs = state.extra as Map<String, dynamic>?;
+        return _buildPageWithAnimation(
+          PublicProfilePage(
+            accountId: state.pathParameters['id'] ?? '',
+            initialName: extraArgs?['name'] as String?,
+          ),
+        );
+      },
+    ),
+    GoRoute(
+      path: '${AppRoutes.postDetail}/:id',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) => _buildPageWithAnimation(
+        PostDetailPage(postId: state.pathParameters['id'] ?? ''),
+      ),
     ),
   ],
 );
