@@ -8,7 +8,6 @@ import '../../../../injection_container.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 import '../widgets/auth_text_field.dart';
-import '../widgets/social_login_button.dart';
 import '../../../user/presentation/cubit/user_cubit.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -86,7 +85,7 @@ class _LoginPageState extends State<LoginPage> {
                           // Header
                           Center(
                             child: Text(
-                              'Chợ Quyên Góp',
+                              'Chợ Tử Tế',
                               style: textTheme.headlineMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: colorScheme.primary,
@@ -207,56 +206,6 @@ class _LoginPageState extends State<LoginPage> {
                           ),
 
                           const SizedBox(height: 32),
-
-                          // Divider
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Divider(
-                                  color: colorScheme.surfaceContainerHighest,
-                                  thickness: 1,
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                child: Text(
-                                  'Hoặc tiếp tục với',
-                                  style: textTheme.labelMedium?.copyWith(
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: Divider(
-                                  color: colorScheme.surfaceContainerHighest,
-                                  thickness: 1,
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // Social Logins
-                          Row(
-                            children: [
-                              SocialLoginButton(
-                                text: 'Google',
-                                icon: Icons.g_mobiledata_rounded,
-                                iconColor: const Color(0xFFDB4437),
-                                onPressed: () {},
-                              ),
-                              const SizedBox(width: 16),
-                              SocialLoginButton(
-                                text: 'Facebook',
-                                icon: Icons.facebook,
-                                iconColor: const Color(0xFF4267B2),
-                                onPressed: () {},
-                              ),
-                            ],
-                          ),
 
                           const SizedBox(height: 48),
 

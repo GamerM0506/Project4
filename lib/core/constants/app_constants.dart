@@ -1,7 +1,11 @@
 class AppConstants {
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://216.108.237.20:8000/api',
+    defaultValue: 'http://161.118.247.84:8000/api',
+  );
+  static const String publicAppBaseUrl = String.fromEnvironment(
+    'APP_PUBLIC_URL',
+    defaultValue: 'https://chosv.vn',
   );
 
   static String get socketBaseUrl {
@@ -16,7 +20,6 @@ class AppConstants {
   static const String productApiBaseUrl = '$apiBaseUrl/product';
   static const String chatApiBaseUrl = '$apiBaseUrl/communication';
   static const String communityApiBaseUrl = '$apiBaseUrl/community';
-  static const String marketplaceApiBaseUrl = '$apiBaseUrl/marketplace';
   static const String donationApiBaseUrl = '$apiBaseUrl/donation';
   static const String aiApiBaseUrl = '$apiBaseUrl/ai';
 
@@ -30,6 +33,8 @@ class AppConstants {
   static const String keySessionGeneration = 'SESSION_GENERATION';
   static const String keyRememberMe = 'REMEMBER_ME';
   static const String keyRememberedIdentifier = 'REMEMBERED_IDENTIFIER';
+  static const String keyFcmToken = 'FCM_TOKEN';
+  static const String keyFcmTokenUserId = 'FCM_TOKEN_USER_ID';
 
-  static const String appName = 'ChoSV';
+  static const String appName = 'Chợ Tử Tế';
 }

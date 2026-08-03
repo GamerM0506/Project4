@@ -53,19 +53,14 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    IconButton(
-                      onPressed: () {},
-                      icon: const Icon(Icons.menu),
-                      color: colorScheme.primary,
-                      splashRadius: 20,
-                    ),
+                    // Giữ chỗ cân đối với nút cài đặt bên phải để tiêu đề
+                    // nằm chính giữa.
+                    const SizedBox(width: 48),
                     Text(
                       'Cá nhân',
-                      style: TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: colorScheme.primary,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                     IconButton(

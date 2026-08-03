@@ -50,6 +50,19 @@ class PostRepositoryImpl implements PostRepository {
   }
 
   @override
+  Future<Either<String, PostEntity>> setPostPinned(
+    String postId,
+    bool isPinned,
+  ) async {
+    try {
+      final post = await remoteDataSource.setPostPinned(postId, isPinned);
+      return Right(post);
+    } catch (e) {
+      return Left(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  @override
   Future<Either<String, PostEntity>> getPostDetail(String postId) async {
     try {
       final post = await remoteDataSource.getPostDetail(postId);
@@ -90,9 +103,17 @@ class PostRepositoryImpl implements PostRepository {
   }
 
   @override
-  Future<Either<String, CommentEntity>> addComment(String postId, String content) async {
+  Future<Either<String, CommentEntity>> addComment(
+    String postId,
+    String content, {
+    String? parentId,
+  }) async {
     try {
-      final comment = await remoteDataSource.addComment(postId, content);
+      final comment = await remoteDataSource.addComment(
+        postId,
+        content,
+        parentId: parentId,
+      );
       return Right(comment);
     } catch (e) {
       return Left(e.toString().replaceAll('Exception: ', ''));

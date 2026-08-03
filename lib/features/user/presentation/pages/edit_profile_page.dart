@@ -20,10 +20,10 @@ class EditProfilePage extends StatefulWidget {
 }
 
 class _EditProfilePageState extends State<EditProfilePage> {
-  final LocationService _locationService = LocationService();
+  final LocationService _locationService = sl<LocationService>();
 
-  List<dynamic> _provinces = [];
-  List<dynamic> _districts = [];
+  List<Map<String, dynamic>> _provinces = [];
+  List<Map<String, dynamic>> _districts = [];
 
   String? _selectedProvinceId;
   String? _selectedDistrictId;
@@ -104,48 +104,51 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _loadProvinces() async {
-    final data = await _locationService.getProvinces();
-    if (!mounted) return;
-    setState(() {
-      _provinces = data;
-      _isLoadingLocation = false;
-    });
-
-    if (_selectedProvinceId != null) {
-      Map<String, dynamic>? province;
-      for (final p in _provinces) {
-        if (p is Map && p['code']?.toString() == _selectedProvinceId) {
-          province = Map<String, dynamic>.from(p);
-          break;
+    try {
+      final data = await _locationService.getProvinces();
+      if (!mounted) return;
+      setState(() {
+        _provinces = _asMapList(data);
+        _isLoadingLocation = false;
+        _districts = _districtsOf(_selectedProvinceId);
+        // Mã quận cũ không thuộc tỉnh đang chọn thì bỏ, nếu không
+        // DropdownButton sẽ ném lỗi vì value không khớp item nào.
+        if (!_districts.any(
+          (d) => d['code']?.toString() == _selectedDistrictId,
+        )) {
+          _selectedDistrictId = null;
         }
-      }
-      if (province != null && province['districts'] != null) {
-        setState(() {
-          _districts = province!['districts'] as List<dynamic>;
-        });
+      });
+    } catch (_) {
+      // Không để dropdown kẹt ở trạng thái loading khi mất mạng.
+      if (mounted) setState(() => _isLoadingLocation = false);
+    }
+  }
+
+  List<Map<String, dynamic>> _asMapList(List<dynamic> raw) => raw
+      .whereType<Map>()
+      .map((item) => Map<String, dynamic>.from(item))
+      .toList();
+
+  /// Quận/huyện của một tỉnh; trả rỗng nếu không tìm thấy.
+  List<Map<String, dynamic>> _districtsOf(String? provinceCode) {
+    if (provinceCode == null || provinceCode.isEmpty) return const [];
+    for (final province in _provinces) {
+      if (province['code']?.toString() == provinceCode) {
+        final districts = province['districts'];
+        return districts is List ? _asMapList(districts) : const [];
       }
     }
+    return const [];
   }
 
   void _onProvinceChanged(String? provinceCode) {
     if (provinceCode == null) return;
-
     setState(() {
       _selectedProvinceId = provinceCode;
       _selectedDistrictId = null;
-      _districts = [];
+      _districts = _districtsOf(provinceCode);
     });
-
-    final province = _provinces.firstWhere(
-      (p) => p['code'].toString() == provinceCode,
-      orElse: () => null,
-    );
-
-    if (province != null && province['districts'] != null) {
-      setState(() {
-        _districts = province['districts'] as List<dynamic>;
-      });
-    }
   }
 
   void _saveProfile() {
@@ -611,12 +614,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     Expanded(
                       child: SoftDropdownField(
                         label: 'Tỉnh/Thành phố',
-                        value: _selectedProvinceId,
+                        // Chỉ giữ value khi nó thật sự có trong items, tránh
+                        // DropdownButton ném lỗi lúc dữ liệu chưa tải xong.
+                        value:
+                            _provinces.any(
+                              (p) =>
+                                  p['code']?.toString() == _selectedProvinceId,
+                            )
+                            ? _selectedProvinceId
+                            : null,
                         items: _provinces.map((p) {
                           return DropdownMenuItem<String>(
-                            value: p['code'].toString(),
+                            value: p['code']?.toString() ?? '',
                             child: Text(
-                              p['name'],
+                              p['name']?.toString() ?? '',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -630,12 +641,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     Expanded(
                       child: SoftDropdownField(
                         label: 'Quận/Huyện',
-                        value: _selectedDistrictId,
+                        value:
+                            _districts.any(
+                              (d) =>
+                                  d['code']?.toString() == _selectedDistrictId,
+                            )
+                            ? _selectedDistrictId
+                            : null,
                         items: _districts.map((d) {
                           return DropdownMenuItem<String>(
-                            value: d['code'].toString(),
+                            value: d['code']?.toString() ?? '',
                             child: Text(
-                              d['name'],
+                              d['name']?.toString() ?? '',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),

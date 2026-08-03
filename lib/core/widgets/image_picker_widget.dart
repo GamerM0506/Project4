@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../injection_container.dart';
@@ -9,12 +11,22 @@ class ImagePickerWidget extends StatefulWidget {
   final ValueChanged<String?> onImageUploaded;
   final bool isAvatar;
 
+  /// Loại media gửi cho media-service. Phải nằm trong danh sách backend chấp
+  /// nhận: avatar | post | donation | delivery | chat | listing.
+  final String refType;
+
+  /// Id thực thể để gắn ảnh (`temp` → `linked`). Bỏ trống thì ảnh sẽ bị cron
+  /// dọn rác của media-service xoá sau TEMP_TTL_HOURS, khiến ảnh vỡ về sau.
+  final String? refId;
+
   const ImagePickerWidget({
     super.key,
     required this.label,
     required this.onImageUploaded,
     this.initialUrl,
     this.isAvatar = false,
+    this.refType = 'avatar',
+    this.refId,
   });
 
   @override
@@ -32,9 +44,23 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
     _currentUrl = widget.initialUrl;
   }
 
+  @override
+  void didUpdateWidget(covariant ImagePickerWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Ảnh mới từ server (sau khi lưu và tải lại) phải phản ánh lên UI.
+    if (widget.initialUrl != oldWidget.initialUrl && !_isUploading) {
+      _currentUrl = widget.initialUrl;
+    }
+  }
+
   Future<void> _pickAndUploadImage() async {
     try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 82,
+      );
       if (image == null) return;
 
       setState(() {
@@ -49,9 +75,30 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
       final uploaded = await mediaService.uploadImageResult(
         bytes,
         mimeType,
-        refType: widget.isAvatar ? 'avatar' : 'post',
+        refType: widget.refType,
       );
 
+      // Gắn ngay nếu đã biết thực thể; nếu chưa (form tạo mới) thì phía gọi
+      // phải tự link sau khi tạo xong.
+      final refId = widget.refId;
+      if (refId != null && refId.isNotEmpty) {
+        try {
+          await mediaService.linkMedia(
+            [uploaded.mediaId],
+            widget.refType,
+            refId,
+          );
+        } catch (error, stackTrace) {
+          developer.log(
+            'Không gắn được ảnh vào ${widget.refType}/$refId',
+            name: 'media.link',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
+      }
+
+      if (!mounted) return;
       setState(() {
         _currentUrl = uploaded.publicUrl;
         _isUploading = false;
@@ -59,14 +106,16 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
 
       widget.onImageUploaded(uploaded.publicUrl);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isUploading = false;
       });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
     }
   }
 
@@ -130,19 +179,19 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
                     top: 0,
                     right: 0,
                     child: GestureDetector(
-                      onTap: _removeImage,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
+                        onTap: _removeImage,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: colorScheme.error,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.close,
+                            color: colorScheme.onError,
+                            size: 16,
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.close,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                      ),
                     ),
                   ),
               ],
@@ -217,19 +266,19 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
                   top: 8,
                   right: 8,
                   child: GestureDetector(
-                    onTap: _removeImage,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
+                      onTap: _removeImage,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: colorScheme.error,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.close,
+                          color: colorScheme.onError,
+                          size: 20,
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
                   ),
                 ),
             ],

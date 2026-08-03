@@ -6,10 +6,19 @@ Override the development API endpoint with
 `--dart-define=API_BASE_URL=https://example.com/api`. The current HTTP server is
 kept only as the development fallback.
 
-Push notification runtime registration is not enabled yet. The repository and
-device-token API contract are ready for a real FCM token, but this project has
-no Firebase configuration files or credentials. Do not register a placeholder
-token.
+The current fallback API is `http://161.118.247.84:8000/api`.
+
+QR donation tracking links use `APP_PUBLIC_URL`. Set it to the deployed Flutter
+web origin, for example `--dart-define=APP_PUBLIC_URL=https://app.chosv.vn`.
+
+Push notification runtime registration is implemented for Android and iOS. Add
+the Firebase client files (`android/app/google-services.json` and
+`ios/Runner/GoogleService-Info.plist`) before running it; without those files the
+app keeps FCM disabled and does not register a placeholder token.
+
+The Android Firebase app package must match `com.example.project_chosv`, and
+the iOS bundle identifier must match `com.example.project4Chosv`, unless those
+application identifiers are changed before downloading the Firebase files.
 
 Chat image sending is disabled in the UI because the backend does not yet link
 uploaded media to a chat message.

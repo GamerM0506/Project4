@@ -5,6 +5,7 @@ import '../../domain/usecases/delete_post_usecase.dart';
 import '../../domain/entities/post_entity.dart';
 import '../../domain/usecases/like_post_usecase.dart';
 import '../../domain/usecases/unlike_post_usecase.dart';
+import '../../domain/usecases/set_post_pinned_usecase.dart';
 import 'group_feed_state.dart';
 import '../../../../core/network/media_service.dart';
 
@@ -14,6 +15,7 @@ class GroupFeedCubit extends Cubit<GroupFeedState> {
   final DeletePostUseCase deletePostUseCase;
   final LikePostUseCase likePostUseCase;
   final UnlikePostUseCase unlikePostUseCase;
+  final SetPostPinnedUseCase setPostPinnedUseCase;
   final MediaService? mediaService;
   final int _limit = 20;
   bool _isFetching = false;
@@ -25,6 +27,7 @@ class GroupFeedCubit extends Cubit<GroupFeedState> {
     required this.deletePostUseCase,
     required this.likePostUseCase,
     required this.unlikePostUseCase,
+    required this.setPostPinnedUseCase,
     this.mediaService,
   }) : super(GroupFeedInitial());
 
@@ -180,5 +183,49 @@ class GroupFeedCubit extends Cubit<GroupFeedState> {
       return post.copyWith(commentCount: post.commentCount + 1);
     }).toList();
     emit(currentState.copyWith(posts: posts));
+  }
+
+  /// Ghim/bỏ ghim bài viết. Cập nhật lạc quan, rollback khi lỗi.
+  Future<void> togglePinned(String postId) async {
+    if (state is! GroupFeedLoaded) return;
+
+    final currentState = state as GroupFeedLoaded;
+    final postIndex = currentState.posts.indexWhere((p) => p.id == postId);
+    if (postIndex == -1) return;
+
+    final post = currentState.posts[postIndex];
+    final nextPinned = !post.isPinned;
+
+    final optimistic = List<PostEntity>.from(currentState.posts);
+    optimistic[postIndex] = post.copyWith(isPinned: nextPinned);
+    emit(currentState.copyWith(posts: _sortPinnedFirst(optimistic)));
+
+    final result = await setPostPinnedUseCase(postId, nextPinned);
+
+    result.fold(
+      (error) {
+        final rollback = List<PostEntity>.from(currentState.posts);
+        rollback[postIndex] = post;
+        emit(
+          GroupFeedPinError(message: error, previousState: currentState),
+        );
+        emit(currentState.copyWith(posts: _sortPinnedFirst(rollback)));
+      },
+      (updated) {
+        final latest = state;
+        if (latest is! GroupFeedLoaded) return;
+        final posts = latest.posts
+            .map((p) => p.id == postId ? p.copyWith(isPinned: updated.isPinned) : p)
+            .toList();
+        emit(latest.copyWith(posts: _sortPinnedFirst(posts)));
+      },
+    );
+  }
+
+  /// Bài ghim luôn nổi lên đầu, phần còn lại giữ nguyên thứ tự từ server.
+  List<PostEntity> _sortPinnedFirst(List<PostEntity> posts) {
+    final pinned = posts.where((p) => p.isPinned).toList();
+    final others = posts.where((p) => !p.isPinned).toList();
+    return [...pinned, ...others];
   }
 }

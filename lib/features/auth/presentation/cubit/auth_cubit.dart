@@ -12,6 +12,7 @@ import '../../domain/usecases/resend_verification_usecase.dart';
 import '../../domain/usecases/forgot_password_usecase.dart';
 import '../../domain/usecases/verify_reset_code_usecase.dart';
 import '../../domain/usecases/reset_password_usecase.dart';
+import '../../../notification/application/push_notification_service.dart';
 import 'auth_state.dart';
 
 class AuthCubit extends Cubit<AuthState> {
@@ -25,6 +26,7 @@ class AuthCubit extends Cubit<AuthState> {
   final VerifyResetCodeUseCase verifyResetCodeUseCase;
   final ResetPasswordUseCase resetPasswordUseCase;
   final SharedPreferences sharedPreferences;
+  final PushNotificationService pushNotificationService;
   String? _challengeToken;
   bool? _pendingRememberMe;
   String? _pendingIdentifier;
@@ -43,6 +45,7 @@ class AuthCubit extends Cubit<AuthState> {
     required this.verifyResetCodeUseCase,
     required this.resetPasswordUseCase,
     required this.sharedPreferences,
+    required this.pushNotificationService,
   }) : super(AuthInitial());
 
   Future<void> login(
@@ -144,7 +147,9 @@ class AuthCubit extends Cubit<AuthState> {
   Future<bool> _persistSession(AuthEntity authEntity) async {
     final access = authEntity.accessToken;
     final refresh = authEntity.refreshToken;
-    final resolvedUserId = authEntity.userId ?? jwtSubject(access);
+    // JWT sub khớp sender_id backend; ưu tiên hơn user_id trong body (thường không có).
+    final resolvedUserId =
+        jwtSubject(access) ?? normalizeUserId(authEntity.userId);
     if (access == null ||
         access.isEmpty ||
         refresh == null ||
@@ -361,6 +366,7 @@ class AuthCubit extends Cubit<AuthState> {
     final refreshToken = sharedPreferences.getString(
       AppConstants.keyRefreshToken,
     );
+    await pushNotificationService.unregisterBeforeLogout();
     await handleSessionExpired();
     if (refreshToken != null && refreshToken.isNotEmpty) {
       await logoutUseCase(refreshToken);

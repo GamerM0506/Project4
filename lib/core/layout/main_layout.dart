@@ -25,9 +25,9 @@ class MainLayout extends StatelessWidget {
             label: 'Trang chủ',
           ),
           NavigationDestination(
-            icon: Icon(Icons.storefront_outlined),
-            selectedIcon: Icon(Icons.storefront_rounded),
-            label: 'Gian hàng',
+            icon: Icon(Icons.volunteer_activism_outlined),
+            selectedIcon: Icon(Icons.volunteer_activism_rounded),
+            label: 'Đợt quyên góp',
           ),
           NavigationDestination(
             icon: Icon(Icons.groups_outlined),

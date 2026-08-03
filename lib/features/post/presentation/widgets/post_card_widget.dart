@@ -359,10 +359,10 @@ class PostCardWidget extends StatelessWidget {
   Future<void> _sharePost() async {
     final text = post.content.trim();
     await Share.share(
-      '${text.isEmpty ? 'Bài viết từ ChoSV' : text}\n\n'
+      '${text.isEmpty ? 'Bài viết từ Chợ Tử Tế' : text}\n\n'
       'Mã bài viết: ${post.id}\n'
       'Nhóm: ${post.groupId}',
-      subject: 'Chia sẻ bài viết từ ChoSV',
+      subject: 'Chia sẻ bài viết từ Chợ Tử Tế',
     );
   }
 }

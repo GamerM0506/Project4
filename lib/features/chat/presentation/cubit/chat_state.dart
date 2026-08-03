@@ -4,17 +4,21 @@ class ChatMessage extends Equatable {
   final String id;
   final String content;
   final String senderId;
+
+  /// 'user' | 'group' — phía gửi theo backend (conversation user ↔ group).
+  final String? senderSide;
   final String? senderName;
   final String? senderAvatar;
   final DateTime createdAt;
   final bool isMine;
-  final String type; // 'text', 'listing_share'
+  final String type; // 'text', 'image', 'system', ...
   final Map<String, dynamic>? metadata;
 
   const ChatMessage({
     required this.id,
     required this.content,
     required this.senderId,
+    this.senderSide,
     this.senderName,
     this.senderAvatar,
     required this.createdAt,
@@ -27,6 +31,7 @@ class ChatMessage extends Equatable {
     String? id,
     String? content,
     String? senderId,
+    String? senderSide,
     String? senderName,
     String? senderAvatar,
     DateTime? createdAt,
@@ -38,6 +43,7 @@ class ChatMessage extends Equatable {
       id: id ?? this.id,
       content: content ?? this.content,
       senderId: senderId ?? this.senderId,
+      senderSide: senderSide ?? this.senderSide,
       senderName: senderName ?? this.senderName,
       senderAvatar: senderAvatar ?? this.senderAvatar,
       createdAt: createdAt ?? this.createdAt,
@@ -52,6 +58,7 @@ class ChatMessage extends Equatable {
     id,
     content,
     senderId,
+    senderSide,
     senderName,
     senderAvatar,
     createdAt,

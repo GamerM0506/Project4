@@ -108,3 +108,29 @@ class AppColors {
     scrim: Color(0xFF000000),
   );
 }
+
+/// Màu semantic (success / warning / info) tự chọn biến thể theo sáng-tối.
+///
+/// Trước đây mỗi nơi tự viết `isDark ? AppColors.successDark : ...`, hoặc tệ
+/// hơn là dùng thẳng `Colors.green` nên hỏng hẳn ở chế độ tối.
+extension AppSemanticColors on ColorScheme {
+  bool get _dark => brightness == Brightness.dark;
+
+  Color get success => _dark ? AppColors.successDark : AppColors.success;
+  Color get successContainer =>
+      _dark ? AppColors.successContainerDark : AppColors.successContainer;
+  Color get onSuccessContainer =>
+      _dark ? AppColors.onSuccessContainerDark : AppColors.onSuccessContainer;
+
+  Color get warning => _dark ? AppColors.warningDark : AppColors.warning;
+  Color get warningContainer =>
+      _dark ? AppColors.warningContainerDark : AppColors.warningContainer;
+  Color get onWarningContainer =>
+      _dark ? AppColors.onWarningContainerDark : AppColors.onWarningContainer;
+
+  Color get info => _dark ? AppColors.infoDark : AppColors.info;
+  Color get infoContainer =>
+      _dark ? AppColors.infoContainerDark : AppColors.infoContainer;
+  Color get onInfoContainer =>
+      _dark ? AppColors.onInfoContainerDark : AppColors.onInfoContainer;
+}

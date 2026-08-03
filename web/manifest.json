@@ -1,11 +1,11 @@
 {
-    "name": "project4_chosv",
-    "short_name": "project4_chosv",
+    "name": "Chợ Tử Tế",
+    "short_name": "Chợ Tử Tế",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Nền tảng kết nối cộng đồng qua các đợt quyên góp minh bạch.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

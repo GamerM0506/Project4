@@ -43,3 +43,10 @@ class GroupFeedDeleteError extends GroupFeedState {
 
   GroupFeedDeleteError({required this.message, required this.previousState});
 }
+
+class GroupFeedPinError extends GroupFeedState {
+  final String message;
+  final GroupFeedLoaded previousState;
+
+  GroupFeedPinError({required this.message, required this.previousState});
+}

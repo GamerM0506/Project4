@@ -13,21 +13,20 @@ class AppRoutes {
       '/forgot-password-verification';
   static const String resetPassword = '/reset-password';
   static const String home = '/';
-  static const String marketplace = '/marketplace';
-  static const String messages = '/messages';
+  static const String campaigns = '/campaigns';
+  static const String donate = '/donate';
   static const String groups = '/groups';
   static const String profile = '/profile';
   static const String editProfile = '/profile/edit';
   static const String myItems = '/profile/my-items';
-  static const String myRequests = '/profile/my-requests';
-  static const String savedGroups = '/profile/saved-groups';
   static const String chatRoom = '/chat-room';
   static const String chatInbox = '/chat';
   static const String notifications = '/notifications';
   static const String activity = '/profile/activity';
+  static const String publicProfile = '/u';
+  static const String postDetail = '/posts';
 
   static const String groupDashboard = '/groups/dashboard';
   static const String createGroup = '/groups/create';
   static const String groupDetail = '/groups/detail';
-  static const String editGroup = '/groups/edit';
 }

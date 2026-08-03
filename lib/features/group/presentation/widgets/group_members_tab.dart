@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/router/app_routes.dart';
 import '../../../../core/widgets/app_avatar.dart';
 import '../../../../core/widgets/app_empty_state.dart';
 import '../../../../injection_container.dart';
@@ -115,6 +117,14 @@ class _MemberCard extends StatelessWidget {
   final String? currentUserRole;
   final String status;
 
+  void _openProfile(BuildContext context, String name) {
+    if (member.userId.trim().isEmpty) return;
+    context.push(
+      '${AppRoutes.publicProfile}/${member.userId}',
+      extra: {'name': name},
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -142,21 +152,32 @@ class _MemberCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          AppAvatar(imageUrl: member.userAvatar, name: name, radius: 22),
+          InkWell(
+            onTap: () => _openProfile(context, name),
+            customBorder: const CircleBorder(),
+            child: AppAvatar(
+              imageUrl: member.userAvatar,
+              name: name,
+              radius: 22,
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: textTheme.titleSmall,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                _RoleBadge(role: member.role),
-              ],
+            child: InkWell(
+              onTap: () => _openProfile(context, name),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: textTheme.titleSmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  _RoleBadge(role: member.role),
+                ],
+              ),
             ),
           ),
           if (canUnban)

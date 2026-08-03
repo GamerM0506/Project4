@@ -22,8 +22,14 @@ class GetMessagesUseCase {
     String conversationId, {
     int limit = 50,
     int offset = 0,
+    bool asUserSide = true,
   }) {
-    return repository.getMessages(conversationId, limit: limit, offset: offset);
+    return repository.getMessages(
+      conversationId,
+      limit: limit,
+      offset: offset,
+      asUserSide: asUserSide,
+    );
   }
 }
 
@@ -37,12 +43,14 @@ class SendMessageUseCase {
     String content, {
     String type = 'text',
     Map<String, dynamic>? metadata,
+    bool asGroup = false,
   }) {
     return repository.sendMessage(
       conversationId,
       content,
       type: type,
       metadata: metadata,
+      asGroup: asGroup,
     );
   }
 }

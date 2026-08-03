@@ -2,6 +2,12 @@ class PostEntity {
   final String id;
   final String groupId;
   final String authorId;
+
+  /// Tên hiển thị và avatar người viết; backend nạp từ identity-service nên
+  /// có thể null khi dịch vụ đó không phản hồi.
+  final String? authorName;
+  final String? authorAvatar;
+
   final String content;
   final String type; // normal, call_for_donation, thank_you, announcement
   final String? refId;
@@ -18,6 +24,8 @@ class PostEntity {
     required this.id,
     required this.groupId,
     required this.authorId,
+    this.authorName,
+    this.authorAvatar,
     required this.content,
     required this.type,
     this.refId,
@@ -31,10 +39,20 @@ class PostEntity {
     required this.updatedAt,
   });
 
+  /// Tên để hiển thị, lùi về mã rút gọn khi chưa có hồ sơ tác giả.
+  String get displayAuthorName {
+    final name = authorName?.trim();
+    if (name != null && name.isNotEmpty) return name;
+    final id = authorId.trim();
+    return id.length >= 4 ? 'Người dùng ${id.substring(0, 4)}' : 'Người dùng';
+  }
+
   PostEntity copyWith({
     String? id,
     String? groupId,
     String? authorId,
+    String? authorName,
+    String? authorAvatar,
     String? content,
     String? type,
     String? refId,
@@ -51,6 +69,8 @@ class PostEntity {
       id: id ?? this.id,
       groupId: groupId ?? this.groupId,
       authorId: authorId ?? this.authorId,
+      authorName: authorName ?? this.authorName,
+      authorAvatar: authorAvatar ?? this.authorAvatar,
       content: content ?? this.content,
       type: type ?? this.type,
       refId: refId ?? this.refId,

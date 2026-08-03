@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/app_constants.dart';
+import 'session_token.dart';
 
 /// Gắn Bearer token; khi 401 thì gọi `/auth/refresh` rồi retry request.
 /// Dùng chung cho mọi Dio (identity, media, ...).
@@ -132,6 +133,10 @@ class AuthInterceptor extends Interceptor {
           await prefs.setString(AppConstants.keyAccessToken, access);
           if (refresh != null && refresh.isNotEmpty) {
             await prefs.setString(AppConstants.keyRefreshToken, refresh);
+          }
+          final userId = jwtSubject(access);
+          if (userId != null) {
+            await prefs.setString(AppConstants.keyUserId, userId);
           }
           success = true;
         } else {

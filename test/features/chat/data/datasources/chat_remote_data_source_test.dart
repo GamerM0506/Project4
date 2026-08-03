@@ -15,11 +15,13 @@ void main() {
   late MockDio dio;
   late ChatRemoteDataSourceImpl dataSource;
 
-  setUp(() {
+  setUp(() async {
     SharedPreferences.setMockInitialValues({AppConstants.keyUserId: 'user-1'});
+    final prefs = await SharedPreferences.getInstance();
     apiClient = MockApiClient();
     dio = MockDio();
     when(() => apiClient.dio).thenReturn(dio);
+    when(() => apiClient.sharedPreferences).thenReturn(prefs);
     dataSource = ChatRemoteDataSourceImpl(apiClient: apiClient);
   });
 
@@ -60,33 +62,100 @@ void main() {
     ).called(1);
   });
 
-  test('maps message ownership from the persisted user id', () async {
+  test('maps ownership by sender_side for user seat', () async {
     when(
       () => dio.get(any(), queryParameters: any(named: 'queryParameters')),
-    ).thenAnswer(
-      (_) async => Response(
-        requestOptions: RequestOptions(path: ''),
+    ).thenAnswer((invocation) async {
+      final path = invocation.positionalArguments.first.toString();
+      if (path.contains('/profile/batch')) {
+        return Response(
+          requestOptions: RequestOptions(path: path),
+          data: {
+            'data': [
+              {'id': 'admin-9', 'full_name': 'Admin', 'username': 'admin'},
+            ],
+          },
+        );
+      }
+      return Response(
+        requestOptions: RequestOptions(path: path),
         data: [
           {
             'id': 'message-1',
-            'sender_id': 'user-1',
-            'content': 'Da gui',
+            'sender_id': 'admin-9',
+            'sender_side': 'group',
+            'content': 'Nhom tra loi',
             'type': 'text',
             'created_at': '2026-07-24T10:00:00Z',
           },
+          {
+            'id': 'message-2',
+            'sender_id': 'user-1',
+            'sender_side': 'user',
+            'content': 'Da gui',
+            'type': 'text',
+            'created_at': '2026-07-24T10:01:00Z',
+          },
         ],
-      ),
+      );
+    });
+
+    final result = await dataSource.getMessages(
+      'conversation-1',
+      asUserSide: true,
     );
 
-    final result = await dataSource.getMessages('conversation-1');
+    expect(result[0].isMine, isFalse);
+    expect(result[0].senderSide, 'group');
+    expect(result[1].isMine, isTrue);
+    expect(result[1].senderSide, 'user');
+  });
 
-    expect(result.single.isMine, isTrue);
-    verify(
-      () => dio.get(
-        '${AppConstants.chatApiBaseUrl}/conversations/conversation-1/messages',
-        queryParameters: {'limit': 50, 'offset': 0},
-      ),
-    ).called(1);
+  test('maps ownership by sender_side for group seat', () async {
+    when(
+      () => dio.get(any(), queryParameters: any(named: 'queryParameters')),
+    ).thenAnswer((invocation) async {
+      final path = invocation.positionalArguments.first.toString();
+      if (path.contains('/profile/batch')) {
+        return Response(
+          requestOptions: RequestOptions(path: path),
+          data: {
+            'data': [
+              {'id': 'user-1', 'full_name': 'User One', 'username': 'user1'},
+            ],
+          },
+        );
+      }
+      return Response(
+        requestOptions: RequestOptions(path: path),
+        data: [
+          {
+            'id': 'message-1',
+            'sender_id': 'admin-9',
+            'sender_side': 'group',
+            'content': 'Nhom tra loi',
+            'type': 'text',
+            'created_at': '2026-07-24T10:00:00Z',
+          },
+          {
+            'id': 'message-2',
+            'sender_id': 'user-1',
+            'sender_side': 'user',
+            'content': 'Da gui',
+            'type': 'text',
+            'created_at': '2026-07-24T10:01:00Z',
+          },
+        ],
+      );
+    });
+
+    final result = await dataSource.getMessages(
+      'conversation-1',
+      asUserSide: false,
+    );
+
+    expect(result[0].isMine, isTrue);
+    expect(result[1].isMine, isFalse);
   });
 
   test('does not swallow backend errors when sending a message', () async {
@@ -134,6 +203,7 @@ void main() {
         data: {
           'content': 'https://cdn.example.com/chat/image.jpg',
           'type': 'image',
+          'asGroup': false,
         },
       ),
     ).called(1);

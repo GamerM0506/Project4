@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/network/api_client.dart';
+import 'core/network/location_service.dart';
 import 'core/network/media_service.dart';
 import 'features/auth/data/datasources/auth_remote_data_source.dart';
 import 'features/home/data/home_repository.dart';
@@ -32,8 +33,10 @@ import 'features/user/domain/repositories/user_repository.dart';
 import 'features/user/domain/usecases/get_profile_usecase.dart';
 import 'features/user/domain/usecases/update_profile_usecase.dart';
 import 'features/user/domain/usecases/get_activities_usecase.dart';
+import 'features/user/domain/usecases/get_public_profile_usecase.dart';
 import 'features/user/presentation/cubit/user_cubit.dart';
 import 'features/user/presentation/cubit/activity_cubit.dart';
+import 'features/user/presentation/cubit/public_profile_cubit.dart';
 
 import 'features/group/data/datasources/group_remote_data_source.dart';
 import 'features/group/data/repositories/group_repository_impl.dart';
@@ -51,35 +54,21 @@ import 'features/group/domain/usecases/get_members_usecase.dart';
 import 'features/group/domain/usecases/update_member_role_usecase.dart';
 import 'features/group/domain/usecases/update_member_status_usecase.dart';
 import 'features/group/domain/usecases/update_group_usecase.dart';
-import 'features/marketplace/data/datasources/marketplace_remote_data_source.dart';
-import 'features/marketplace/data/repositories/marketplace_repository_impl.dart';
-import 'features/marketplace/domain/repositories/marketplace_repository.dart';
-import 'features/marketplace/domain/usecases/listing_usecases.dart';
-import 'features/marketplace/domain/usecases/request_usecases.dart';
-import 'features/marketplace/presentation/cubit/marketplace_cubit.dart';
-import 'features/marketplace/presentation/cubit/create_listing_cubit.dart';
-import 'features/marketplace/presentation/cubit/listing_detail_cubit.dart';
-import 'features/marketplace/presentation/cubit/my_requests_cubit.dart';
-
-import 'features/donation/data/datasources/donation_remote_data_source.dart';
-import 'features/donation/data/repositories/donation_repository_impl.dart';
-import 'features/donation/domain/repositories/donation_repository.dart';
-import 'features/donation/domain/usecases/donation_usecases.dart';
+import 'features/donation/data/datasources/campaign_remote_data_source.dart';
 import 'features/ai/data/ai_service.dart';
 import 'features/group/presentation/cubit/group_cubit.dart';
 import 'features/group/presentation/cubit/group_detail_cubit.dart';
 import 'features/group/presentation/cubit/create_group_cubit.dart';
 import 'features/group/presentation/cubit/group_join_requests_cubit.dart';
 import 'features/group/presentation/cubit/group_members_cubit.dart';
-import 'features/group/presentation/cubit/group_requests_cubit.dart';
 import 'features/group/presentation/cubit/group_dashboard_posts_cubit.dart';
-import 'features/group/presentation/cubit/group_inventory_cubit.dart';
 import 'features/group/presentation/cubit/update_group_cubit.dart';
 
 import 'features/post/data/datasources/post_remote_data_source.dart';
 import 'features/post/data/repositories/post_repository_impl.dart';
 import 'features/post/domain/repositories/post_repository.dart';
 import 'features/post/domain/usecases/get_post_detail_usecase.dart';
+import 'features/post/domain/usecases/set_post_pinned_usecase.dart';
 import 'features/post/domain/usecases/update_post_status_usecase.dart';
 import 'features/post/domain/usecases/get_posts_usecase.dart';
 import 'features/post/domain/usecases/create_post_usecase.dart';
@@ -90,6 +79,7 @@ import 'features/post/domain/usecases/get_comments_usecase.dart';
 import 'features/post/domain/usecases/add_comment_usecase.dart';
 import 'features/post/presentation/cubit/group_feed_cubit.dart';
 import 'features/post/presentation/cubit/post_comments_cubit.dart';
+import 'features/post/presentation/cubit/post_detail_cubit.dart';
 
 import 'features/chat/data/datasources/chat_remote_data_source.dart';
 import 'features/chat/domain/repositories/chat_repository.dart';
@@ -102,6 +92,8 @@ import 'features/notification/data/datasources/notification_remote_data_source.d
 import 'features/notification/domain/repositories/notification_repository.dart';
 import 'features/notification/data/repositories/notification_repository_impl.dart';
 import 'features/notification/presentation/cubit/notification_cubit.dart';
+import 'features/notification/application/notification_navigator.dart';
+import 'features/notification/application/push_notification_service.dart';
 
 import 'core/theme/theme_cubit.dart';
 
@@ -111,10 +103,23 @@ Future<void> initDependencies({SharedPreferences? preferences}) async {
   final sharedPreferences =
       preferences ?? await SharedPreferences.getInstance();
   sl.registerLazySingleton(() => sharedPreferences);
-  sl.registerLazySingleton(() => Dio());
+  // Bắt buộc có timeout: donation-service gọi đồng bộ sang community-service
+  // khi tạo/sửa campaign, nếu upstream treo mà Dio không giới hạn thì UI
+  // sẽ chờ vô hạn (nút kẹt ở trạng thái đang gửi).
+  sl.registerLazySingleton(
+    () => Dio(
+      BaseOptions(
+        connectTimeout: const Duration(seconds: 20),
+        receiveTimeout: const Duration(seconds: 30),
+        sendTimeout: const Duration(seconds: 30),
+      ),
+    ),
+  );
   sl.registerLazySingleton(() => ApiClient(dio: sl(), sharedPreferences: sl()));
   sl.registerLazySingleton(() => AiService(apiClient: sl()));
   sl.registerLazySingleton(() => MediaService(prefs: sl()));
+  // Singleton để cache danh mục tỉnh/huyện dùng chung cho mọi màn hình.
+  sl.registerLazySingleton(() => LocationService());
 
   sl.registerFactory(() => ThemeCubit(prefs: sl()));
 
@@ -130,12 +135,7 @@ Future<void> initDependencies({SharedPreferences? preferences}) async {
   sl.registerLazySingleton<PostRemoteDataSource>(
     () => PostRemoteDataSourceImpl(apiClient: sl()),
   );
-  sl.registerLazySingleton<MarketplaceRemoteDataSource>(
-    () => MarketplaceRemoteDataSourceImpl(sl()),
-  );
-  sl.registerLazySingleton<DonationRemoteDataSource>(
-    () => DonationRemoteDataSourceImpl(apiClient: sl()),
-  );
+  sl.registerLazySingleton(() => CampaignRemoteDataSource(apiClient: sl()));
   sl.registerLazySingleton<ChatRemoteDataSource>(
     () => ChatRemoteDataSourceImpl(apiClient: sl()),
   );
@@ -153,17 +153,19 @@ Future<void> initDependencies({SharedPreferences? preferences}) async {
   sl.registerLazySingleton<PostRepository>(
     () => PostRepositoryImpl(remoteDataSource: sl()),
   );
-  sl.registerLazySingleton<MarketplaceRepository>(
-    () => MarketplaceRepositoryImpl(remoteDataSource: sl()),
-  );
-  sl.registerLazySingleton<DonationRepository>(
-    () => DonationRepositoryImpl(remoteDataSource: sl()),
-  );
   sl.registerLazySingleton<ChatRepository>(
     () => ChatRepositoryImpl(remoteDataSource: sl()),
   );
   sl.registerLazySingleton<NotificationRepository>(
     () => NotificationRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton(() => const NotificationNavigator());
+  sl.registerLazySingleton(
+    () => PushNotificationService(
+      repository: sl(),
+      preferences: sl(),
+      navigator: sl(),
+    ),
   );
 
   sl.registerLazySingleton(() => LoginUseCase(sl()));
@@ -183,6 +185,7 @@ Future<void> initDependencies({SharedPreferences? preferences}) async {
   sl.registerLazySingleton(() => GetProfileUseCase(sl()));
   sl.registerLazySingleton(() => UpdateProfileUseCase(sl()));
   sl.registerLazySingleton(() => GetActivitiesUseCase(sl()));
+  sl.registerLazySingleton(() => GetPublicProfileUseCase(sl()));
 
   sl.registerLazySingleton(() => GetGroupsUseCase(sl()));
   sl.registerLazySingleton(() => GetMyGroupsUseCase(sl()));
@@ -202,42 +205,12 @@ Future<void> initDependencies({SharedPreferences? preferences}) async {
   sl.registerLazySingleton(() => CreatePostUseCase(sl()));
   sl.registerLazySingleton(() => DeletePostUseCase(sl()));
   sl.registerLazySingleton(() => GetPostDetailUseCase(sl()));
+  sl.registerLazySingleton(() => SetPostPinnedUseCase(sl()));
   sl.registerLazySingleton(() => UpdatePostStatusUseCase(sl()));
   sl.registerLazySingleton(() => LikePostUseCase(sl()));
   sl.registerLazySingleton(() => UnlikePostUseCase(sl()));
   sl.registerLazySingleton(() => GetCommentsUseCase(sl()));
   sl.registerLazySingleton(() => AddCommentUseCase(sl()));
-
-  sl.registerLazySingleton(() => GetCategoriesUseCase(sl()));
-  sl.registerLazySingleton(() => GetCatalogUseCase(sl()));
-  sl.registerLazySingleton(() => GetListingDetailUseCase(sl()));
-  sl.registerLazySingleton(() => CreateListingUseCase(sl()));
-  sl.registerLazySingleton(() => GetRequestsUseCase(sl()));
-  sl.registerLazySingleton(() => GetRequestByCodeUseCase(sl()));
-  sl.registerLazySingleton(() => CreateRequestUseCase(sl()));
-  sl.registerLazySingleton(() => ApproveRequestUseCase(sl()));
-  sl.registerLazySingleton(() => RejectRequestUseCase(sl()));
-  sl.registerLazySingleton(() => ScheduleRequestUseCase(sl()));
-  sl.registerLazySingleton(() => CompleteRequestUseCase(sl()));
-  sl.registerLazySingleton(() => CancelRequestUseCase(sl()));
-  sl.registerLazySingleton(() => NoShowRequestUseCase(sl()));
-  sl.registerLazySingleton(() => GetDeliveryConfirmationUseCase(sl()));
-  sl.registerLazySingleton(() => CloseListingUseCase(sl()));
-
-  sl.registerLazySingleton(() => CreateDonationUseCase(sl()));
-  sl.registerLazySingleton(() => GetDonationCategoriesUseCase(sl()));
-  sl.registerLazySingleton(() => GetDonationUseCase(sl()));
-  sl.registerLazySingleton(() => ScheduleDonationUseCase(sl()));
-  sl.registerLazySingleton(() => CancelDonationUseCase(sl()));
-  sl.registerLazySingleton(() => GetDonationTimelineUseCase(sl()));
-  sl.registerLazySingleton(() => GetDonationsUseCase(sl()));
-  sl.registerLazySingleton(() => ReviewDonationUseCase(sl()));
-  sl.registerLazySingleton(() => CheckDonationItemUseCase(sl()));
-  sl.registerLazySingleton(() => AcceptDonationUseCase(sl()));
-  sl.registerLazySingleton(() => GetInventoryUseCase(sl()));
-  sl.registerLazySingleton(() => GetInventoryItemUseCase(sl()));
-  sl.registerLazySingleton(() => GetDonationByCodeUseCase(sl()));
-  sl.registerLazySingleton(() => GetInventoryHistoryUseCase(sl()));
 
   sl.registerLazySingleton(() => GetConversationsUseCase(sl()));
   sl.registerLazySingleton(() => GetMessagesUseCase(sl()));
@@ -258,42 +231,12 @@ Future<void> initDependencies({SharedPreferences? preferences}) async {
       verifyResetCodeUseCase: sl(),
       resetPasswordUseCase: sl(),
       sharedPreferences: sl(),
+      pushNotificationService: sl(),
     ),
   );
   sl.registerFactory(() => ChangePasswordCubit(changePasswordUseCase: sl()));
   sl.registerFactory(
-    () => CreateListingCubit(
-      createListingUseCase: sl(),
-      createDonationUseCase: sl(),
-      getInventoryUseCase: sl(),
-      acceptDonationUseCase: sl(),
-      getDonationCategoriesUseCase: sl(),
-      getMyGroupsUseCase: sl(),
-      mediaService: sl(),
-      prefs: sl(),
-    ),
-  );
-  sl.registerFactory(
-    () => MarketplaceCubit(getCatalogUseCase: sl(), getCategoriesUseCase: sl()),
-  );
-  sl.registerFactory(() => HomeCubit(repository: sl()));
-  sl.registerFactory(
-    () => ListingDetailCubit(
-      getListingDetailUseCase: sl(),
-      createRequestUseCase: sl(),
-      getRequestsUseCase: sl(),
-      prefs: sl(),
-    ),
-  );
-  sl.registerFactory(
-    () => MyRequestsCubit(
-      getRequestsUseCase: sl(),
-      cancelRequestUseCase: sl(),
-      getListingDetailUseCase: sl(),
-      prefs: sl(),
-      addReceiverConfirmationUseCase: sl(),
-      mediaService: sl(),
-    ),
+    () => HomeCubit(repository: sl(), postRepository: sl()),
   );
   sl.registerFactory(
     () => TwoFactorCubit(
@@ -308,6 +251,9 @@ Future<void> initDependencies({SharedPreferences? preferences}) async {
     () => UserCubit(getProfileUseCase: sl(), updateProfileUseCase: sl()),
   );
   sl.registerFactory(() => ActivityCubit(getActivitiesUseCase: sl()));
+  sl.registerFactory(
+    () => PublicProfileCubit(getPublicProfileUseCase: sl()),
+  );
 
   sl.registerFactory(
     () => GroupCubit(
@@ -335,20 +281,6 @@ Future<void> initDependencies({SharedPreferences? preferences}) async {
       updateMemberStatusUseCase: sl(),
     ),
   );
-  sl.registerFactory(
-    () => GroupRequestsCubit(
-      getRequestsUseCase: sl(),
-      getRequestByCodeUseCase: sl(),
-      approveRequestUseCase: sl(),
-      rejectRequestUseCase: sl(),
-      scheduleRequestUseCase: sl(),
-      completeRequestUseCase: sl(),
-      noShowRequestUseCase: sl(),
-      getDeliveryConfirmationUseCase: sl(),
-      getListingDetailUseCase: sl(),
-      getMembersUseCase: sl(),
-    ),
-  );
   sl.registerFactory(() => UpdateGroupCubit(updateGroupUseCase: sl()));
   sl.registerFactory(
     () => GroupDashboardPostsCubit(
@@ -358,29 +290,20 @@ Future<void> initDependencies({SharedPreferences? preferences}) async {
     ),
   );
   sl.registerFactory(
-    () => GroupInventoryCubit(
-      getDonationsUseCase: sl(),
-      getInventoryUseCase: sl(),
-      reviewDonationUseCase: sl(),
-      checkDonationItemUseCase: sl(),
-      scheduleDonationUseCase: sl(),
-      createListingUseCase: sl(),
-      getCategoriesUseCase: sl(),
-    ),
-  );
-  sl.registerFactory(
     () => GroupFeedCubit(
       getPostsUseCase: sl(),
       createPostUseCase: sl(),
       deletePostUseCase: sl(),
       likePostUseCase: sl(),
       unlikePostUseCase: sl(),
+      setPostPinnedUseCase: sl(),
       mediaService: sl(),
     ),
   );
   sl.registerFactory(
     () => PostCommentsCubit(getCommentsUseCase: sl(), addCommentUseCase: sl()),
   );
+  sl.registerFactory(() => PostDetailCubit(getPostDetailUseCase: sl()));
 
   sl.registerFactory(() => ChatInboxCubit(getConversationsUseCase: sl()));
   sl.registerFactory(
@@ -388,8 +311,6 @@ Future<void> initDependencies({SharedPreferences? preferences}) async {
       getMessagesUseCase: sl(),
       sendMessageUseCase: sl(),
       markAsReadUseCase: sl(),
-      createDonationUseCase: sl(),
-      acceptDonationUseCase: sl(),
     ),
   );
 

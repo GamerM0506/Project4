@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/widgets/app_avatar.dart';
 import '../../../../core/widgets/app_button.dart';
 
 /// Thẻ nhóm trong danh sách. Nhận dữ liệu đã chuẩn hoá sẵn từ page.
 class GroupCard extends StatelessWidget {
   final String name;
-  final String coverUrl;
-  final String logoUrl;
+
+  /// Null khi nhóm chưa có ảnh — thẻ tự vẽ nền gradient thay thế.
+  final String? coverUrl;
+  final String? logoUrl;
   final String members;
   final String location;
   final String description;
@@ -44,8 +47,18 @@ class GroupCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colorScheme.outlineVariant),
+        borderRadius: AppRadius.brXl,
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+        ),
+        // Cùng độ nổi với thẻ đợt quyên góp.
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -53,37 +66,36 @@ class GroupCard extends StatelessWidget {
         children: [
           // Cover + avatar chồng lớp
           SizedBox(
-            height: 148,
+            height: 108,
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                Positioned.fill(
-                  child: _CoverImage(url: coverUrl),
-                ),
-                // Gradient mờ dưới để chữ/meta dễ đọc hơn nếu có
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.18),
-                        ],
+                Positioned.fill(child: _CoverImage(url: coverUrl, name: name)),
+                // Chỉ phủ tối khi có ảnh thật; nền thay thế đã sáng sẵn nên
+                // phủ thêm chỉ làm thẻ xỉn đi.
+                if (coverUrl != null && coverUrl!.isNotEmpty)
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.22),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
                 Positioned(
-                  left: 16,
+                  left: AppSpacing.lg,
                   bottom: -18,
                   child: Container(
                     padding: const EdgeInsets.all(3),
                     decoration: BoxDecoration(
                       color: colorScheme.surfaceContainerLowest,
                       shape: BoxShape.circle,
-                      border: Border.all(color: colorScheme.outlineVariant),
                     ),
                     child: AppAvatar(
                       imageUrl: logoUrl,
@@ -98,17 +110,24 @@ class GroupCard extends StatelessWidget {
 
           // Nội dung
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 26, 16, 16),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.xl + 2,
+              AppSpacing.lg,
+              AppSpacing.lg,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   name,
-                  style: textTheme.titleMedium,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: AppSpacing.xs + 2),
                 Row(
                   children: [
                     Icon(
@@ -248,14 +267,14 @@ class _ActionRow extends StatelessWidget {
     return Row(
       children: [
         Expanded(flex: 3, child: primary),
-        const SizedBox(width: 10),
+        const SizedBox(width: AppSpacing.sm + 2),
         Expanded(
           flex: 2,
           child: OutlinedButton(
             onPressed: onView,
             style: OutlinedButton.styleFrom(
-              minimumSize: const Size(0, 38),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              minimumSize: const Size(0, AppSizes.buttonHeightCompact - 2),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
               textStyle: Theme.of(context).textTheme.labelLarge,
               side: BorderSide(color: colorScheme.outlineVariant),
             ),
@@ -267,32 +286,64 @@ class _ActionRow extends StatelessWidget {
   }
 }
 
+/// Ảnh bìa nhóm; khi chưa có ảnh thì dùng nền trung tính thay vì ô xám trơn.
 class _CoverImage extends StatelessWidget {
-  const _CoverImage({required this.url});
+  const _CoverImage({required this.url, required this.name});
 
-  final String url;
+  final String? url;
+  final String name;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final fallback = _CoverPlaceholder(colors: colorScheme);
 
-    if (url.isEmpty) {
-      return Container(color: colorScheme.surfaceContainerHigh);
-    }
+    if (url == null || url!.isEmpty) return fallback;
     return Image.network(
-      url,
+      url!,
       fit: BoxFit.cover,
-      errorBuilder: (_, _, _) => Container(
-        color: colorScheme.surfaceContainerHigh,
-        child: Icon(
-          Icons.image_outlined,
-          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+      errorBuilder: (_, _, _) => fallback,
+      loadingBuilder: (context, child, progress) =>
+          progress == null ? child : fallback,
+    );
+  }
+}
+
+/// Nền thay thế khi nhóm chưa có ảnh bìa.
+///
+/// Dùng tone trung tính chứ không phải gradient brand: danh sách nhiều thẻ mà
+/// thẻ nào cũng đỏ thì cả trang rực lên và chọi với banner phía trên.
+class _CoverPlaceholder extends StatelessWidget {
+  const _CoverPlaceholder({required this.colors});
+
+  final ColorScheme colors;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            colors.surfaceContainerHigh,
+            colors.surfaceContainerHighest,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
       ),
-      loadingBuilder: (context, child, progress) {
-        if (progress == null) return child;
-        return Container(color: colorScheme.surfaceContainer);
-      },
+      child: Stack(
+        children: [
+          Positioned(
+            right: -10,
+            bottom: -18,
+            child: Icon(
+              Icons.groups_rounded,
+              size: 86,
+              color: colors.onSurfaceVariant.withValues(alpha: 0.16),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

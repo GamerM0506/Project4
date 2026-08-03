@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/media_service.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../domain/usecases/chat_usecases.dart';
 import '../widgets/listing_message_bubble.dart';
 import '../cubit/chat_cubit.dart';
@@ -219,7 +220,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                         height: 10,
                         decoration: BoxDecoration(
                           color: state.isConnected
-                              ? Colors.greenAccent[400]
+                              ? colorScheme.success
                               : colorScheme.outline,
                           shape: BoxShape.circle,
                           border: Border.all(
@@ -268,7 +269,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   horizontal: 16,
                   vertical: 8,
                 ),
-                color: colorScheme.secondaryContainer.withOpacity(0.4),
+                color: colorScheme.secondaryContainer.withValues(alpha: 0.4),
                 child: Row(
                   children: [
                     Icon(
@@ -440,7 +441,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.05),
+                                        color: Colors.black.withValues(alpha: 0.05),
                                         blurRadius: 12,
                                         offset: const Offset(0, 4),
                                       ),
@@ -535,7 +536,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                                     Icon(
                                       Icons.done_all,
                                       size: 14,
-                                      color: Colors.teal[400],
+                                      color: colorScheme.success,
                                     ),
                                   ],
                                 ],
@@ -571,7 +572,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             offset: const Offset(0, -4),
             blurRadius: 12,
           ),
@@ -617,7 +618,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
@@ -646,6 +647,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
+        final colorScheme = Theme.of(context).colorScheme;
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
@@ -655,10 +657,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   leading: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.orange.shade100,
+                      color: colorScheme.warningContainer,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.auto_awesome, color: Colors.orange),
+                    child: Icon(
+                      Icons.auto_awesome,
+                      color: colorScheme.warning,
+                    ),
                   ),
                   title: const Text(
                     'Quyên góp đồ bằng AI',
@@ -676,10 +681,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   leading: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade100,
+                      color: colorScheme.infoContainer,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.image, color: Colors.blue),
+                    child: Icon(Icons.image, color: colorScheme.info),
                   ),
                   title: const Text('Gửi hình ảnh'),
                   subtitle: const Text('Chọn ảnh từ thư viện để gửi'),

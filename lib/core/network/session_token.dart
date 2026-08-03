@@ -1,5 +1,9 @@
 import 'dart:convert';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../constants/app_constants.dart';
+
 Map<String, dynamic>? decodeJwtPayload(String? token) {
   if (token == null || token.isEmpty) return null;
   try {
@@ -17,7 +21,28 @@ Map<String, dynamic>? decodeJwtPayload(String? token) {
 
 String? jwtSubject(String? token) {
   final subject = decodeJwtPayload(token)?['sub']?.toString();
-  return subject == null || subject.isEmpty ? null : subject;
+  return normalizeUserId(subject);
+}
+
+/// Chuẩn hóa user id (UUID) để so khớp sender_id / JWT sub.
+String? normalizeUserId(String? value) {
+  if (value == null) return null;
+  final normalized = value.trim().toLowerCase();
+  return normalized.isEmpty ? null : normalized;
+}
+
+bool sameUserId(String? a, String? b) {
+  final left = normalizeUserId(a);
+  final right = normalizeUserId(b);
+  if (left == null || right == null) return false;
+  return left == right;
+}
+
+/// Ưu tiên JWT `sub` (nguồn đúng với sender_id backend), fallback prefs.
+String? resolveCurrentUserId(SharedPreferences prefs) {
+  final fromJwt = jwtSubject(prefs.getString(AppConstants.keyAccessToken));
+  if (fromJwt != null) return fromJwt;
+  return normalizeUserId(prefs.getString(AppConstants.keyUserId));
 }
 
 bool isUsableAccessToken(String? token, {DateTime? now}) {

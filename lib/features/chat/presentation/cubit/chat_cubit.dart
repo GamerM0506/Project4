@@ -5,18 +5,19 @@ import 'package:uuid/uuid.dart';
 
 import 'chat_state.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/network/session_token.dart';
 import '../../domain/usecases/chat_usecases.dart';
-import '../../../donation/domain/usecases/donation_usecases.dart';
 
 class ChatCubit extends Cubit<ChatState> {
   final GetMessagesUseCase? getMessagesUseCase;
   final SendMessageUseCase? sendMessageUseCase;
   final MarkAsReadUseCase? markAsReadUseCase;
-  final CreateDonationUseCase? createDonationUseCase;
-  final AcceptDonationUseCase? acceptDonationUseCase;
 
   io.Socket? _socket;
   String? _currentUserId;
+
+  /// true = user seat (donor/receiver); false = group admin/mod seat.
+  bool _asUserSide = true;
   static const _pageSize = 50;
   bool _markReadInFlight = false;
   int _historyOffset = 0;
@@ -25,11 +26,21 @@ class ChatCubit extends Cubit<ChatState> {
     this.getMessagesUseCase,
     this.sendMessageUseCase,
     this.markAsReadUseCase,
-    this.createDonationUseCase,
-    this.acceptDonationUseCase,
   }) : super(const ChatState());
 
-  Future<void> connect(String conversationId) async {
+  bool get asUserSide => _asUserSide;
+  bool get asGroup => !_asUserSide;
+
+  Future<void> connect(String conversationId, {bool asUserSide = true}) async {
+    _asUserSide = asUserSide;
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(AppConstants.keyAccessToken) ?? '';
+    _currentUserId = resolveCurrentUserId(prefs);
+    if (_currentUserId != null &&
+        prefs.getString(AppConstants.keyUserId) != _currentUserId) {
+      await prefs.setString(AppConstants.keyUserId, _currentUserId!);
+    }
+
     emit(
       state.copyWith(
         activeConversationId: conversationId,
@@ -37,10 +48,6 @@ class ChatCubit extends Cubit<ChatState> {
       ),
     );
     await _loadFirstPage(conversationId, replace: true);
-
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(AppConstants.keyAccessToken) ?? '';
-    _currentUserId = prefs.getString(AppConstants.keyUserId);
 
     _socket = io.io(
       AppConstants.socketBaseUrl,
@@ -87,15 +94,19 @@ class ChatCubit extends Cubit<ChatState> {
     _socket?.on('new_message', (data) {
       if (data is Map) {
         final payload = Map<String, dynamic>.from(data);
-        final senderId = payload['sender_id']?.toString() ?? '';
+        final senderId =
+            normalizeUserId(payload['sender_id']?.toString()) ?? '';
+        final senderSide = payload['sender_side']?.toString();
+        final msgType = payload['type']?.toString() ?? 'text';
         final existing = state.messages.cast<ChatMessage?>().firstWhere(
-          (m) => m?.senderId == senderId,
+          (m) => sameUserId(m?.senderId, senderId),
           orElse: () => null,
         );
         final newMessage = ChatMessage(
           id: payload['id']?.toString() ?? const Uuid().v4(),
           content: payload['content']?.toString() ?? '',
           senderId: senderId,
+          senderSide: senderSide,
           senderName:
               payload['sender_name']?.toString() ?? existing?.senderName,
           senderAvatar:
@@ -103,8 +114,12 @@ class ChatCubit extends Cubit<ChatState> {
           createdAt:
               DateTime.tryParse(payload['created_at']?.toString() ?? '') ??
               DateTime.now(),
-          isMine: senderId == _currentUserId,
-          type: payload['type']?.toString() ?? 'text',
+          isMine: _isMine(
+            type: msgType,
+            senderSide: senderSide,
+            senderId: senderId,
+          ),
+          type: msgType,
           metadata: payload['metadata'] != null
               ? Map<String, dynamic>.from(payload['metadata'])
               : null,
@@ -141,6 +156,7 @@ class ChatCubit extends Cubit<ChatState> {
       conversationId,
       limit: _pageSize,
       offset: _historyOffset,
+      asUserSide: _asUserSide,
     );
     result.fold(
       (failure) => emit(state.copyWith(isLoadingOlder: false, error: failure)),
@@ -165,7 +181,11 @@ class ChatCubit extends Cubit<ChatState> {
       emit(state.copyWith(isLoadingHistory: false));
       return;
     }
-    final result = await getMessagesUseCase!(conversationId, limit: _pageSize);
+    final result = await getMessagesUseCase!(
+      conversationId,
+      limit: _pageSize,
+      asUserSide: _asUserSide,
+    );
     result.fold(
       (failure) =>
           emit(state.copyWith(isLoadingHistory: false, error: failure)),
@@ -193,8 +213,32 @@ class ChatCubit extends Cubit<ChatState> {
     for (final message in incoming) {
       byId[message.id] = message;
     }
-    return byId.values.toList()
+    return byId.values.map(_withOwnership).toList()
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+  }
+
+  ChatMessage _withOwnership(ChatMessage message) {
+    final isMine = _isMine(
+      type: message.type,
+      senderSide: message.senderSide,
+      senderId: message.senderId,
+    );
+    if (message.isMine == isMine) return message;
+    return message.copyWith(isMine: isMine);
+  }
+
+  bool _isMine({
+    required String type,
+    required String? senderSide,
+    required String senderId,
+  }) {
+    if (type == 'system') return false;
+    final side = (senderSide ?? '').toLowerCase().trim();
+    if (side == 'group' || side == 'user') {
+      // User seat: tin side=user bên phải. Group seat: tin side=group bên phải.
+      return _asUserSide ? side == 'user' : side == 'group';
+    }
+    return sameUserId(senderId, _currentUserId);
   }
 
   Future<void> _markRead() async {
@@ -218,10 +262,12 @@ class ChatCubit extends Cubit<ChatState> {
     final convId = state.activeConversationId;
     if (convId == null) return null;
 
+    final side = asGroup ? 'group' : 'user';
     final tempMsg = ChatMessage(
       id: const Uuid().v4(),
       content: content,
-      senderId: 'me',
+      senderId: _currentUserId ?? 'me',
+      senderSide: side,
       createdAt: DateTime.now(),
       isMine: true,
       type: type,
@@ -231,7 +277,12 @@ class ChatCubit extends Cubit<ChatState> {
     emit(state.copyWith(messages: List.from(state.messages)..add(tempMsg)));
 
     if (sendMessageUseCase != null) {
-      final result = await sendMessageUseCase!(convId, content, type: type);
+      final result = await sendMessageUseCase!(
+        convId,
+        content,
+        type: type,
+        asGroup: asGroup,
+      );
       return result.fold(
         (failure) {
           emit(
@@ -245,17 +296,18 @@ class ChatCubit extends Cubit<ChatState> {
           return null;
         },
         (actualMsg) {
+          final owned = _withOwnership(actualMsg);
           final messages =
               state.messages
                   .where(
                     (message) =>
-                        message.id != tempMsg.id && message.id != actualMsg.id,
+                        message.id != tempMsg.id && message.id != owned.id,
                   )
                   .toList()
-                ..add(actualMsg);
+                ..add(owned);
           messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
           emit(state.copyWith(messages: messages));
-          return actualMsg;
+          return owned;
         },
       );
     } else {
@@ -263,84 +315,13 @@ class ChatCubit extends Cubit<ChatState> {
         'conversationId': convId,
         'content': content,
         'type': type,
+        'asGroup': asGroup,
       };
       if (metadata != null) {
         data['metadata'] = metadata;
       }
       _socket?.emit('send_message', data);
       return null;
-    }
-  }
-
-  /// Donor: create donation via donation-service, then post proposal card in chat.
-  Future<void> submitDonationProposal({
-    required String groupId,
-    required String title,
-    required String description,
-    required int quantity,
-    String condition = 'used',
-    String? categoryId,
-  }) async {
-    if (createDonationUseCase == null) {
-      emit(state.copyWith(error: 'Donation service chưa được cấu hình'));
-      return;
-    }
-
-    final uuidRegex = RegExp(
-      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
-    );
-    if (!uuidRegex.hasMatch(groupId)) {
-      emit(
-        state.copyWith(
-          error: 'Group ID không hợp lệ. Mở chat từ nhóm (cần UUID nhóm).',
-        ),
-      );
-      return;
-    }
-
-    final conditionMapped = _mapCondition(condition);
-    final item = <String, dynamic>{
-      'name': title,
-      'quantity': quantity < 1 ? 1 : quantity,
-      'condition_declared': conditionMapped,
-      'images': <Map<String, dynamic>>[],
-    };
-    if (categoryId != null && uuidRegex.hasMatch(categoryId)) {
-      item['category_id'] = categoryId;
-    }
-
-    final result = await createDonationUseCase!(
-      groupId: groupId,
-      title: title,
-      description: description.isEmpty ? null : description,
-      items: [item],
-    );
-
-    await result.fold(
-      (err) async {
-        emit(state.copyWith(error: err));
-      },
-      (donation) async {
-        await sendMessage('Tôi muốn quyên góp: $title (Mã: ${donation.code})');
-      },
-    );
-  }
-
-  String _mapCondition(String raw) {
-    final v = raw.toLowerCase().trim();
-    const allowed = {'new', 'like_new', 'good', 'used', 'worn'};
-    if (allowed.contains(v)) return v;
-    switch (v) {
-      case 'like new':
-      case 'likenew':
-        return 'like_new';
-      case 'excellent':
-        return 'like_new';
-      case 'fair':
-      case 'acceptable':
-        return 'used';
-      default:
-        return 'used';
     }
   }
 

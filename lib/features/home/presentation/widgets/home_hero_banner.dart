@@ -80,7 +80,7 @@ class HomeHeroBanner extends StatelessWidget {
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
-                      'Cộng đồng ChoSV',
+                      'Cộng đồng Chợ Tử Tế',
                       style: textTheme.labelSmall?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -107,7 +107,7 @@ class HomeHeroBanner extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   FilledButton.icon(
-                    onPressed: () => context.go(AppRoutes.marketplace),
+                    onPressed: () => context.push(AppRoutes.donate),
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: gradientColors.last,

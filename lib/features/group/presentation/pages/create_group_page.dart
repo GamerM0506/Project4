@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../injection_container.dart';
+import '../../../../core/widgets/app_surface.dart';
 import '../../../../core/widgets/image_picker_widget.dart';
 import '../cubit/create_group_cubit.dart';
 import '../../domain/usecases/create_group_usecase.dart';
@@ -55,12 +56,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
       child: BlocConsumer<CreateGroupCubit, CreateGroupState>(
         listener: (context, state) {
           if (state is CreateGroupSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: Colors.green,
-              ),
-            );
+              context.showSuccessSnack(state.message);
             Navigator.of(context).pop(true); // Return true to refresh list
           } else if (state is CreateGroupError) {
             ScaffoldMessenger.of(context).showSnackBar(

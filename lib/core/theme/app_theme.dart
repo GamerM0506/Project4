@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
+import 'app_tokens.dart';
 import 'app_typography.dart';
 
 class AppTheme {
@@ -106,11 +107,32 @@ class AppTheme {
         selectedColor: colorScheme.primary,
         disabledColor: colorScheme.surfaceContainer,
         labelStyle: textTheme.labelMedium!,
-        secondaryLabelStyle: textTheme.labelMedium!,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        secondaryLabelStyle: textTheme.labelMedium!.copyWith(
+          color: colorScheme.onPrimary,
+        ),
+        // FilterChip khi chọn phải đảo màu chữ, nếu không sẽ chữ tối trên nền
+        // primary tối và gần như không đọc được.
+        checkmarkColor: colorScheme.onPrimary,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md + 2,
+          vertical: AppSpacing.sm,
+        ),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadius.brMd,
           side: BorderSide(color: colorScheme.outlineVariant),
+        ),
+      ),
+
+      // Dùng cho các lựa chọn hai nhánh (Đạt / Không đạt, Tiếp nhận / Từ chối).
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          textStyle: WidgetStatePropertyAll(textTheme.labelLarge),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: AppRadius.brMd),
+          ),
+          padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          ),
         ),
       ),
 
@@ -124,27 +146,27 @@ class AppTheme {
           color: colorScheme.onSurfaceVariant,
         ),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md + 2,
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+        border: const OutlineInputBorder(
+          borderRadius: AppRadius.brMd,
           borderSide: BorderSide.none,
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+        enabledBorder: const OutlineInputBorder(
+          borderRadius: AppRadius.brMd,
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: AppRadius.brMd,
           borderSide: BorderSide(color: colorScheme.primary, width: 1.6),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: AppRadius.brMd,
           borderSide: BorderSide(color: colorScheme.error, width: 1.4),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: AppRadius.brMd,
           borderSide: BorderSide(color: colorScheme.error, width: 1.6),
         ),
       ),
