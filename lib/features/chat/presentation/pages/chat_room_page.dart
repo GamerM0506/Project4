@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/router/app_routes.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/media_service.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -78,20 +79,43 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       return;
     }
     final result = await sl<GetConversationsUseCase>()();
-    result.fold(_chatCubit.setError, (conversations) {
+    result.fold(_chatCubit.setError, (conversations) async {
       final matches = conversations
           .where(
             (item) => item.groupId == groupId && item.userId == currentUserId,
           )
           .toList();
-      if (matches.isEmpty) {
-        _chatCubit.setError(
-          'Nhóm chưa có cuộc trò chuyện. Hãy tạo yêu cầu quyên góp trước.',
-        );
+      if (matches.isNotEmpty) {
+        _chatCubit.connect(matches.first.id);
         return;
       }
-      _chatCubit.connect(matches.first.id);
+      await _createConversation(groupId);
     });
+  }
+
+  Future<void> _createConversation(String groupId) async {
+    try {
+      final response = await sl<ApiClient>().dio.post(
+        '${AppConstants.chatApiBaseUrl}/conversations',
+        data: {
+          'groupId': groupId,
+          'contextType': 'direct',
+          'contextId': groupId,
+        },
+      );
+      final body = response.data;
+      final conv = body is Map && body['data'] is Map
+          ? body['data'] as Map<String, dynamic>
+          : body as Map<String, dynamic>;
+      final convId = conv['id']?.toString();
+      if (convId != null && convId.isNotEmpty) {
+        await _chatCubit.connect(convId, asUserSide: widget.isUserSide);
+      } else {
+        _chatCubit.setError('Không thể tạo cuộc trò chuyện.');
+      }
+    } catch (e) {
+      _chatCubit.setError('Lỗi khi tạo cuộc trò chuyện: ${e.toString()}');
+    }
   }
 
   Future<bool> _canOpenGroupChat() async {
@@ -142,7 +166,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   }
 
   void _openDonateFormWithAI() {
-    context.push('/marketplace/create', extra: {'groupId': widget.groupId});
+    context.push(AppRoutes.donate, extra: {'groupId': widget.groupId});
   }
 
   Future<void> _pickAndSendImage() async {
